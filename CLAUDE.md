@@ -345,6 +345,43 @@ CREATE TABLE reviews (
 - [ ] Storybook des composants
 - [ ] Architecture Decision Records (ADR)
 
+## 🚨 BONNES PRATIQUES DE DÉVELOPPEMENT - TRÈS IMPORTANT
+
+### Règles obligatoires à suivre à chaque tâche :
+
+1. **Mise à jour continue des avancées** :
+   dans next_tasks.txt
+
+   - À chaque fois qu'une tâche est terminée, mettre à jour le statut dans la roadmap
+   - Ajouter les nouvelles tâches qui découlent du travail effectué
+   - Documenter les décisions techniques prises
+
+2. **Vérification ESLint systématique** :
+
+   - **NE JAMAIS** essayer de build ou run l'application
+   - **TOUJOURS** vérifier avec ESLint après chaque modification
+   - Corriger **IMMÉDIATEMENT** toutes les erreurs ESLint
+   - Maintenir un code propre et cohérent
+
+3. **Workflow de développement** :
+
+   ```
+   Modification → Vérification ESLint → Correction si nécessaire → Mise à jour documentation
+   ```
+
+4. **Priorités absolues** :
+   - Qualité du code > Fonctionnalité
+   - ESLint clean > Build working
+   - Documentation > Code non documenté
+
+### Checklist après chaque modification :
+
+- [ ] ESLint ne reporte aucune erreur
+- [ ] Code est propre et bien formaté
+- [ ] Documentation mise à jour si nécessaire
+- [ ] Avancées notées dans la roadmap
+- [ ] Nouvelles tâches identifiées et ajoutées
+
 ---
 
 Cette roadmap est conçue pour être flexible : chaque phase peut être ajustée selon les retours utilisateurs et les priorités business. L'objectif est d'avoir un MVP solide en 3 mois avec possibilité d'itération rapide.

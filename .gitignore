@@ -45,6 +45,6 @@ storybook-static
 
 send_to_terminal.scpt
 run_ai_tasks.sh
-send_to_terminal.scpt
-
+CLAUDE.md
+next_tasks.txt
 .claude
