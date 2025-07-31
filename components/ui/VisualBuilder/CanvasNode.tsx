@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConnectionHandle } from './ConnectionHandle';
-import { X, MoreVertical, Settings, Info } from 'lucide-react';
+import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
+import { X, MoreVertical, Settings, Info, Palette } from 'lucide-react';
 
 export interface NodePosition {
   x: number;
@@ -35,6 +36,7 @@ export interface NodeData {
   isMainTechnology?: boolean; // Indique si c'est une techno principale
   subTechnologies?: SubTechnology[]; // Sous-technologies intégrées
   canAcceptSubTech?: string[]; // Types de sous-technos acceptées
+  customStyle?: NodeCustomStyle; // Style personnalisé
 }
 
 interface CanvasNodeProps {
@@ -49,6 +51,7 @@ interface CanvasNodeProps {
   onStartConnection: (nodeId: string, position: 'left' | 'right') => void;
   onEndConnection: (nodeId: string, position: 'left' | 'right') => void;
   onToggleMode?: (id: string) => void;
+  onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
   className?: string;
 }
 
@@ -80,12 +83,39 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   onStartConnection,
   onEndConnection,
   onToggleMode,
+  onStyleChange,
   className
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showMenu, setShowMenu] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
+
+  // Get custom style or default category colors
+  const getNodeStyle = () => {
+    if (data.customStyle) {
+      return {
+        background: data.customStyle.customGradient || 
+                   `linear-gradient(135deg, ${data.customStyle.primaryColor}, ${data.customStyle.secondaryColor})`,
+        borderColor: data.customStyle.borderColor,
+        color: data.customStyle.textColor
+      };
+    }
+    return {
+      background: `bg-gradient-to-r ${categoryColors[data.category as keyof typeof categoryColors]}`,
+      borderColor: '',
+      color: 'white'
+    };
+  };
+
+  const nodeStyle = getNodeStyle();
+
+  const handleColorChange = (nodeId: string, style: NodeCustomStyle) => {
+    if (onStyleChange) {
+      onStyleChange(nodeId, style);
+    }
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left click
@@ -203,20 +233,30 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
-      <div className={cn(
-        'flex items-center justify-between bg-gradient-to-r rounded-t-lg',
-        isCompact ? 'p-2' : 'p-3',
-        categoryColors[data.category as keyof typeof categoryColors]
-      )}>
+      <div 
+        className={cn(
+          'flex items-center justify-between rounded-t-lg',
+          isCompact ? 'p-2' : 'p-3',
+          !data.customStyle && `bg-gradient-to-r ${categoryColors[data.category as keyof typeof categoryColors]}`
+        )}
+        style={data.customStyle ? {
+          background: nodeStyle.background,
+          borderColor: nodeStyle.borderColor,
+          color: nodeStyle.color
+        } : {}}
+      >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className={cn(
             'bg-white/30 rounded-full flex-shrink-0',
             isCompact ? 'w-2 h-2' : 'w-3 h-3'
           )} />
           <h3 className={cn(
-            'font-semibold text-white truncate',
-            isCompact ? 'text-sm' : 'text-base'
-          )}>
+            'font-semibold truncate',
+            isCompact ? 'text-sm' : 'text-base',
+            !data.customStyle && 'text-white'
+          )}
+          style={data.customStyle ? { color: nodeStyle.color } : {}}
+          >
             {data.name}
           </h3>
         </div>
@@ -230,7 +270,11 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
                 onToggleMode(data.id);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-white/20 rounded text-white/80 hover:text-white"
+              className={cn(
+                "p-1 rounded transition-colors",
+                data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
+              )}
+              style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
               title={isCompact ? "Expand" : "Collapse"}
             >
               <div className={cn(
@@ -248,7 +292,11 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               setShowMenu(!showMenu);
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className="p-1 hover:bg-white/20 rounded text-white/80 hover:text-white"
+            className={cn(
+              "p-1 rounded transition-colors",
+              data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
+            )}
+            style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
           >
             <MoreVertical className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
           </button>
@@ -259,7 +307,11 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               onDelete(data.id);
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            className="p-1 hover:bg-red-500/20 rounded text-white/80 hover:text-red-300"
+            className={cn(
+              "p-1 hover:bg-red-500/20 rounded transition-colors",
+              data.customStyle ? "hover:text-red-300" : "text-white/80 hover:text-red-300"
+            )}
+            style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
           >
             <X className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
           </button>
@@ -323,6 +375,19 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
           />
           <div className="absolute top-12 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[160px]">
             <div className="p-1">
+              {onStyleChange && (
+                <button 
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowColorPicker(true);
+                    setShowMenu(false);
+                  }}
+                >
+                  <Palette className="w-4 h-4" />
+                  Customize Colors
+                </button>
+              )}
               <button 
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
                 onClick={(e) => {
@@ -348,6 +413,19 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
             </div>
           </div>
         </>
+      )}
+
+      {/* Color Picker */}
+      {showColorPicker && onStyleChange && (
+        <NodeColorPicker
+          node={data as StyledNodeData}
+          onStyleChange={handleColorChange}
+          onClose={() => setShowColorPicker(false)}
+          position={{
+            x: position.x + (isCompact ? 200 : 280) + 20,
+            y: position.y
+          }}
+        />
       )}
     </div>
   );

@@ -14,6 +14,7 @@ import ReactFlow, {
   ConnectionMode,
   Panel,
   NodeTypes,
+  EdgeTypes,
   NodeChange,
   EdgeChange,
   MarkerType,
@@ -22,10 +23,18 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { TechNode } from './TechNode';
 import { NodeData, SubTechnology } from './CanvasNode';
+import { ConnectionStyle } from './ConnectionStyleEditor';
+import { NodeCustomStyle } from './NodeColorPicker';
+import { CustomEdge } from './CustomEdge';
 
 // Custom node types
 const nodeTypes: NodeTypes = {
   techNode: TechNode,
+};
+
+// Custom edge types
+const edgeTypes: EdgeTypes = {
+  customEdge: CustomEdge,
 };
 
 interface ReactFlowCanvasProps {
@@ -36,14 +45,24 @@ interface ReactFlowCanvasProps {
     height?: number;
     documentation?: string;
   }>;
-  connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string }>;
-  onNodesChange: (nodes: Array<NodeData & { position: { x: number; y: number }; isCompact?: boolean; width?: number; height?: number; documentation?: string }>) => void;
-  onConnectionsChange: (connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string }>) => void;
+  connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string; style?: ConnectionStyle }>;
+  onNodesChange?: (nodes: Array<NodeData & { position: { x: number; y: number }; isCompact?: boolean; width?: number; height?: number; documentation?: string }>) => void;
+  onConnectionsChange?: (connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string; style?: ConnectionStyle }>) => void;
+  onConnectionStyleChange?: (connectionId: string, style: ConnectionStyle) => void;
+  onConnectionSelect?: (connectionId: string | null) => void;
+  selectedConnectionId?: string | null;
+  onNodeStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
+  onNodeSelect?: (nodeId: string) => void;
   onDocumentationSave?: (nodeId: string, documentation: string) => void;
   onAddSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
+  // Presentation mode props
+  nodesDraggable?: boolean;
+  nodesConnectable?: boolean;
+  elementsSelectable?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
@@ -51,11 +70,21 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   connections: externalConnections,
   onNodesChange,
   onConnectionsChange,
+  onConnectionStyleChange,
+  onConnectionSelect,
+  selectedConnectionId,
+  onNodeStyleChange,
+  onNodeSelect,
   onDocumentationSave,
   onAddSubTechnology,
   onDropComponent,
   availableSubTechnologies,
-  className
+  className,
+  // Presentation mode props with defaults
+  nodesDraggable = true,
+  nodesConnectable = true,
+  elementsSelectable = true,
+  isReadOnly = false
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
@@ -113,29 +142,42 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         },
         onDocumentationSave,
         onAddSubTechnology,
-        availableSubTechnologies
+        onStyleChange: onNodeStyleChange,
+        onNodeSelect,
+        availableSubTechnologies,
+        isReadOnly
       }
     }));
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, availableSubTechnologies]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onNodeStyleChange, onNodeSelect, availableSubTechnologies, isReadOnly]);
 
   const convertToReactFlowEdges = useCallback((connectionList: typeof externalConnections): Edge[] =>
-    connectionList.map(conn => ({
-      id: conn.id,
-      source: conn.sourceNodeId,
-      target: conn.targetNodeId,
-      type: 'smoothstep',
-      animated: conn.type === 'compatible',
-      style: {
-        stroke: conn.type === 'compatible' ? '#10b981' : 
-               conn.type === 'incompatible' ? '#ef4444' : '#3b82f6',
-        strokeWidth: 2,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: conn.type === 'compatible' ? '#10b981' : 
-               conn.type === 'incompatible' ? '#ef4444' : '#3b82f6',
-      }
-    })), []
+    connectionList.map(conn => {
+      // Use custom style if available, otherwise use default based on type
+      const strokeColor = conn.style?.color || 
+                         (conn.type === 'compatible' ? '#10b981' : 
+                          conn.type === 'incompatible' ? '#ef4444' : '#3b82f6');
+      
+      return {
+        id: conn.id,
+        source: conn.sourceNodeId,
+        target: conn.targetNodeId,
+        type: 'customEdge',
+        style: {
+          stroke: strokeColor,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: strokeColor,
+        },
+        data: {
+          connectionId: conn.id,
+          style: conn.style,
+          onStyleChange: onConnectionStyleChange,
+          onSelect: onConnectionSelect,
+          isSelected: selectedConnectionId === conn.id
+        }
+      };
+    }), [onConnectionStyleChange, onConnectionSelect, selectedConnectionId]
   );
 
   // Sync ReactFlow nodes back to our format when they change
@@ -172,22 +214,25 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     onConnectionsChange([...externalConnections, newConnection]);
 
     // Also update ReactFlow edges
+    const strokeColor = connectionType === 'compatible' ? '#10b981' : 
+                       connectionType === 'incompatible' ? '#ef4444' : '#3b82f6';
     const newEdge: Edge = {
       id: newConnection.id,
       source: params.source!,
       target: params.target!,
-      type: 'smoothstep',
-      animated: connectionType === 'compatible',
+      type: 'customEdge',
       style: {
-        stroke: connectionType === 'compatible' ? '#10b981' : 
-               connectionType === 'incompatible' ? '#ef4444' : '#3b82f6',
-        strokeWidth: 2,
+        stroke: strokeColor,
       },
-              markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: connectionType === 'compatible' ? '#10b981' : 
-                 connectionType === 'incompatible' ? '#ef4444' : '#3b82f6',
-        } 
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: strokeColor,
+      },
+      data: {
+        connectionId: newConnection.id,
+        style: undefined,
+        onStyleChange: onConnectionStyleChange
+      }
     };
 
     setEdges((eds) => addEdge(newEdge, eds));
@@ -235,17 +280,30 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     }
   }, [onDropComponent]);
 
-  // Update nodes when external nodes change
+  // Update nodes when external nodes change - preserve positions
   useEffect(() => {
     const reactFlowNodes = convertToReactFlowNodes(externalNodes);
-    setNodes(reactFlowNodes);
-  }, [externalNodes, convertToReactFlowNodes, setNodes]);
+    setNodes(prevNodes => {
+      // Preserve positions from current ReactFlow nodes
+      return reactFlowNodes.map(newNode => {
+        const existingNode = prevNodes.find(n => n.id === newNode.id);
+        if (existingNode) {
+          // Keep the current position from ReactFlow
+          return {
+            ...newNode,
+            position: existingNode.position
+          };
+        }
+        return newNode;
+      });
+    });
+  }, [externalNodes, convertToReactFlowNodes]);
 
   // Update edges when external connections change  
   useEffect(() => {
     const reactFlowEdges = convertToReactFlowEdges(externalConnections);
     setEdges(reactFlowEdges);
-  }, [externalConnections, convertToReactFlowEdges, setEdges]);
+  }, [externalConnections, convertToReactFlowEdges]);
 
 
   return (
@@ -262,6 +320,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView={false}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -276,10 +335,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         zoomOnScroll={true}
         zoomOnPinch={true}
         zoomOnDoubleClick={false}
-        selectNodesOnDrag={true}
-        nodesConnectable={true}
-        nodesDraggable={true}
-        elementsSelectable={true}
+        selectNodesOnDrag={elementsSelectable}
+        nodesConnectable={nodesConnectable}
+        nodesDraggable={nodesDraggable}
+        elementsSelectable={elementsSelectable}
       >
         {/* Background with subtle pattern */}
         <Background 

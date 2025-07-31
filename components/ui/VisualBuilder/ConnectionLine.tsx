@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { ConnectionStyleEditor, ConnectionStyle, StyledConnection } from './ConnectionStyleEditor';
 
 export interface Connection {
   id: string;
@@ -10,20 +11,25 @@ export interface Connection {
   sourcePosition: { x: number; y: number };
   targetPosition: { x: number; y: number };
   type: 'compatible' | 'incompatible' | 'neutral';
+  style?: ConnectionStyle;
 }
 
 interface ConnectionLineProps {
   connection: Connection;
   onDelete?: (connectionId: string) => void;
+  onStyleChange?: (connectionId: string, style: ConnectionStyle) => void;
   className?: string;
 }
 
 export const ConnectionLine: React.FC<ConnectionLineProps> = ({
   connection,
   onDelete,
+  onStyleChange,
   className
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [showStyleEditor, setShowStyleEditor] = useState(false);
+  const [editorPosition, setEditorPosition] = useState({ x: 0, y: 0 });
 
   const { sourcePosition, targetPosition, type } = connection;
   
@@ -43,16 +49,61 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
   // Create SVG path for curved line
   const pathData = `M ${sourcePosition.x} ${sourcePosition.y} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${targetPosition.x} ${targetPosition.y}`;
 
-  // Get line color based on connection type
+  // Get line color based on custom style or connection type
   const getLineColor = () => {
+    if (connection.style?.color) {
+      return connection.style.color;
+    }
     switch (type) {
       case 'compatible':
-        return 'stroke-green-400';
+        return '#10b981'; // green-500
       case 'incompatible':
-        return 'stroke-red-400';
+        return '#ef4444'; // red-500
       default:
-        return 'stroke-blue-400';
+        return '#3b82f6'; // blue-500
     }
+  };
+
+  // Get stroke style
+  const getStrokeStyle = () => {
+    if (connection.style?.strokeStyle) {
+      switch (connection.style.strokeStyle) {
+        case 'dashed':
+          return '8,4';
+        case 'dotted':
+          return '2,2';
+        case 'animated':
+          return '8,4';
+        default:
+          return 'none';
+      }
+    }
+    return type === 'incompatible' ? '5,5' : 'none';
+  };
+
+  // Get stroke width
+  const getStrokeWidth = () => {
+    return connection.style?.strokeWidth || 2;
+  };
+
+  // Get opacity
+  const getOpacity = () => {
+    return connection.style?.opacity || 1;
+  };
+
+  // Handle connection click for style editing
+  const handleConnectionClick = (e: React.MouseEvent) => {
+    if (!onStyleChange) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
+    setEditorPosition({
+      x: e.clientX,
+      y: e.clientY
+    });
+    setShowStyleEditor(true);
   };
 
   // Calculate midpoint for delete button
@@ -65,16 +116,30 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
       <path
         d={pathData}
         fill="none"
+        stroke={getLineColor()}
+        strokeWidth={isHovered ? getStrokeWidth() + 1 : getStrokeWidth()}
+        strokeDasharray={getStrokeStyle()}
+        opacity={getOpacity()}
         className={cn(
-          'transition-all duration-200',
-          getLineColor(),
-          isHovered ? 'stroke-[3]' : 'stroke-2',
-          'drop-shadow-sm'
+          'transition-all duration-200 cursor-pointer',
+          'drop-shadow-sm hover:drop-shadow-md',
+          connection.style?.animation === 'pulse' && 'animate-pulse',
+          connection.style?.animation === 'glow' && 'filter drop-shadow-lg'
         )}
-        strokeDasharray={type === 'incompatible' ? '5,5' : 'none'}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-      />
+        onClick={handleConnectionClick}
+      >
+        {/* Animated flow effect */}
+        {connection.style?.animation === 'flow' && connection.style?.strokeStyle === 'animated' && (
+          <animate
+            attributeName="stroke-dasharray"
+            values="0,12;12,0;0,12"
+            dur="2s"
+            repeatCount="indefinite"
+          />
+        )}
+      </path>
       
       {/* Arrow marker */}
       <defs>
@@ -88,10 +153,8 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
         >
           <polygon
             points="0 0, 10 3.5, 0 7"
-            className={cn(
-              'transition-colors duration-200',
-              getLineColor().replace('stroke-', 'fill-')
-            )}
+            fill={getLineColor()}
+            className="transition-colors duration-200"
           />
         </marker>
       </defs>
@@ -99,14 +162,28 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
       <path
         d={pathData}
         fill="none"
+        stroke={getLineColor()}
+        strokeWidth={isHovered ? getStrokeWidth() + 1 : getStrokeWidth()}
+        strokeDasharray={getStrokeStyle()}
+        opacity={getOpacity()}
         className={cn(
-          'transition-all duration-200',
-          getLineColor(),
-          isHovered ? 'stroke-[3]' : 'stroke-2'
+          'transition-all duration-200 cursor-pointer',
+          connection.style?.animation === 'pulse' && 'animate-pulse',
+          connection.style?.animation === 'glow' && 'filter drop-shadow-lg'
         )}
-        strokeDasharray={type === 'incompatible' ? '5,5' : 'none'}
         markerEnd={`url(#arrowhead-${connection.id})`}
-      />
+        onClick={handleConnectionClick}
+      >
+        {/* Animated flow effect */}
+        {connection.style?.animation === 'flow' && connection.style?.strokeStyle === 'animated' && (
+          <animate
+            attributeName="stroke-dasharray"
+            values="0,12;12,0;0,12"
+            dur="2s"
+            repeatCount="indefinite"
+          />
+        )}
+      </path>
 
       {/* Delete button (appears on hover) */}
       {isHovered && onDelete && (
@@ -131,11 +208,21 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
           cx={sourcePosition.x + (deltaX * 0.2)}
           cy={sourcePosition.y + (deltaY * 0.2)}
           r="6"
-          className={cn(
-            'transition-colors duration-200',
-            type === 'compatible' ? 'fill-green-400' : 'fill-red-400'
-          )}
+          fill={getLineColor()}
+          className="transition-colors duration-200 opacity-70"
         />
+      )}
+
+      {/* Style Editor */}
+      {showStyleEditor && onStyleChange && (
+        <foreignObject x="0" y="0" width="100%" height="100%">
+          <ConnectionStyleEditor
+            connection={connection as StyledConnection}
+            onStyleChange={onStyleChange}
+            onClose={() => setShowStyleEditor(false)}
+            position={editorPosition}
+          />
+        </foreignObject>
       )}
     </g>
   );

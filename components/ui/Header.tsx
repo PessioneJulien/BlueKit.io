@@ -17,7 +17,8 @@ import {
   Bell,
   Settings,
   LogOut,
-  LogIn
+  LogIn,
+  Package
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -34,8 +35,9 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
 
   const navigation = [
     { name: 'Home', href: '/', icon: null },
-      { name: 'Stacks', href: '/stacks', icon: LayoutGrid },
+    { name: 'Stacks', href: '/stacks', icon: LayoutGrid },
     { name: 'Builder', href: '/builder', icon: Plus },
+    { name: 'Components', href: '/components', icon: Package },
   ];
 
   const userNavigation = [

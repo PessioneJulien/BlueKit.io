@@ -6,10 +6,14 @@ import { ComponentPalette } from './ComponentPalette';
 import { ReactFlowCanvas } from './ReactFlowCanvas';
 import { NodeData, NodePosition, SubTechnology } from './CanvasNode';
 import { Connection } from './ConnectionLine';
+import { ConnectionStyle } from './ConnectionStyleEditor';
+import { NodeCustomStyle } from './NodeColorPicker';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useUserStore } from '@/lib/stores/userStore';
+import { useStackStore } from '@/lib/stores/stackStore';
 import { 
   Save, 
   Download, 
@@ -18,10 +22,20 @@ import {
   X,
   Layers,
   Code,
+  Lock,
+  LogIn,
+  Eye,
+  EyeOff,
+  Globe,
+  Users
 } from 'lucide-react';
 import { ExportModal } from './ExportModal';
 import { TemplatesModal } from './TemplatesModal';
+import { ConnectionToolbar } from './ConnectionToolbar';
+import { NodeToolbar } from './NodeToolbar';
+import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
+import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
@@ -249,6 +263,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   onSave,
   className
 }) => {
+  const { user, isLoading: userLoading } = useUserStore();
   const [stackName, setStackName] = useState(initialStack?.name || '');
   const [stackDescription, setStackDescription] = useState(initialStack?.description || '');
   const [nodes, setNodes] = useState<CanvasNode[]>(initialStack?.nodes || []);
@@ -257,6 +272,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [selectedTab, setSelectedTab] = useState<'components' | 'export'>('components');
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(true);
+  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
 
   // Get used component IDs
   const usedComponentIds = useMemo(() => nodes.map(node => node.id), [nodes]);
@@ -276,6 +297,44 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     );
     setNodes(updatedNodes);
   }, [nodes]);
+
+  // Handle connection style changes
+  const handleConnectionStyleChange = useCallback((connectionId: string, style: ConnectionStyle) => {
+    setConnections(prev => prev.map(conn => 
+      conn.id === connectionId 
+        ? { ...conn, style } 
+        : conn
+    ));
+  }, []);
+
+  // Handle connection selection
+  const handleConnectionSelect = useCallback((connectionId: string | null) => {
+    setSelectedConnectionId(connectionId);
+    // Close node selection when connection is selected
+    if (connectionId) setSelectedNodeId(null);
+  }, []);
+
+  // Handle node selection
+  const handleNodeSelect = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    // Close connection selection when node is selected
+    setSelectedConnectionId(null);
+  }, []);
+
+  // Handle visibility change confirmation
+  const handleVisibilityChange = useCallback((newVisibility: boolean) => {
+    setIsPublic(newVisibility);
+    setShowVisibilityModal(false);
+  }, []);
+
+  // Handle node style changes
+  const handleNodeStyleChange = useCallback((nodeId: string, customStyle: NodeCustomStyle) => {
+    setNodes(prev => prev.map(node => 
+      node.id === nodeId 
+        ? { ...node, customStyle } 
+        : node
+    ));
+  }, []);
 
   // Add sub-technology to main component
   const handleAddSubTechnology = useCallback((subTechId: string, mainTechId: string) => {
@@ -434,15 +493,102 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     };
   }, [nodes, connections]);
 
+  const { saveStack } = useStackStore();
+  const [savedStackId, setSavedStackId] = useState<string | null>(null);
+
   // Handle save
-  const handleSave = () => {
-    if (onSave) {
-      onSave({
+  const handleSave = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (!stackName.trim()) {
+      alert('Please enter a stack name before saving.');
+      return;
+    }
+
+    if (nodes.length === 0) {
+      alert('Please add at least one component to your stack before saving.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const stackData = {
         name: stackName,
         description: stackDescription,
         nodes,
-        connections
-      });
+        connections,
+        is_public: isPublic
+      };
+
+      const stackId = await saveStack(stackData);
+      if (stackId) {
+        setSavedStackId(stackId);
+        alert('Stack saved successfully!');
+      } else {
+        throw new Error('Failed to save stack');
+      }
+    } catch (error: any) {
+      console.error('Failed to save stack:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
+      alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle present (requires auth for saving stack first)
+  const handlePresent = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    if (nodes.length === 0) {
+      alert('Please add at least one component before presenting.');
+      return;
+    }
+
+    let stackId = savedStackId;
+    
+    // Save stack first if it's new or has unsaved changes
+    if (!stackId || stackName) {
+      if (!stackName?.trim()) {
+        alert('Please enter a stack name before presenting.');
+        return;
+      }
+      
+      try {
+        setIsSaving(true);
+        const stackData = {
+          name: stackName,
+          description: stackDescription,
+          nodes,
+          connections,
+          is_public: isPublic
+        };
+        
+        stackId = await saveStack(stackData);
+        if (stackId) {
+          setSavedStackId(stackId);
+        } else {
+          throw new Error('Failed to save stack');
+        }
+      } catch (error: any) {
+        console.error('Failed to save before presenting:', error);
+        const errorMessage = error?.message || 'Unknown error occurred';
+        alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
+        return;
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
+    if (stackId) {
+      const presentationUrl = `/presentation/${stackId}`;
+      window.open(presentationUrl, '_blank');
     }
   };
 
@@ -518,6 +664,47 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                     className="w-full h-20 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 resize-none text-sm"
                   />
                 </div>
+
+                {/* Visibility Settings */}
+                <div>
+                  <label className="text-sm font-medium text-slate-300 mb-2 block">
+                    Visibility
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={isPublic ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        if (!isPublic) {
+                          setShowVisibilityModal(true);
+                        }
+                      }}
+                      className="flex-1 text-xs h-8"
+                    >
+                      <Globe className="w-3 h-3 mr-1" />
+                      Public
+                    </Button>
+                    <Button
+                      variant={!isPublic ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        if (isPublic) {
+                          setShowVisibilityModal(true);
+                        }
+                      }}
+                      className="flex-1 text-xs h-8"
+                    >
+                      <Lock className="w-3 h-3 mr-1" />
+                      Private
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {isPublic 
+                      ? "Anyone can view and discover your stack"
+                      : "Only you can access this stack"
+                    }
+                  </p>
+                </div>
               </div>
 
               {/* Statistics */}
@@ -563,15 +750,68 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
               {/* Actions */}
               <div className="space-y-2">
-                <Button 
-                  variant="primary" 
-                  className="w-full"
-                  onClick={handleSave}
-                  disabled={!stackName || nodes.length === 0}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Stack
-                </Button>
+                {!user ? (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-amber-400 text-sm mb-2">
+                        <Lock className="w-4 h-4" />
+                        Login Required
+                      </div>
+                      <p className="text-xs text-slate-400 mb-3">
+                        You need to be logged in to save and share your stacks.
+                      </p>
+                      <Link href="/auth/login">
+                        <Button variant="primary" size="sm" className="w-full">
+                          <LogIn className="w-4 h-4 mr-2" />
+                          Login to Save
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Button 
+                      variant="primary" 
+                      className="w-full"
+                      onClick={handleSave}
+                      disabled={!stackName || nodes.length === 0 || isSaving}
+                      isLoading={isSaving}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {isSaving ? 'Saving...' : `Save ${isPublic ? 'Public' : 'Private'}`}
+                    </Button>
+                    
+                    {/* Quick Save Options */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setIsPublic(true);
+                          setTimeout(handleSave, 100);
+                        }}
+                        disabled={!stackName || nodes.length === 0 || isSaving}
+                        className="text-xs"
+                      >
+                        <Globe className="w-3 h-3 mr-1" />
+                        Public
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setIsPublic(false);
+                          setTimeout(handleSave, 100);
+                        }}
+                        disabled={!stackName || nodes.length === 0 || isSaving}
+                        className="text-xs"
+                      >
+                        <Lock className="w-3 h-3 mr-1" />
+                        Private
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-2 gap-2">
                   <Button 
@@ -614,9 +854,40 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               <h1 className="font-semibold">
                 {stackName || 'Untitled Stack'}
               </h1>
-              <p className="text-sm text-slate-500">
-                Visual Stack Builder
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-slate-500">
+                  Visual Stack Builder
+                </p>
+                {user && (
+                  <Badge variant="success" size="sm" className="text-xs">
+                    Logged in as {user.name}
+                  </Badge>
+                )}
+                {!user && (
+                  <Badge variant="warning" size="sm" className="text-xs">
+                    Not logged in
+                  </Badge>
+                )}
+                {user && (
+                  <Badge 
+                    variant={isPublic ? "default" : "secondary"} 
+                    size="sm" 
+                    className="text-xs"
+                  >
+                    {isPublic ? (
+                      <>
+                        <Globe className="w-3 h-3 mr-1" />
+                        Public
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3 h-3 mr-1" />
+                        Private
+                      </>
+                    )}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
 
@@ -629,6 +900,29 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               <Layers className="h-4 w-4 mr-1" />
               Templates
             </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePresent}
+              disabled={nodes.length === 0 || !user}
+              className={cn(
+                "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700",
+                !user && "from-gray-600 to-gray-700 hover:from-gray-600 hover:to-gray-700 cursor-not-allowed"
+              )}
+              title={!user ? "Login required to present stacks" : "Present your stack"}
+            >
+              {!user ? (
+                <>
+                  <Lock className="h-4 w-4 mr-1" />
+                  Present
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-4 w-4 mr-1" />
+                  Present
+                </>
+              )}
+            </Button>
             <Badge variant="default" size="sm">
               {stackStats.nodeCount} components
             </Badge>
@@ -637,6 +931,27 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             </Badge>
           </div>
         </div>
+
+        {/* Connection Toolbar */}
+        {selectedConnectionId && (
+          <ConnectionToolbar
+            connectionId={selectedConnectionId}
+            currentStyle={connections.find(c => c.id === selectedConnectionId)?.style}
+            onStyleChange={handleConnectionStyleChange}
+            onClose={() => setSelectedConnectionId(null)}
+          />
+        )}
+
+        {/* Node Toolbar */}
+        {selectedNodeId && (
+          <NodeToolbar
+            nodeId={selectedNodeId}
+            nodeName={nodes.find(n => n.id === selectedNodeId)?.name || 'Unknown'}
+            currentStyle={nodes.find(n => n.id === selectedNodeId)?.customStyle}
+            onStyleChange={handleNodeStyleChange}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        )}
 
         {/* Canvas */}
         <ReactFlowCanvas
@@ -652,6 +967,11 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             }));
             setConnections(convertedConnections);
           }}
+          onConnectionStyleChange={handleConnectionStyleChange}
+          onConnectionSelect={handleConnectionSelect}
+          selectedConnectionId={selectedConnectionId}
+          onNodeStyleChange={handleNodeStyleChange}
+          onNodeSelect={handleNodeSelect}
           onDocumentationSave={handleDocumentationSave}
           onAddSubTechnology={handleAddSubTechnology}
           onDropComponent={handleDropComponent}
@@ -675,6 +995,15 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         isOpen={showTemplatesModal}
         onClose={() => setShowTemplatesModal(false)}
         onSelectTemplate={handleTemplateSelect}
+      />
+
+      {/* Visibility Modal */}
+      <VisibilityModal
+        isOpen={showVisibilityModal}
+        onClose={() => setShowVisibilityModal(false)}
+        currentVisibility={isPublic}
+        onConfirm={handleVisibilityChange}
+        stackName={stackName || 'Untitled Stack'}
       />
     </div>
   );

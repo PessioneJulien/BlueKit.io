@@ -292,50 +292,54 @@ export default function ProfilePage() {
                 </Card>
               ) : (
                 userStacks.map((stack) => (
-                <Card key={stack.id} variant="glass" className="hover:bg-slate-800/60">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle>{stack.name}</CardTitle>
-                        <p className="mt-1 text-sm text-slate-400">{stack.description}</p>
+                <Link key={stack.id} href={`/presentation/${stack.id}`}>
+                  <Card variant="glass" className="hover:bg-slate-800/60 cursor-pointer transition-all hover:border-slate-600">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle>{stack.name}</CardTitle>
+                          <p className="mt-1 text-sm text-slate-400">{stack.description}</p>
+                        </div>
+                        <Link href={`/builder?edit=${stack.id}`} onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm">
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {stack.technologies.slice(0, 4).map((tech) => (
-                        <Badge key={tech.id} variant="primary" size="sm">
-                          {tech.name}
-                        </Badge>
-                      ))}
-                      {stack.technologies.length > 4 && (
-                        <Badge variant="default" size="sm">
-                          +{stack.technologies.length - 4} more
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm text-slate-400">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-current text-yellow-400" />
-                          <span>{stack.stars}</span>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {stack.nodes?.filter(node => node.isMainTechnology).slice(0, 4).map((tech) => (
+                          <Badge key={tech.id} variant="primary" size="sm">
+                            {tech.name}
+                          </Badge>
+                        ))}
+                        {stack.nodes?.filter(node => node.isMainTechnology).length > 4 && (
+                          <Badge variant="default" size="sm">
+                            +{stack.nodes.filter(node => node.isMainTechnology).length - 4} more
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm text-slate-400">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-current text-yellow-400" />
+                            <span>{stack.stars}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>{stack.uses} uses</span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          <span>{stack.uses} uses</span>
+                          <Clock className="h-4 w-4" />
+                          <span>{new Date(stack.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{new Date(stack.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
                 ))
               )}
             </div>

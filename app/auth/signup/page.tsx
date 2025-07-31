@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useUserStore } from '@/lib/stores/userStore'
 import { Mail, Lock, User, Github, Globe, AlertCircle, Loader2, CheckCircle } from 'lucide-react'
 
 export default function SignUpPage() {
@@ -14,61 +14,52 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const { signUp, signInWithProvider } = useAuth()
+  const { register, isLoading, error: storeError } = useUserStore()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError('')
     setSuccess(false)
 
     // Basic validation
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
+      alert('Passwords do not match')
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      setLoading(false)
+      alert('Password must be at least 6 characters')
       return
     }
 
-    const { error } = await signUp(email, password, {
-      data: {
-        name: name,
+    try {
+      await register({
+        name,
+        email,
+        password,
+        bio: '',
+        website: '',
+        github: '',
+        twitter: ''
+      })
+      
+      if (!storeError) {
+        setSuccess(true)
+        // Redirect after 2 seconds
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 2000)
       }
-    })
-    
-    if (error) {
-      setError(error.message)
-    } else {
-      setSuccess(true)
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        router.push('/auth/login')
-      }, 2000)
+    } catch (error) {
+      console.error('Registration failed:', error)
     }
-    
-    setLoading(false)
   }
 
   const handleProviderSignUp = async (provider: 'github' | 'google') => {
-    setLoading(true)
-    setError('')
-
-    const { error } = await signInWithProvider(provider)
-    
-    if (error) {
-      setError(error.message)
-    }
-    
-    setLoading(false)
+    // TODO: Implement provider sign up with useUserStore
+    console.log('Provider sign up not implemented yet:', provider)
+    alert('Provider sign up coming soon!')
   }
 
   if (success) {
@@ -116,11 +107,11 @@ export default function SignUpPage() {
             <CardTitle>Get Started</CardTitle>
           </CardHeader>
           <CardContent>
-            {error && (
+            {storeError && (
               <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
                 <div className="flex items-center gap-2 text-red-400">
                   <AlertCircle className="h-4 w-4" />
-                  <span className="text-sm">{error}</span>
+                  <span className="text-sm">{storeError}</span>
                 </div>
               </div>
             )}
@@ -134,7 +125,7 @@ export default function SignUpPage() {
                 placeholder="Enter your full name"
                 icon={<User className="h-5 w-5" />}
                 required
-                disabled={loading}
+                disabled={isLoading}
               />
 
               <Input
@@ -145,7 +136,7 @@ export default function SignUpPage() {
                 placeholder="Enter your email"
                 icon={<Mail className="h-5 w-5" />}
                 required
-                disabled={loading}
+                disabled={isLoading}
               />
 
               <Input
@@ -156,7 +147,7 @@ export default function SignUpPage() {
                 placeholder="Create a password"
                 icon={<Lock className="h-5 w-5" />}
                 required
-                disabled={loading}
+                disabled={isLoading}
                 helperText="Must be at least 6 characters"
               />
 
@@ -168,7 +159,7 @@ export default function SignUpPage() {
                 placeholder="Confirm your password"
                 icon={<Lock className="h-5 w-5" />}
                 required
-                disabled={loading}
+                disabled={isLoading}
                 error={password !== confirmPassword && confirmPassword !== '' ? 'Passwords do not match' : undefined}
               />
 
@@ -176,9 +167,9 @@ export default function SignUpPage() {
                 type="submit"
                 variant="primary"
                 className="w-full"
-                disabled={loading}
+                disabled={isLoading}
               >
-                {loading ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating account...
@@ -203,7 +194,7 @@ export default function SignUpPage() {
                 <Button
                   variant="secondary"
                   onClick={() => handleProviderSignUp('github')}
-                  disabled={loading}
+                  disabled={isLoading}
                   className="w-full"
                 >
                   <Github className="mr-2 h-4 w-4" />
@@ -212,7 +203,7 @@ export default function SignUpPage() {
                 <Button
                   variant="secondary"
                   onClick={() => handleProviderSignUp('google')}
-                  disabled={loading}
+                  disabled={isLoading}
                   className="w-full"
                 >
                   <Globe className="mr-2 h-4 w-4" />

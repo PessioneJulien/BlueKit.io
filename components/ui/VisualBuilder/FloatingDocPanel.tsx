@@ -12,9 +12,10 @@ interface FloatingDocPanelProps {
   nodeId: string;
   nodeName: string;
   initialDocumentation?: string;
-  onSave: (nodeId: string, documentation: string) => void;
+  onSave?: (nodeId: string, documentation: string) => void;
   isSubTechnology?: boolean;
   parentTechnologyName?: string;
+  isReadOnly?: boolean;
 }
 
 export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
@@ -25,10 +26,11 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
   initialDocumentation = '',
   onSave,
   isSubTechnology = false,
-  parentTechnologyName
+  parentTechnologyName,
+  isReadOnly = false
 }) => {
   const [documentation, setDocumentation] = useState(initialDocumentation);
-  const [isEditing, setIsEditing] = useState(!initialDocumentation);
+  const [isEditing, setIsEditing] = useState(!isReadOnly && !initialDocumentation);
   const [showPreview, setShowPreview] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [position, setPosition] = useState({ x: 100, y: 100 });
@@ -45,8 +47,10 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
   }, [initialDocumentation, nodeId]);
 
   const handleSave = () => {
-    onSave(nodeId, documentation);
-    setIsEditing(false);
+    if (onSave) {
+      onSave(nodeId, documentation);
+      setIsEditing(false);
+    }
   };
 
   const renderMarkdown = (text: string) => {
@@ -175,7 +179,7 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
           <div className="flex items-center gap-1">
             <span className="text-lg">📝</span>
             <h3 className="text-sm font-semibold text-white">
-              {nodeName} Documentation
+              {nodeName} Documentation{isReadOnly ? ' (View)' : ''}
             </h3>
           </div>
         </div>
@@ -219,7 +223,7 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
 
       {/* Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {isEditing ? (
+        {isEditing && !isReadOnly ? (
           <div className="flex-1 flex flex-col p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -293,17 +297,19 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-700">
               <h4 className="text-sm font-medium text-slate-300">Documentation</h4>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
-              >
-                <Edit3 className="w-3 h-3" />
-                Edit
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  Edit
+                </button>
+              )}
             </div>
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="prose prose-invert prose-sm max-w-none">

@@ -4,10 +4,11 @@ import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
-import { X, MoreVertical, Settings, Info, FileText } from 'lucide-react';
+import { X, MoreVertical, Settings, Info, FileText, Palette } from 'lucide-react';
 import { NodeData, SubTechnology } from './CanvasNode';
 import { NodeResizeHandle } from './NodeResizeHandle';
 import { FloatingDocPanel } from './FloatingDocPanel';
+import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
 
 interface TechNodeData extends NodeData {
   isCompact?: boolean;
@@ -19,7 +20,11 @@ interface TechNodeData extends NodeData {
   onResize?: (id: string, width: number, height: number) => void;
   onDocumentationSave?: (nodeId: string, documentation: string) => void;
   onAddSubTechnology?: (nodeId: string, subTechId: string) => void;
+  onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
+  onNodeSelect?: (nodeId: string) => void;
   availableSubTechnologies?: SubTechnology[];
+  // Presentation mode
+  isReadOnly?: boolean;
 }
 
 const categoryColors = {
@@ -35,8 +40,30 @@ const categoryColors = {
 export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
+  const [showDocViewer, setShowDocViewer] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+  
+  // Get custom style or default category colors
+  const getNodeStyle = () => {
+    if (data.customStyle) {
+      return {
+        background: data.customStyle.customGradient || 
+                   `linear-gradient(135deg, ${data.customStyle.primaryColor}, ${data.customStyle.secondaryColor})`,
+        borderColor: data.customStyle.borderColor,
+        color: data.customStyle.textColor
+      };
+    }
+    return {
+      background: `bg-gradient-to-r ${categoryColors[data.category as keyof typeof categoryColors]}`,
+      borderColor: '',
+      color: 'white'
+    };
+  };
+
+  const nodeStyle = getNodeStyle();
+
+  // Color change now handled by toolbar
   
   // Debug logging
   console.log('TechNode render:', data.name, 'isCompact:', data.isCompact, 'calculated isCompact:', isCompact);
@@ -119,62 +146,141 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className={cn(
-          'flex items-center justify-between bg-gradient-to-r rounded-t-lg',
-          isCompact ? 'p-2' : 'p-3',
-          categoryColors[data.category as keyof typeof categoryColors] || categoryColors.other
-        )}>
+        <div 
+          className={cn(
+            'flex items-center justify-between rounded-t-lg relative',
+            isCompact ? 'p-2' : 'p-3',
+            !data.customStyle && `bg-gradient-to-r ${categoryColors[data.category as keyof typeof categoryColors] || categoryColors.other}`
+          )}
+          style={{
+            ...(data.customStyle ? {
+              background: nodeStyle.background,
+              borderColor: nodeStyle.borderColor,
+              color: nodeStyle.color
+            } : {}),
+            pointerEvents: 'auto'
+          }}
+        >
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className={cn(
               'bg-white/30 rounded-full flex-shrink-0',
               isCompact ? 'w-2 h-2' : 'w-3 h-3'
             )} />
             <h3 className={cn(
-              'font-semibold text-white truncate',
-              isCompact ? 'text-sm' : 'text-base'
-            )}>
+              'font-semibold truncate',
+              isCompact ? 'text-sm' : 'text-base',
+              !data.customStyle && 'text-white'
+            )}
+            style={data.customStyle ? { color: nodeStyle.color } : {}}
+            >
               {data.name}
             </h3>
           </div>
           
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log('Toggle button clicked for:', data.name, 'current isCompact:', isCompact);
-                data.onToggleMode(data.id);
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-white/20 rounded text-white/80 hover:text-white transition-colors"
-              title={isCompact ? "Expand" : "Collapse"}
-            >
-              <div className={cn(
-                "transition-transform text-xs",
-                isCompact ? "rotate-0" : "rotate-180"
-              )}>
-                ⤢
-              </div>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-white/20 rounded text-white/80 hover:text-white transition-colors"
-            >
-              <MoreVertical className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onDelete(data.id);
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-red-500/20 rounded text-white/80 hover:text-red-300 transition-colors"
-            >
-              <X className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
-            </button>
+            {/* Documentation indicator */}
+            {data.documentation && (
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Documentation clicked:', {
+                    nodeId: data.id,
+                    nodeName: data.name,
+                    isReadOnly: data.isReadOnly,
+                    hasDocumentation: !!data.documentation,
+                    documentationLength: data.documentation?.length
+                  });
+                  
+                  if (data.isReadOnly) {
+                    console.log('Opening doc modal in read-only mode');
+                    setShowDocViewer(true);
+                  } else {
+                    console.log('Opening doc modal in edit mode');
+                    setShowDocModal(true);
+                  }
+                }}
+                onMouseUp={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className={cn(
+                  "p-1 rounded transition-colors relative z-10 cursor-pointer",
+                  data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
+                )}
+                style={{
+                  ...(data.customStyle ? { color: nodeStyle.color + '80' } : {}),
+                  pointerEvents: 'auto'
+                }}
+                title={data.isReadOnly ? "View Documentation" : "Edit Documentation"}
+              >
+                <FileText className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
+                {/* Indicator dot */}
+                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full border border-slate-800" />
+              </button>
+            )}
+            
+            {!data.isReadOnly && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Toggle button clicked for:', data.name, 'current isCompact:', isCompact);
+                  data.onToggleMode(data.id);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className={cn(
+                  "p-1 rounded transition-colors",
+                  data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
+                )}
+                style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+                title={isCompact ? "Expand" : "Collapse"}
+              >
+                <div className={cn(
+                  "transition-transform text-xs",
+                  isCompact ? "rotate-0" : "rotate-180"
+                )}>
+                  ⤢
+                </div>
+              </button>
+            )}
+            
+            {!data.isReadOnly && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className={cn(
+                  "p-1 rounded transition-colors",
+                  data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
+                )}
+                style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+              >
+                <MoreVertical className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
+              </button>
+            )}
+            
+            {!data.isReadOnly && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onDelete(data.id);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className={cn(
+                  "p-1 hover:bg-red-500/20 rounded transition-colors",
+                  data.customStyle ? "hover:text-red-300" : "text-white/80 hover:text-red-300"
+                )}
+                style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+              >
+                <X className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -272,7 +378,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         </div>
 
         {/* Context Menu */}
-        {showMenu && (
+        {showMenu && !data.isReadOnly && (
           <>
             <div 
               className="fixed inset-0 z-10" 
@@ -280,6 +386,19 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             />
             <div className="absolute top-12 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[160px]">
               <div className="p-1">
+                {data.onNodeSelect && (
+                  <button 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      data.onNodeSelect!(data.id);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Palette className="w-4 h-4" />
+                    Customize Colors
+                  </button>
+                )}
                 <button 
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
                   onClick={(e) => {
@@ -347,8 +466,10 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         }}
       />
 
-      {/* Documentation Panel */}
-      {showDocModal && data.onDocumentationSave && (
+      {/* Color picker removed - now uses toolbar */}
+
+      {/* Documentation Panel (Edit Mode) */}
+      {showDocModal && data.onDocumentationSave && !data.isReadOnly && (
         <FloatingDocPanel
           isOpen={showDocModal}
           onClose={() => setShowDocModal(false)}
@@ -358,6 +479,20 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           onSave={data.onDocumentationSave}
           isSubTechnology={!data.isMainTechnology}
           parentTechnologyName={data.isMainTechnology ? undefined : 'Parent Technology'}
+        />
+      )}
+
+      {/* Documentation Panel (Read-Only Mode) */}
+      {showDocViewer && data.documentation && (
+        <FloatingDocPanel
+          isOpen={showDocViewer}
+          onClose={() => setShowDocViewer(false)}
+          nodeId={data.id}
+          nodeName={data.name}
+          initialDocumentation={data.documentation}
+          isSubTechnology={!data.isMainTechnology}
+          parentTechnologyName={data.isMainTechnology ? undefined : 'Parent Technology'}
+          isReadOnly={true}
         />
       )}
 

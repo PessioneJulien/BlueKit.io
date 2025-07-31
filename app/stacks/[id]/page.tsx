@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { StackPreview } from '@/components/ui/StackPreview';
 import { getStackById } from '@/lib/data/stacksData';
 import { 
   ArrowLeft,
@@ -102,7 +103,19 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
               </div>
             </div>
 
-            {/* Technologies */}
+            {/* Stack Architecture Preview */}
+            <Card variant="glass">
+              <CardHeader>
+                <CardTitle>Stack Architecture</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="py-8">
+                  <StackPreview technologies={stack.technologies} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Technologies Details */}
             <Card variant="glass">
               <CardHeader>
                 <CardTitle>Technologies</CardTitle>
@@ -238,9 +251,11 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
             <Card variant="glass">
               <CardContent className="p-6">
                 <div className="space-y-3">
-                  <Button variant="primary" className="w-full">
-                    Use This Stack
-                  </Button>
+                  <Link href={`/builder?preset=${stack.id}`}>
+                    <Button variant="primary" className="w-full">
+                      Use This Stack
+                    </Button>
+                  </Link>
                   <div className="grid grid-cols-2 gap-3">
                     <Button variant="secondary" size="sm">
                       <Download className="mr-2 h-4 w-4" />

@@ -13,7 +13,7 @@ interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>
   error?: string;
   success?: boolean;
   helperText?: string;
-  options: SelectOption[];
+  options?: SelectOption[];
   placeholder?: string;
   onChange?: (value: string) => void;
 }
@@ -66,7 +66,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             <option value="" disabled className="text-slate-500">
               {placeholder}
             </option>
-            {options.map((option) => (
+            {options && options.map((option) => (
               <option 
                 key={option.value} 
                 value={option.value}
@@ -178,7 +178,7 @@ Radio.displayName = 'Radio';
 
 interface RadioGroupProps {
   label?: string;
-  options: SelectOption[];
+  options?: SelectOption[];
   value?: string;
   onChange?: (value: string) => void;
   error?: string;
@@ -205,7 +205,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
         <div className="text-sm font-medium text-slate-200 mb-3">{label}</div>
       )}
       <div className="space-y-2">
-        {options.map((option) => (
+        {options && options.map((option) => (
           <Radio
             key={option.value}
             name={name}

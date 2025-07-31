@@ -271,3 +271,46 @@ body {
   padding: 2px 6px;
   font-size: 10px;
 }
+
+/* Connection Animation Styles */
+@keyframes connection-flow {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes connection-pulse {
+  0%, 100% {
+    opacity: 1;
+    stroke-width: 2;
+  }
+  50% {
+    opacity: 0.6;
+    stroke-width: 3;
+  }
+}
+
+@keyframes connection-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 12px currentColor);
+  }
+}
+
+.connection-flow {
+  stroke-dasharray: 8, 4;
+  animation: connection-flow 1.5s linear infinite;
+}
+
+.connection-pulse {
+  animation: connection-pulse 2s ease-in-out infinite;
+}
+
+.connection-glow {
+  animation: connection-glow 2s ease-in-out infinite;
+}
