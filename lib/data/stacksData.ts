@@ -531,7 +531,7 @@ export const additionalStacks: StackData[] = [
     setupTimeHours: 7,
     pricing: 'free',
     technologies: [
-      { id: 'electron', name: 'Electron', category: 'desktop', role: 'primary' },
+      { id: 'electron', name: 'Electron', category: 'frontend', role: 'primary' },
       { id: 'react', name: 'React', category: 'frontend', role: 'primary' },
       { id: 'nodejs', name: 'Node.js', category: 'backend', role: 'primary' },
       { id: 'webpack', name: 'Webpack', category: 'devops', role: 'secondary' },
@@ -597,7 +597,6 @@ export const additionalStacks: StackData[] = [
     setupTimeHours: 14,
     pricing: 'mixed',
     technologies: [
-      { id: 'ethereum', name: 'Ethereum', category: 'blockchain', role: 'primary' },
       { id: 'solidity', name: 'Solidity', category: 'backend', role: 'primary' },
       { id: 'web3js', name: 'Web3.js', category: 'frontend', role: 'primary' },
       { id: 'hardhat', name: 'Hardhat', category: 'devops', role: 'secondary' },

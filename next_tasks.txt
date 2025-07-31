@@ -1,56 +1,58 @@
 PROCHAINES TÂCHES - BlueKit.io Stack Builder Platform
 
-## ÉTAT ACTUEL : SEMAINE 1-2 COMPLÉTÉES ✅
+## ÉTAT ACTUEL : INTERFACE VISUELLE TERMINÉE ✅
 
-### SEMAINE 1 : Setup & Design System ✅ TERMINÉE
+### ✅ SEMAINE 1-2 : FONDATIONS COMPLÈTES
 - ✅ Infrastructure Next.js + TypeScript + Tailwind
 - ✅ Storybook 9 configuré avec tous les composants
 - ✅ Design system complet (Card, Badge, Input, Button, etc.)
 - ✅ Thème dark moderne avec glassmorphism
-- ✅ Structure de fichiers et architecture
-
-### SEMAINE 2 : Authentification & Architecture ✅ TERMINÉE
-- ✅ Pages principales créées (Homepage, Stacks, Builder, Profile)
-- ✅ Navigation et layout implémentés
-- ✅ Stores Zustand pour la gestion d'état
+- ✅ Pages principales + Navigation + Layout
+- ✅ Stores Zustand + résolution hydratation
 - ✅ 20 stacks officielles avec seed data
 - ✅ Tests E2E Cypress configurés
 - ✅ Authentification Supabase complète
-- ✅ Pages auth (login, signup, reset)
-- ✅ Schéma base de données + RLS
-- ✅ Documentation authentification
+- ✅ Documentation Supabase + scripts
+
+### ✅ INTERFACE VISUELLE RÉVOLUTIONNAIRE - TERMINÉE
+- ✅ **CanvasNode** : Blocs draggables avec connexions visuelles
+- ✅ **ConnectionLine** : Système de connexions courbes intelligentes  
+- ✅ **ComponentPalette** : Palette recherchable style Figma
+- ✅ **VisualCanvas** : Canvas libre avec zoom/pan/grille
+- ✅ **VisualStackBuilder** : Interface complète intégrée
+- ✅ Validation compatibilité/incompatibilité en temps réel
+- ✅ Statistiques stack dynamiques
+- ✅ Integration dans /builder avec sauvegarde
 
 ## 🚀 PROCHAINES TÂCHES PRIORITAIRES
 
-### IMMÉDIAT : Configuration Supabase Production
-1. **Documentation setup Supabase étape par étape** ⚡ EN COURS
-2. **Créer le projet Supabase réel**
-3. **Configurer les variables d'environnement**
-4. **Migrer le schéma et seed data**
-5. **Tester l'authentification complète**
+### IMMÉDIAT : Finalisation Visual Builder
+- [ ] **Tests finaux** du Visual Builder
+- [ ] **Export avancé** (JSON, README, Docker Compose)
+- [ ] **Templates visuels** pré-configurés
+- [ ] **Optimisations performances** canvas
 
-### SEMAINE 3-4 : Optimisations & Fonctionnalités
-- [ ] Optimisation performances et lazy loading
-- [ ] Fonctionnalités export/partage des stacks
-- [ ] Stack Builder avancé avec drag & drop
-- [ ] Templates pré-configurés
-- [ ] Validation compatibilité temps réel
+### PHASE 2 : Backend & Collaboration  
+- [ ] **Sauvegarde stacks** en Supabase avec canvas data
+- [ ] **Partage visual stacks** avec liens
+- [ ] **Mode collaboration** temps réel
+- [ ] **Système de reviews** communautaires
+- [ ] **API publique** pour stacks
 
-### PHASE 2 : Fonctionnalités Avancées
-- [ ] Mode collaboration temps réel
-- [ ] Système de reviews communautaires
-- [ ] Gamification (badges, leaderboard)
-- [ ] API publique
-- [ ] Intégrations CLI/IDE
+### PHASE 3 : Fonctionnalités Avancées
+- [ ] **IA recommandations** stacks
+- [ ] **Marketplace templates** premium
+- [ ] **Intégrations deployment** (Vercel, AWS)
+- [ ] **Analytics usage** avancées
 
-## INFRASTRUCTURE TECHNIQUE COMPLÈTE ✅
+## INFRASTRUCTURE TECHNIQUE RÉVOLUTIONNAIRE ✅
 - Next.js 15.4.5 + TypeScript
 - Tailwind CSS v4 avec dark theme
 - Storybook 9 pour design system
-- Zustand pour state management
-- Supabase pour auth + database
-- Cypress pour tests E2E
-- Framer Motion pour animations
-- Architecture modulaire et scalable
+- Zustand pour state management global
+- Supabase pour auth + database + realtime
+- Cypress pour tests E2E complets
+- **Visual Builder** : Canvas libre style n8n/Figma
+- Architecture modulaire et ultra-scalable
 
-PRIORITÉ : Documentation setup Supabase production
+PRIORITÉ : Tests finaux + Export avancé du Visual Builder

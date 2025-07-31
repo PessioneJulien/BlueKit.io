@@ -1,10 +1,9 @@
 'use client'
 
 import React from 'react'
-import { motion, MotionProps } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, MotionProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
@@ -26,25 +25,22 @@ const sizeStyles = {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', isLoading, leftIcon, rightIcon, children, className = '', disabled, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed'
+    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95'
     
     const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`
 
     return (
-      <motion.button
+      <button
         ref={ref}
         className={combinedClassName}
         disabled={disabled || isLoading}
-        whileHover={{ scale: disabled || isLoading ? 1 : 1.02 }}
-        whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
-        transition={{ duration: 0.2 }}
         {...props}
       >
         {isLoading && <Loader2 className="animate-spin" />}
         {!isLoading && leftIcon}
         {children}
         {!isLoading && rightIcon}
-      </motion.button>
+      </button>
     )
   }
 )

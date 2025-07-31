@@ -7,14 +7,12 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { getAllStacks, StackData } from '@/lib/data/stacksData';
+import { getAllStacks } from '@/lib/data/stacksData';
 import { 
   Search, 
-  Filter, 
   Star, 
   Clock, 
   Users,
-  ArrowUpDown,
   Grid3X3,
   List,
   ArrowRight
@@ -205,7 +203,7 @@ export default function StacksPage() {
                   
                   <div className="mt-4 flex items-center justify-between">
                     <Badge 
-                      variant={getDifficultyColor(stack.difficulty) as any} 
+                      variant={getDifficultyColor(stack.difficulty)} 
                       size="sm"
                       outline
                     >

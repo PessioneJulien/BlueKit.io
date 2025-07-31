@@ -9,7 +9,6 @@ import {
   Star,
   Users,
   Clock,
-  DollarSign,
   Download,
   Share2,
   Copy,
@@ -50,7 +49,7 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
     }
   };
 
-  const getTechnologyIcon = (category: string) => {
+  const getTechnologyIcon = () => {
     // This would normally return actual technology icons
     return '🔧';
   };
@@ -75,10 +74,10 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <Badge variant="primary">{stack.category}</Badge>
-                <Badge variant={getDifficultyColor(stack.difficulty) as any} outline>
+                <Badge variant={getDifficultyColor(stack.difficulty)} outline>
                   {stack.difficulty}
                 </Badge>
-                <Badge variant={getPricingColor(stack.pricing) as any} outline>
+                <Badge variant={getPricingColor(stack.pricing)} outline>
                   {stack.pricing}
                 </Badge>
               </div>
@@ -122,7 +121,7 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
                         <div className="grid gap-3 sm:grid-cols-2">
                           {roleTechs.map(tech => (
                             <div key={tech.id} className="flex items-center gap-3 rounded-lg bg-slate-800/50 p-3">
-                              <span className="text-lg">{getTechnologyIcon(tech.category)}</span>
+                              <span className="text-lg">{getTechnologyIcon()}</span>
                               <div>
                                 <p className="font-medium text-slate-200">{tech.name}</p>
                                 <p className="text-xs capitalize text-slate-400">{tech.category}</p>
@@ -273,13 +272,13 @@ export default async function StackDetailPage({ params }: StackDetailPageProps) 
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Difficulty</span>
-                    <Badge variant={getDifficultyColor(stack.difficulty) as any} size="sm">
+                    <Badge variant={getDifficultyColor(stack.difficulty)} size="sm">
                       {stack.difficulty}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Pricing</span>
-                    <Badge variant={getPricingColor(stack.pricing) as any} size="sm">
+                    <Badge variant={getPricingColor(stack.pricing)} size="sm">
                       {stack.pricing}
                     </Badge>
                   </div>

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { User as SupabaseUser } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 
 export interface User {
@@ -25,6 +24,10 @@ export interface UserStats {
 }
 
 interface UserState {
+  // Hydration state
+  _hasHydrated: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
+  
   user: User | null;
   stats: UserStats;
   isLoading: boolean;
@@ -35,7 +38,7 @@ interface UserState {
   updateProfile: (updates: Partial<User>) => void;
   updateStats: (stats: Partial<UserStats>) => void;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (userData: Omit<User, 'id' | 'joinedDate' | 'isAuthenticated'>) => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -44,7 +47,12 @@ interface UserState {
 export const useUserStore = create<UserState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
+        _hasHydrated: false,
+        setHasHydrated: (hasHydrated: boolean) => {
+          set({ _hasHydrated: hasHydrated }, false, 'setHasHydrated');
+        },
+        
         user: null,
         stats: {
           stacksCreated: 0,
@@ -83,7 +91,7 @@ export const useUserStore = create<UserState>()(
             
             if (data.user) {
               // Fetch user profile from the users table
-              const { data: profile, error: profileError } = await supabase
+              const { data: profile } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', data.user.id)
@@ -182,6 +190,9 @@ export const useUserStore = create<UserState>()(
           user: state.user,
           stats: state.stats,
         }),
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
+        },
       }
     ),
     { name: 'user-store' }

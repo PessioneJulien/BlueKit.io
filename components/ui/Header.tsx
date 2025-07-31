@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useUserStore } from '@/lib/stores/userStore';
 import { 
   Menu, 
   X, 
@@ -28,7 +29,8 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const { user } = useUserStore();
 
   const navigation = [
     { name: 'Home', href: '/', icon: null },

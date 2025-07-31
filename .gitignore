@@ -42,3 +42,9 @@ next-env.d.ts
 
 *storybook.log
 storybook-static
+
+send_to_terminal.scpt
+run_ai_tasks.sh
+send_to_terminal.scpt
+
+.claude

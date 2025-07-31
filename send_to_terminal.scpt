@@ -1,4 +1,5 @@
 -- Lire le contenu du fichier avec encodage UTF-8
+do shell script "echo 'Tâche lancée à ' $(date) >> ~/cron_script_log.txt"
 set fileContent to do shell script "cat /Users/julien/BlueKit.io/next_tasks.txt"
 
 tell application "Terminal"

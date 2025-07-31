@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { Technology } from '@/components/ui/TechnologyCard';
 
+
 export interface Stack {
   id: string;
   name: string;
@@ -17,6 +18,10 @@ export interface Stack {
 }
 
 interface StackState {
+  // Hydration state
+  _hasHydrated: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
+  
   // Current builder state
   currentStack: {
     name: string;
@@ -52,6 +57,11 @@ export const useStackStore = create<StackState>()(
   devtools(
     persist(
       (set, get) => ({
+        _hasHydrated: false,
+        setHasHydrated: (hasHydrated: boolean) => {
+          set({ _hasHydrated: hasHydrated }, false, 'setHasHydrated');
+        },
+        
         currentStack: {
           name: '',
           description: '',
@@ -153,6 +163,9 @@ export const useStackStore = create<StackState>()(
           userStacks: state.userStacks,
           favoriteStacks: state.favoriteStacks,
         }),
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
+        },
       }
     ),
     { name: 'stack-store' }

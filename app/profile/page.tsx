@@ -9,45 +9,25 @@ import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/Input';
 import { useStackStore } from '@/lib/stores/stackStore';
 import { useUserStore } from '@/lib/stores/userStore';
+import { useStoreHydration } from '@/lib/hooks/useStoreHydration';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { 
   User, 
-  Mail, 
   Globe, 
   Github, 
-  Twitter,
+  X,
   Edit3,
   Save,
-  Stack,
   Star,
   Clock,
   Award,
-  TrendingUp
+  TrendingUp,
+  LayoutGrid
 } from 'lucide-react';
 
-interface UserProfile {
-  name: string;
-  email: string;
-  bio: string;
-  website: string;
-  github: string;
-  twitter: string;
-  joinedDate: string;
-  stacksCreated: number;
-  totalStars: number;
-  contributions: number;
-}
-
-interface UserStack {
-  id: string;
-  name: string;
-  description: string;
-  technologies: string[];
-  stars: number;
-  uses: number;
-  createdAt: string;
-}
 
 export default function ProfilePage() {
+  const isHydrated = useStoreHydration();
   const [isEditing, setIsEditing] = useState(false);
   
   // Use Zustand stores
@@ -67,14 +47,25 @@ export default function ProfilePage() {
     isAuthenticated: true,
   };
 
-  const userStats = {
+  const userStats = isHydrated ? {
+    ...stats,
     stacksCreated: userStacks.length,
     totalStars: userStacks.reduce((sum, stack) => sum + stack.stars, 0),
     contributions: 45,
-    ...stats,
+  } : {
+    stacksCreated: 0,
+    totalStars: 0,
+    contributions: 0,
+    followersCount: 0,
+    followingCount: 0,
   };
 
   const [editedProfile, setEditedProfile] = useState(profile);
+  
+  // Show loading until hydrated to prevent hydration mismatch
+  if (!isHydrated) {
+    return <LoadingScreen message="Loading profile..." />
+  }
 
   const achievements = [
     { icon: Star, label: 'Stack Master', description: '1000+ total stars' },
@@ -207,7 +198,7 @@ export default function ProfilePage() {
                         )}
                         {profile.twitter && (
                           <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <Twitter className="h-4 w-4" />
+                            <X className="h-4 w-4" />
                             <a href={`https://twitter.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">
                               @{profile.twitter}
                             </a>
@@ -288,7 +279,7 @@ export default function ProfilePage() {
                 <Card variant="glass">
                   <CardContent className="py-16 text-center">
                     <div className="mx-auto h-16 w-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-                      <Stack className="h-8 w-8 text-slate-400" />
+                      <LayoutGrid className="h-8 w-8 text-slate-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-100 mb-2">No stacks yet</h3>
                     <p className="text-slate-400 mb-6">Start building your first technology stack</p>

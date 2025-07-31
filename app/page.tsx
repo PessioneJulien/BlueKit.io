@@ -8,7 +8,6 @@ import {
   LayoutGrid, 
   Users, 
   Zap,
-  Globe,
   Shield,
   Sparkles
 } from 'lucide-react';

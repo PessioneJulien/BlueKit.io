@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/ui/Header";
+import { StoreProvider } from "@/components/providers/StoreProvider";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -26,10 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-slate-900">
-        <Header />
-        <main className="flex-1">
-          {children}
-        </main>
+        <StoreProvider>
+          <Header />
+          <main className="flex-1">
+            {children}
+          </main>
+        </StoreProvider>
       </body>
     </html>
   );

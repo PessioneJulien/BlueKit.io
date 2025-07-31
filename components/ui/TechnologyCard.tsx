@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -11,14 +12,12 @@ import {
   DollarSign,
   ExternalLink,
   Info,
-  Check,
-  X
-} from 'lucide-react';
+  Check} from 'lucide-react';
 
 export interface Technology {
   id: string;
   name: string;
-  category: 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'ai' | 'other';
+  category: 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'ai' | 'other' | 'testing' | 'ui-ux' | 'state-management' | 'routing' | 'documentation' | 'build-tools' | 'linting';
   description: string;
   logoUrl?: string;
   documentationUrl?: string;
@@ -59,6 +58,13 @@ export const TechnologyCard: React.FC<TechnologyCardProps> = ({
     mobile: 'danger',
     ai: 'info',
     other: 'default',
+    testing: 'info',
+    'ui-ux': 'primary',
+    'state-management': 'secondary',
+    routing: 'warning',
+    documentation: 'success',
+    'build-tools': 'warning',
+    linting: 'info',
   } as const;
 
   const difficultyColors = {
@@ -89,10 +95,12 @@ export const TechnologyCard: React.FC<TechnologyCardProps> = ({
       >
         <div className="flex items-center gap-3">
           {technology.logoUrl ? (
-            <img 
+            <Image 
               src={technology.logoUrl} 
               alt={technology.name}
-              className="w-8 h-8 object-contain"
+              width={32}
+              height={32}
+              className="object-contain"
             />
           ) : (
             <div className="w-8 h-8 bg-slate-700 rounded-md flex items-center justify-center">
@@ -137,10 +145,12 @@ export const TechnologyCard: React.FC<TechnologyCardProps> = ({
       <div className="p-6">
         <div className="flex items-start gap-4 mb-4">
           {technology.logoUrl ? (
-            <img 
+            <Image 
               src={technology.logoUrl} 
               alt={technology.name}
-              className="w-12 h-12 object-contain"
+              width={48}
+              height={48}
+              className="object-contain"
             />
           ) : (
             <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
