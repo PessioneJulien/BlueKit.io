@@ -37,6 +37,9 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [showDocModal, setShowDocModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+  
+  // Debug logging
+  console.log('TechNode render:', data.name, 'isCompact:', data.isCompact, 'calculated isCompact:', isCompact);
   // Use custom dimensions if available, otherwise use defaults based on mode
   const nodeWidth = data.width || (isCompact ? 200 : 300);
   const nodeHeight = data.height || (isCompact ? 
@@ -138,6 +141,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                console.log('Toggle button clicked for:', data.name, 'current isCompact:', isCompact);
                 data.onToggleMode(data.id);
               }}
               onMouseDown={(e) => e.stopPropagation()}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Maximize2, Minimize2, Edit3, Eye, Save } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -75,41 +76,67 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget || (e.target as Element).classList.contains('drag-handle')) {
+    const target = e.target as Element;
+    
+    // Don't drag if clicking on buttons or their children
+    if (target.tagName === 'BUTTON' || target.closest('button')) {
+      return;
+    }
+    
+    // Only drag on the drag handle area
+    const isDragHandle = target.classList.contains('drag-handle') || 
+                        target.closest('.drag-handle') !== null;
+    
+    if (isDragHandle) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       isDragging.current = true;
       dragStart.current = {
         x: e.clientX - position.x,
         y: e.clientY - position.y
       };
+      
+      // Add event listeners directly when starting drag
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp, { passive: false });
     }
   };
 
   const handleMouseMove = (e: MouseEvent) => {
+    e.preventDefault();
     if (isDragging.current) {
+      const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragStart.current.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragStart.current.y));
+      
       setPosition({
-        x: e.clientX - dragStart.current.x,
-        y: e.clientY - dragStart.current.y
+        x: newX,
+        y: newY
       });
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: MouseEvent) => {
+    e.preventDefault();
     isDragging.current = false;
     isResizing.current = false;
+    
+    // Remove event listeners
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   };
 
+  // Cleanup effect to ensure no lingering event listeners
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isOpen]);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      isDragging.current = false;
+      isResizing.current = false;
+    };
+  }, []);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof window === 'undefined') return null;
 
   const panelStyle = isMaximized 
     ? { top: 0, left: 0, width: '100vw', height: '100vh' }
@@ -120,53 +147,73 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
         height: size.height 
       };
 
-  return (
+  const panelContent = (
     <div
       ref={panelRef}
       className={cn(
-        "fixed bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-50 flex flex-col",
+        "fixed bg-slate-900 border border-slate-700 rounded-lg shadow-2xl flex flex-col select-none",
         isMaximized && "rounded-none"
       )}
-      style={panelStyle}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseMove={(e) => e.stopPropagation()}
-      onMouseUp={(e) => e.stopPropagation()}
+      style={{ ...panelStyle, zIndex: 9999 }}
+      onMouseDown={(e) => {
+        // Only stop propagation if it's not on the drag handle
+        const target = e.target as Element;
+        const isDragHandle = target.classList.contains('drag-handle') || 
+                            target.closest('.drag-handle') !== null;
+        if (!isDragHandle) {
+          e.stopPropagation();
+        }
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div 
-        className="flex items-center justify-between p-3 border-b border-slate-700 bg-slate-800 rounded-t-lg cursor-move drag-handle"
-        onMouseDown={handleMouseDown}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <div className="ml-2">
+      <div className="flex items-center justify-between p-3 border-b border-slate-700 bg-slate-800 rounded-t-lg">
+        <div 
+          className="flex items-center gap-2 flex-1 cursor-move drag-handle"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="flex items-center gap-1">
+            <span className="text-lg">📝</span>
             <h3 className="text-sm font-semibold text-white">
-              📝 {nodeName} Documentation
+              {nodeName} Documentation
             </h3>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMaximized(!isMaximized)}
-            className="p-1 h-6 w-6"
+        <div className="flex items-center gap-1 z-10 relative">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Maximize button clicked');
+              setIsMaximized(!isMaximized);
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="p-1 h-6 w-6 hover:bg-slate-700 rounded text-white/80 hover:text-white transition-colors flex items-center justify-center"
             title={isMaximized ? "Restore" : "Maximize"}
           >
             {isMaximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="p-1 h-6 w-6"
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Close button clicked');
+              onClose();
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="p-1 h-6 w-6 hover:bg-red-600 rounded text-white/80 hover:text-white transition-colors flex items-center justify-center"
             title="Close"
           >
             <X className="w-3 h-3" />
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -176,39 +223,49 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
           <div className="flex-1 flex flex-col p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Button
-                  variant={showPreview ? "primary" : "ghost"}
-                  size="sm"
-                  onClick={() => setShowPreview(!showPreview)}
-                  className="flex items-center gap-1"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPreview(!showPreview);
+                  }}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1 rounded text-sm transition-colors",
+                    showPreview 
+                      ? "bg-blue-600 text-white" 
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  )}
                 >
                   <Eye className="w-3 h-3" />
                   Preview
-                </Button>
+                </button>
                 <span className="text-xs text-slate-400">
                   Markdown supported
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setDocumentation(initialDocumentation);
                     setIsEditing(false);
                   }}
+                  className="px-3 py-1 text-sm bg-slate-700 text-slate-300 hover:bg-slate-600 rounded transition-colors"
                 >
                   Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSave}
-                  className="flex items-center gap-1"
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSave();
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
                 >
                   <Save className="w-3 h-3" />
                   Save
-                </Button>
+                </button>
               </div>
             </div>
             
@@ -217,6 +274,7 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
                 <textarea
                   value={documentation}
                   onChange={(e) => setDocumentation(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
                   placeholder={`Write documentation for ${nodeName}...\n\nExample:\n# ${nodeName} Setup\n\n## Installation\n\`\`\`bash\nnpm install ${nodeName.toLowerCase()}\n\`\`\`\n\n## Configuration\n- Step 1: ...\n- Step 2: ...`}
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
@@ -235,15 +293,17 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-700">
               <h4 className="text-sm font-medium text-slate-300">Documentation</h4>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
               >
                 <Edit3 className="w-3 h-3" />
                 Edit
-              </Button>
+              </button>
             </div>
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="prose prose-invert prose-sm max-w-none">
@@ -293,4 +353,6 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
       )}
     </div>
   );
+
+  return createPortal(panelContent, document.body);
 };

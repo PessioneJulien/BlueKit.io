@@ -69,7 +69,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       data: {
         ...node,
         onDelete: (id: string) => {
-          const updatedNodes = nodeList.filter(n => n.id !== id);
+          const updatedNodes = externalNodes.filter(n => n.id !== id);
           onNodesChange(updatedNodes);
           
           const updatedConnections = externalConnections.filter(
@@ -81,8 +81,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           // Find the current state of the node
           const currentNode = externalNodes.find(n => n.id === id);
           if (currentNode) {
-            const newCompactState = !currentNode.isCompact;
+            // Default to true if isCompact is undefined, then toggle
+            const currentCompactState = currentNode.isCompact ?? true;
+            const newCompactState = !currentCompactState;
             const hasSubTech = currentNode.subTechnologies && currentNode.subTechnologies.length > 0;
+            
+            console.log('Toggle mode for node:', id, 'from', currentCompactState, 'to', newCompactState);
             
             // Adjust dimensions based on new compact state
             const newWidth = newCompactState ? 200 : 300;
@@ -138,27 +142,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChangeInternal(changes);
     
-    // Only sync back when drag ends or remove operations
-    const dragEndChanges = changes.filter((change) => 
-      (change.type === 'position' && 'dragging' in change && !(change as { dragging?: boolean }).dragging) ||
-      change.type === 'remove'
-    );
-    
-    if (dragEndChanges.length > 0) {
-      // Sync positions back to parent state
-      setTimeout(() => {
-        const updatedNodes = nodes.map(node => ({
-          ...node.data,
-          position: node.position,
-          isCompact: node.data.isCompact,
-          width: node.data.width,
-          height: node.data.height,
-          documentation: node.data.documentation
-        }));
-        onNodesChange(updatedNodes);
-      }, 10);
-    }
-  }, [nodes, onNodesChange, onNodesChangeInternal]);
+    // TODO: Temporarily disabled position sync to prevent state loss
+    // We'll handle position sync separately later
+    console.log('ReactFlow nodes changed:', changes);
+  }, [onNodesChangeInternal]);
 
   // Handle new connections
   const onConnect = useCallback((params: ReactFlowConnection) => {
