@@ -352,9 +352,10 @@ CREATE TABLE reviews (
 1. **Mise à jour continue des avancées** :
    dans next_tasks.txt
 
-   - À chaque fois qu'une tâche est terminée, mettre à jour le statut dans la roadmap
+   - À chaque fois qu'une tâche est terminée, mettre à jour le statut dans la roadmap ainsi que le fichier next_tasks.txt
    - Ajouter les nouvelles tâches qui découlent du travail effectué
    - Documenter les décisions techniques prises
+   - Tu dois toujours etre dans un objectif d'amélioration continue en prpoposants de nouvelles idées et de nouvelles fonctionnalitées
 
 2. **Vérification ESLint systématique** :
 

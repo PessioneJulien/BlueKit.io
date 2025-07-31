@@ -9,7 +9,8 @@ import { NodeData, SubTechnology } from './CanvasNode';
 import { 
   Search, 
   Plus, 
-  X
+  X,
+  Grip
 } from 'lucide-react';
 
 interface ComponentPaletteProps {
@@ -238,10 +239,22 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                       <div
                         key={component.id}
                         className={cn(
-                          'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-600',
-                          isUsed && 'opacity-50',
+                          'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-grab active:cursor-grabbing transition-all duration-200 border border-transparent hover:border-slate-600',
+                          isUsed && 'opacity-50 cursor-not-allowed',
                           component.isMainTechnology === false && 'border-l-4 border-l-orange-500/50 bg-orange-900/10'
                         )}
+                        draggable={!isUsed}
+                        onDragStart={(e) => {
+                          if (isUsed) {
+                            e.preventDefault();
+                            return;
+                          }
+                          e.dataTransfer.setData('application/json', JSON.stringify({
+                            type: component.isMainTechnology ? 'main-component' : 'tool',
+                            component: component
+                          }));
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
                         onClick={() => !isUsed && onAddComponent(component)}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -273,7 +286,10 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                         {isUsed ? (
                           <span className="text-xs text-blue-400">Added</span>
                         ) : (
-                          <Plus className="h-4 w-4 text-slate-400" />
+                          <div className="flex items-center gap-2">
+                            <Grip className="h-4 w-4 text-slate-500" />
+                            <Plus className="h-4 w-4 text-slate-400" />
+                          </div>
                         )}
                       </div>
                     );

@@ -1,40 +1,85 @@
 PROCHAINES TÂCHES - BlueKit.io Stack Builder Platform
 
-## ÉTAT ACTUEL : SEMAINE 1-2 COMPLÉTÉES ✅
+## ÉTAT ACTUEL : BUILDER VISUEL AVANCÉ TERMINÉ ✅
 
-### SEMAINE 1 : Setup & Design System ✅ TERMINÉE
+### SEMAINE 1-3 : FONDATIONS & BUILDER COMPLÈTES ✅
 - ✅ Infrastructure Next.js + TypeScript + Tailwind
 - ✅ Storybook 9 configuré avec tous les composants
 - ✅ Design system complet (Card, Badge, Input, Button, etc.)
 - ✅ Thème dark moderne avec glassmorphism
-- ✅ Structure de fichiers et architecture
-
-### SEMAINE 2 : Authentification & Architecture ✅ TERMINÉE
-- ✅ Pages principales créées (Homepage, Stacks, Builder, Profile)
-- ✅ Navigation et layout implémentés
-- ✅ Stores Zustand pour la gestion d'état
+- ✅ Pages principales + Navigation + Layout
+- ✅ Stores Zustand + résolution hydratation
 - ✅ 20 stacks officielles avec seed data
 - ✅ Tests E2E Cypress configurés
 - ✅ Authentification Supabase complète
-- ✅ Pages auth (login, signup, reset)
-- ✅ Schéma base de données + RLS
-- ✅ Documentation authentification
+- ✅ Documentation Supabase + scripts
+
+### ✅ BUILDER VISUEL RÉVOLUTIONNAIRE - TERMINÉ
+- ✅ **ReactFlow Integration** : Canvas performant avec zoom/pan/grille
+- ✅ **Drag & Drop Fluide** : Déplacement libre des composants
+- ✅ **Connexions Visuelles** : Liens courbes avec validation compatibilité
+- ✅ **Modes Compact/Étendu** : Toggle pour chaque composant
+- ✅ **Redimensionnement** : Poignées de redimensionnement sur sélection
+- ✅ **Documentation Intégrée** : Éditeur markdown par nœud
+- ✅ **Système Hiérarchique** : Technologies principales + outils intégrés
+- ✅ **Modal d'Ajout d'Outils** : Interface pour ajouter des tools aux technos
+- ✅ **Sous-catégorisation** : Tools organisés par type (Testing, UI/UX, etc.)
+- ✅ **Palette Recherchable** : Filtres par catégorie et recherche
+- ✅ **Statistiques Temps Réel** : Calcul setup time, difficulté, coût
+
+### ✅ EXPORT & TEMPLATES - TERMINÉ
+- ✅ **Export JSON** : Configuration complète avec positions et documentation
+- ✅ **Export README.md** : Documentation auto-générée avec instructions setup
+- ✅ **Export Docker Compose** : Fichier docker-compose.yml pour la stack
+- ✅ **Templates Pré-configurés** : MERN, MEAN, JAMStack, Next.js+Supabase, Flutter+Firebase
+- ✅ **Modal d'Export** : Interface pour choisir format et prévisualiser
+- ✅ **Modal de Templates** : Sélection et filtrage par catégorie
+
+### ✅ CORRECTIONS UX CRITIQUES - TERMINÉ
+- ✅ **Redimensionnement des Cartes** : Toggle compact/étendu fonctionnel avec dimensions automatiques
+- ✅ **Affichage des Outils** : Visualisation des outils intégrés avec icônes et styles
+- ✅ **Modals Agrandis** : Documentation et AddTool avec tailles optimisées
+- ✅ **Redimensionnement Auto** : Ajustement de taille selon le nombre d'outils
+- ✅ **Amélioration Visuelle** : Icônes par type d'outil, gradients, tooltips détaillés
+
+### ✅ RÉVOLUTION DRAG & DROP - TERMINÉ  
+- ✅ **Drag & Drop Composants** : Glisser-déposer depuis la palette vers le canvas
+- ✅ **Drag & Drop Tools** : Glisser les outils directement sur les nœuds principaux
+- ✅ **Indicateurs Visuels** : Zones de drop avec animations et couleurs
+- ✅ **Suppression Modals** : Remplacement des modals par interactions directes
+- ✅ **Panel Documentation Flottant** : Fenêtre redimensionnable et déplaçable
+- ✅ **Interface Intuitive** : UX moderne avec curseurs et affordances visuelles
 
 ## 🚀 PROCHAINES TÂCHES PRIORITAIRES
 
-### IMMÉDIAT : Corrections et Optimisations
-1. **✅ Résoudre erreurs d'hydratation React** - TERMINÉ
-2. **✅ Documentation Supabase complète** - TERMINÉ  
-3. **Configuration Supabase en production** - Prêt à déployer
-4. **Optimisation performances** - PRIORITÉ SUIVANTE
-5. **Fonctionnalités export/partage** - EN ATTENTE
+### IMMÉDIAT : Fonctionnalités Avancées & UX
+1. **Import de Stack JSON** - PRIORITÉ 1
+2. **Auto-save & Historique** - PRIORITÉ 2
+3. **Animations & Transitions** - PRIORITÉ 3
+4. **Mode Présentation** - PRIORITÉ 4
 
-### SEMAINE 3-4 : Optimisations & Fonctionnalités
-- [ ] Optimisation performances et lazy loading
-- [ ] Fonctionnalités export/partage des stacks
-- [ ] Stack Builder avancé avec drag & drop
-- [ ] Templates pré-configurés
-- [ ] Validation compatibilité temps réel
+### SEMAINE 4 : Amélioration Continue
+- [ ] Import de fichiers JSON pour charger des stacks
+- [ ] Auto-save avec localStorage/Supabase
+- [ ] Système undo/redo (Ctrl+Z/Ctrl+Y)
+- [ ] Animations de transition fluides
+- [ ] Mode présentation pour partager
+- [ ] Estimation coût total de la stack
+- [ ] Système de favoris pour technologies
+- [ ] Export package.json avec dépendances
+- [ ] Génération de boilerplate code
+
+### NOUVELLES IDÉES D'AMÉLIORATION
+- [ ] **Mode Collaboratif Temps Réel** : Édition simultanée avec curseurs multiples
+- [ ] **AI Assistant** : Suggestions intelligentes de technologies compatibles
+- [ ] **Performance Monitor** : Estimation des performances de la stack
+- [ ] **Cost Calculator** : Calcul détaillé des coûts (hébergement, licences, etc.)
+- [ ] **Deployment Wizard** : Guide de déploiement pas-à-pas
+- [ ] **Version Control** : Historique des versions de stack
+- [ ] **Comments System** : Annotations sur les composants
+- [ ] **Stack Comparison** : Comparer 2 stacks côte à côte
+- [ ] **Search Templates** : Recherche avancée dans les templates
+- [ ] **Custom Categories** : Créer ses propres catégories de technos
 
 ### PHASE 2 : Fonctionnalités Avancées
 - [ ] Mode collaboration temps réel

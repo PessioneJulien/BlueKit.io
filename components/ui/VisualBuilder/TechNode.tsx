@@ -4,13 +4,22 @@ import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
-import { X, MoreVertical, Settings, Info } from 'lucide-react';
-import { NodeData } from './CanvasNode';
+import { X, MoreVertical, Settings, Info, FileText } from 'lucide-react';
+import { NodeData, SubTechnology } from './CanvasNode';
+import { NodeResizeHandle } from './NodeResizeHandle';
+import { FloatingDocPanel } from './FloatingDocPanel';
 
 interface TechNodeData extends NodeData {
   isCompact?: boolean;
+  width?: number;
+  height?: number;
+  documentation?: string;
   onDelete: (id: string) => void;
   onToggleMode: (id: string) => void;
+  onResize?: (id: string, width: number, height: number) => void;
+  onDocumentationSave?: (nodeId: string, documentation: string) => void;
+  onAddSubTechnology?: (nodeId: string, subTechId: string) => void;
+  availableSubTechnologies?: SubTechnology[];
 }
 
 const categoryColors = {
@@ -25,11 +34,51 @@ const categoryColors = {
 
 export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+  // Use custom dimensions if available, otherwise use defaults based on mode
+  const nodeWidth = data.width || (isCompact ? 200 : 300);
+  const nodeHeight = data.height || (isCompact ? 
+    (data.subTechnologies && data.subTechnologies.length > 0 ? 120 : 80) : 
+    (data.subTechnologies && data.subTechnologies.length > 0 ? 180 : 140)
+  );
 
   if (!data) {
     return <div>Loading...</div>;
   }
+
+  // Handle drop of tools onto this node
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!data.isMainTechnology) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    try {
+      const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+      
+      if (dragData.type === 'tool' && data.onAddSubTechnology && data.isMainTechnology) {
+        console.log('Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
+        data.onAddSubTechnology(dragData.component.id, data.id);
+      }
+    } catch (error) {
+      console.error('Error handling tool drop:', error);
+    }
+  };
 
   return (
     <div className="tech-node">
@@ -54,11 +103,17 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           'bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg transition-all duration-200',
           'hover:shadow-xl hover:border-slate-600/70',
           selected && 'ring-2 ring-blue-500 ring-opacity-60 shadow-blue-500/20',
+          data.isMainTechnology && isDragOver && 'ring-2 ring-green-500 ring-opacity-80 shadow-green-500/30 border-green-500/50'
         )}
         style={{
-          width: isCompact ? 200 : 280,
-          minHeight: isCompact ? 80 : 120,
+          width: nodeWidth,
+          height: 'auto',
+          minHeight: nodeHeight,
+          position: 'relative'
         }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* Header */}
         <div className={cn(
@@ -150,32 +205,63 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           </div>
 
           {/* Sub-technologies section */}
-          {!isCompact && data.isMainTechnology && data.subTechnologies && data.subTechnologies.length > 0 && (
-            <div className="border-t border-slate-600 pt-2 mt-3">
-              <div className="text-xs font-medium text-slate-400 mb-2">Integrated Tools:</div>
-              <div className="flex flex-wrap gap-1">
+          {data.isMainTechnology && data.subTechnologies && data.subTechnologies.length > 0 && (
+            <div className="border-t border-slate-600 pt-3 mt-3">
+              {!isCompact && (
+                <div className="text-xs font-medium text-slate-400 mb-2 flex items-center gap-1">
+                  <span className="text-blue-400">⚡</span>
+                  Integrated Tools:
+                </div>
+              )}
+              <div className={cn(
+                "flex flex-wrap gap-2",
+                isCompact && "justify-center"
+              )}>
                 {data.subTechnologies.map((subTech) => (
                   <Badge
                     key={subTech.id}
                     variant="default"
                     size="sm"
-                    className="text-xs bg-slate-700 text-slate-300 border-slate-600"
+                    className={cn(
+                      "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border-blue-500/30 hover:border-blue-400/50 transition-colors cursor-help",
+                      isCompact ? "text-xs px-2 py-1" : "text-xs px-2 py-1"
+                    )}
+                    title={`${subTech.name} - ${subTech.description}\nType: ${subTech.type}\nDifficulty: ${subTech.difficulty}`}
                   >
-                    {subTech.name}
+                    <span className="mr-1">
+                      {subTech.type === 'styling' && '🎨'}
+                      {subTech.type === 'testing' && '🧪'}
+                      {subTech.type === 'documentation' && '📚'}
+                      {subTech.type === 'state-management' && '📊'}
+                      {subTech.type === 'routing' && '🗺️'}
+                      {subTech.type === 'build-tool' && '🔨'}
+                      {subTech.type === 'linting' && '✅'}
+                      {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(subTech.type) && '🔧'}
+                    </span>
+                    {isCompact ? subTech.name.split(' ')[0] : subTech.name}
                   </Badge>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Drop zone for sub-technologies */}
-          {!isCompact && data.isMainTechnology && data.canAcceptSubTech && (
+          {/* Drop zone indicator for main technologies */}
+          {data.isMainTechnology && isDragOver && (
+            <div className="border-t border-green-500/50 pt-2 mt-3">
+              <div className="min-h-[30px] border-2 border-dashed border-green-500/50 rounded-md bg-green-500/10 flex items-center justify-center">
+                <span className="text-xs text-green-400 font-medium">📦 Drop tool here to integrate</span>
+              </div>
+            </div>
+          )}
+
+          {/* Drop zone for sub-technologies - only show when not dragging */}
+          {!isCompact && data.isMainTechnology && data.canAcceptSubTech && !isDragOver && (
             <div className="border-t border-slate-600 pt-2 mt-3">
               <div className="text-xs text-slate-400 mb-1">
-                Drop tools here: {data.canAcceptSubTech.join(', ')}
+                Accepts: {data.canAcceptSubTech.join(', ')}
               </div>
               <div className="min-h-[20px] border-2 border-dashed border-slate-600 rounded-md bg-slate-800/50 flex items-center justify-center">
-                <span className="text-xs text-slate-500">Drop zone</span>
+                <span className="text-xs text-slate-500">Drag tools here</span>
               </div>
             </div>
           )}
@@ -190,6 +276,17 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             />
             <div className="absolute top-12 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[160px]">
               <div className="p-1">
+                <button 
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDocModal(true);
+                    setShowMenu(false);
+                  }}
+                >
+                  <FileText className="w-4 h-4" />
+                  Documentation
+                </button>
                 <button 
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
                   onClick={(e) => {
@@ -216,6 +313,20 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             </div>
           </>
         )}
+
+        {/* Resize handle for non-compact nodes */}
+        {!isCompact && selected && data.onResize && (
+          <NodeResizeHandle
+            nodeId={data.id}
+            currentWidth={nodeWidth}
+            currentHeight={nodeHeight}
+            onResize={data.onResize}
+            minWidth={250}
+            minHeight={150}
+            maxWidth={400}
+            maxHeight={500}
+          />
+        )}
       </div>
 
       {/* Output Handle (right) */}
@@ -231,6 +342,21 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           borderRadius: '50%',
         }}
       />
+
+      {/* Documentation Panel */}
+      {showDocModal && data.onDocumentationSave && (
+        <FloatingDocPanel
+          isOpen={showDocModal}
+          onClose={() => setShowDocModal(false)}
+          nodeId={data.id}
+          nodeName={data.name}
+          initialDocumentation={data.documentation}
+          onSave={data.onDocumentationSave}
+          isSubTechnology={!data.isMainTechnology}
+          parentTechnologyName={data.isMainTechnology ? undefined : 'Parent Technology'}
+        />
+      )}
+
     </div>
   );
 });

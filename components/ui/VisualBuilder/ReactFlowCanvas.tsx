@@ -21,7 +21,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { TechNode } from './TechNode';
-import { NodeData } from './CanvasNode';
+import { NodeData, SubTechnology } from './CanvasNode';
 
 // Custom node types
 const nodeTypes: NodeTypes = {
@@ -29,10 +29,20 @@ const nodeTypes: NodeTypes = {
 };
 
 interface ReactFlowCanvasProps {
-  nodes: Array<NodeData & { position: { x: number; y: number }; isCompact?: boolean }>;
+  nodes: Array<NodeData & { 
+    position: { x: number; y: number }; 
+    isCompact?: boolean;
+    width?: number;
+    height?: number;
+    documentation?: string;
+  }>;
   connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string }>;
-  onNodesChange: (nodes: Array<NodeData & { position: { x: number; y: number }; isCompact?: boolean }>) => void;
+  onNodesChange: (nodes: Array<NodeData & { position: { x: number; y: number }; isCompact?: boolean; width?: number; height?: number; documentation?: string }>) => void;
   onConnectionsChange: (connections: Array<{ id: string; sourceNodeId: string; targetNodeId: string; type: string }>) => void;
+  onDocumentationSave?: (nodeId: string, documentation: string) => void;
+  onAddSubTechnology?: (mainTechId: string, subTechId: string) => void;
+  onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
+  availableSubTechnologies?: SubTechnology[];
   className?: string;
 }
 
@@ -41,6 +51,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   connections: externalConnections,
   onNodesChange,
   onConnectionsChange,
+  onDocumentationSave,
+  onAddSubTechnology,
+  onDropComponent,
+  availableSubTechnologies,
   className
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
@@ -67,15 +81,38 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           // Find the current state of the node
           const currentNode = externalNodes.find(n => n.id === id);
           if (currentNode) {
+            const newCompactState = !currentNode.isCompact;
+            const hasSubTech = currentNode.subTechnologies && currentNode.subTechnologies.length > 0;
+            
+            // Adjust dimensions based on new compact state
+            const newWidth = newCompactState ? 200 : 300;
+            const newHeight = newCompactState ? 
+              (hasSubTech ? 120 : 80) : 
+              (hasSubTech ? 180 : 140);
+            
             const updatedNodes = externalNodes.map(n =>
-              n.id === id ? { ...n, isCompact: !currentNode.isCompact } : n
+              n.id === id ? { 
+                ...n, 
+                isCompact: newCompactState,
+                width: newWidth,
+                height: newHeight
+              } : n
             );
             onNodesChange(updatedNodes);
           }
-        }
+        },
+        onResize: (id: string, width: number, height: number) => {
+          const updatedNodes = externalNodes.map(n =>
+            n.id === id ? { ...n, width, height } : n
+          );
+          onNodesChange(updatedNodes);
+        },
+        onDocumentationSave,
+        onAddSubTechnology,
+        availableSubTechnologies
       }
     }));
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, availableSubTechnologies]);
 
   const convertToReactFlowEdges = useCallback((connectionList: typeof externalConnections): Edge[] =>
     connectionList.map(conn => ({
@@ -113,7 +150,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         const updatedNodes = nodes.map(node => ({
           ...node.data,
           position: node.position,
-          isCompact: node.data.isCompact
+          isCompact: node.data.isCompact,
+          width: node.data.width,
+          height: node.data.height,
+          documentation: node.data.documentation
         }));
         onNodesChange(updatedNodes);
       }, 10);
@@ -180,6 +220,34 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     }
   }, [onEdgesChangeInternal, externalConnections, onConnectionsChange]);
 
+  // Handle drag and drop from palette
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+
+    const reactFlowBounds = (event.target as Element).getBoundingClientRect();
+    
+    try {
+      const data = JSON.parse(event.dataTransfer.getData('application/json'));
+      
+      if (data.type === 'main-component' && onDropComponent) {
+        // Calculate position relative to ReactFlow canvas
+        const position = {
+          x: event.clientX - reactFlowBounds.left - 100, // Offset for centering
+          y: event.clientY - reactFlowBounds.top - 50
+        };
+        
+        onDropComponent(data.component, position);
+      }
+    } catch (error) {
+      console.error('Error parsing dropped data:', error);
+    }
+  }, [onDropComponent]);
+
   // Update nodes when external nodes change
   useEffect(() => {
     const reactFlowNodes = convertToReactFlowNodes(externalNodes);
@@ -194,7 +262,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
 
   return (
-    <div className={className} style={{ width: '100%', height: '100%' }}>
+    <div 
+      className={className} 
+      style={{ width: '100%', height: '100%' }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}

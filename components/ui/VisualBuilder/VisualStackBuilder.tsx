@@ -19,10 +19,16 @@ import {
   Layers,
   Code,
 } from 'lucide-react';
+import { ExportModal } from './ExportModal';
+import { TemplatesModal } from './TemplatesModal';
+import { StackTemplate } from '@/lib/data/stackTemplates';
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
   isCompact?: boolean;
+  width?: number;
+  height?: number;
+  documentation?: string;
 }
 
 interface VisualStackBuilderProps {
@@ -249,9 +255,27 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [connections, setConnections] = useState<Connection[]>(initialStack?.connections || []);
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'components' | 'export'>('components');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
 
   // Get used component IDs
   const usedComponentIds = useMemo(() => nodes.map(node => node.id), [nodes]);
+
+  // Handle template selection
+  const handleTemplateSelect = (template: StackTemplate) => {
+    setStackName(template.name);
+    setStackDescription(template.description);
+    setNodes(template.nodes);
+    setConnections(template.connections);
+  };
+
+  // Handle documentation save
+  const handleDocumentationSave = useCallback((nodeId: string, documentation: string) => {
+    const updatedNodes = nodes.map(node => 
+      node.id === nodeId ? { ...node, documentation } : node
+    );
+    setNodes(updatedNodes);
+  }, [nodes]);
 
   // Add sub-technology to main component
   const handleAddSubTechnology = useCallback((subTechId: string, mainTechId: string) => {
@@ -269,9 +293,18 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
     const updatedNodes = nodes.map(node => {
       if (node.id === mainTechId) {
+        const newSubTechnologies = [...(node.subTechnologies || []), subTech];
+        const isCompact = node.isCompact ?? true;
+        
+        // Adjust height to accommodate new sub-technology
+        const newHeight = isCompact ? 
+          (newSubTechnologies.length > 0 ? Math.min(120 + (newSubTechnologies.length * 10), 200) : 80) : 
+          (newSubTechnologies.length > 0 ? Math.min(180 + (newSubTechnologies.length * 15), 280) : 140);
+        
         return {
           ...node,
-          subTechnologies: [...(node.subTechnologies || []), subTech]
+          subTechnologies: newSubTechnologies,
+          height: newHeight
         };
       }
       return node;
@@ -279,6 +312,40 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
     setNodes(updatedNodes);
   }, [nodes]);
+
+  // Handle dropping component from palette
+  const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
+    if (usedComponentIds.includes(component.id)) return;
+
+    // If it's a sub-technology, try to add it to a compatible main technology
+    if (!component.isMainTechnology) {
+      const subTech = subTechnologies.find(st => st.id === component.id);
+      if (subTech) {
+        const compatibleMainTech = nodes.find(node => 
+          node.isMainTechnology && 
+          node.canAcceptSubTech?.includes(subTech.type) &&
+          !node.subTechnologies?.some(st => st.id === subTech.id)
+        );
+        
+        if (compatibleMainTech) {
+          handleAddSubTechnology(component.id, compatibleMainTech.id);
+          return;
+        }
+      }
+      // If no compatible main tech found, don't add it as standalone
+      return;
+    }
+
+    const newNode: CanvasNode = {
+      ...component,
+      position,
+      isCompact: true,
+      width: 200,
+      height: 80
+    };
+
+    setNodes(prev => [...prev, newNode]);
+  }, [usedComponentIds, handleAddSubTechnology, nodes]);
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
@@ -332,7 +399,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     const newNode: CanvasNode = {
       ...component,
       position,
-      isCompact: true // Start in compact mode
+      isCompact: true, // Start in compact mode
+      width: 200,
+      height: 80
     };
 
     setNodes(prev => [...prev, newNode]);
@@ -505,7 +574,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                 </Button>
                 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="secondary" size="sm">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => setShowExportModal(true)}
+                    disabled={nodes.length === 0}
+                  >
                     <Download className="h-4 w-4 mr-1" />
                     Export
                   </Button>
@@ -547,6 +621,14 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowTemplatesModal(true)}
+            >
+              <Layers className="h-4 w-4 mr-1" />
+              Templates
+            </Button>
             <Badge variant="default" size="sm">
               {stackStats.nodeCount} components
             </Badge>
@@ -570,9 +652,30 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             }));
             setConnections(convertedConnections);
           }}
+          onDocumentationSave={handleDocumentationSave}
+          onAddSubTechnology={handleAddSubTechnology}
+          onDropComponent={handleDropComponent}
+          availableSubTechnologies={subTechnologies}
           className="flex-1"
         />
       </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        stackName={stackName}
+        stackDescription={stackDescription}
+        nodes={nodes}
+        connections={connections}
+      />
+
+      {/* Templates Modal */}
+      <TemplatesModal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        onSelectTemplate={handleTemplateSelect}
+      />
     </div>
   );
 };
