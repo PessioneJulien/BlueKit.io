@@ -1,103 +1,235 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { 
+  ArrowRight, 
+  Code2, 
+  LayoutGrid, 
+  Users, 
+  Zap,
+  Globe,
+  Shield,
+  Sparkles
+} from 'lucide-react';
 
-export default function Home() {
+export default function HomePage() {
+  const features = [
+    {
+        icon: LayoutGrid,
+      title: 'Visual Stack Builder',
+      description: 'Drag and drop technologies to build your perfect stack',
+      color: 'text-blue-400',
+    },
+    {
+      icon: Users,
+      title: 'Community Driven',
+      description: 'Learn from real-world stacks used by developers',
+      color: 'text-purple-400',
+    },
+    {
+      icon: Zap,
+      title: 'Instant Setup Guides',
+      description: 'Get step-by-step instructions tailored to your stack',
+      color: 'text-yellow-400',
+    },
+    {
+      icon: Shield,
+      title: 'Best Practices',
+      description: 'Built-in compatibility checks and recommendations',
+      color: 'text-green-400',
+    },
+  ];
+
+  const popularStacks = [
+    {
+      name: 'Modern SaaS Stack',
+      description: 'Next.js + Supabase + Stripe',
+      tags: ['Full-stack', 'Production Ready'],
+      difficulty: 'intermediate',
+    },
+    {
+      name: 'AI-Powered App',
+      description: 'React + FastAPI + OpenAI',
+      tags: ['AI/ML', 'Real-time'],
+      difficulty: 'expert',
+    },
+    {
+      name: 'Startup MVP',
+      description: 'Vue.js + Firebase + Tailwind',
+      tags: ['Rapid Development', 'Low Cost'],
+      difficulty: 'beginner',
+    },
+  ];
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="relative min-h-screen">
+      {/* Hero Section */}
+      <section className="relative px-4 py-20 sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-purple-600/20 blur-3xl" />
+        
+        <div className="relative mx-auto max-w-7xl">
+          <div className="text-center">
+            <div className="mb-8 flex justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 blur-xl opacity-50" />
+                <div className="relative rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-3">
+                  <Code2 className="h-16 w-16 text-white" />
+                </div>
+              </div>
+            </div>
+            
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-100 sm:text-6xl lg:text-7xl">
+              Build Your Perfect
+              <span className="bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"> Tech Stack</span>
+            </h1>
+            
+            <p className="mx-auto mb-10 max-w-2xl text-lg text-slate-300 sm:text-xl">
+              Discover, compare, and assemble technology stacks with confidence. 
+              Get personalized setup guides and learn from the community.
+            </p>
+            
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link href="/builder">
+                <Button variant="primary" size="lg" className="min-w-[200px]">
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Start Building
+                </Button>
+              </Link>
+              <Link href="/stacks">
+                <Button variant="secondary" size="lg" className="min-w-[200px]">
+                  Browse Stacks
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+          
+          {/* Stats */}
+          <div className="mt-20 grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-slate-100">150+</div>
+              <div className="mt-1 text-sm text-slate-400">Technologies</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-slate-100">2.5k</div>
+              <div className="mt-1 text-sm text-slate-400">Stacks Created</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-slate-100">10k+</div>
+              <div className="mt-1 text-sm text-slate-400">Developers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-slate-100">4.9/5</div>
+              <div className="mt-1 text-sm text-slate-400">User Rating</div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* Features Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-slate-100 sm:text-4xl">
+              Everything you need to build better
+            </h2>
+            <p className="mt-4 text-lg text-slate-400">
+              Powerful features to help you make the right technology decisions
+            </p>
+          </div>
+          
+          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map((feature) => (
+              <Card key={feature.title} variant="glass" className="group hover:bg-slate-800/60">
+                <CardContent className="p-6">
+                  <div className={`mb-4 inline-flex rounded-lg bg-slate-800/50 p-3 ${feature.color}`}>
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold text-slate-100">{feature.title}</h3>
+                  <p className="text-sm text-slate-400">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Stacks */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-100">Popular Stacks</h2>
+              <p className="mt-2 text-lg text-slate-400">Get started with community favorites</p>
+            </div>
+            <Link href="/stacks">
+              <Button variant="ghost">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {popularStacks.map((stack) => (
+              <Card key={stack.name} variant="glass" className="group cursor-pointer hover:bg-slate-800/60">
+                <CardContent className="p-6">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-100 group-hover:text-blue-400">
+                        {stack.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-400">{stack.description}</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {stack.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" size="sm">
+                        {tag}
+                      </Badge>
+                    ))}
+                    <Badge 
+                      variant={
+                        stack.difficulty === 'beginner' ? 'success' :
+                        stack.difficulty === 'intermediate' ? 'warning' : 'danger'
+                      } 
+                      size="sm"
+                      outline
+                    >
+                      {stack.difficulty}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-12">
+            <div className="absolute inset-0 bg-black/20" />
+            <div className="relative">
+              <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
+                Ready to build your stack?
+              </h2>
+              <p className="mb-8 text-lg text-white/90">
+                Join thousands of developers building better applications with BlueKit
+              </p>
+              <Link href="/builder">
+                <Button variant="secondary" size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

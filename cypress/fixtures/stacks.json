@@ -1,0 +1,57 @@
+{
+  "sampleStack": {
+    "id": "test-stack",
+    "name": "Test Stack",
+    "description": "A test stack for Cypress testing",
+    "shortDescription": "Test stack for E2E tests",
+    "category": "Testing",
+    "difficulty": "intermediate",
+    "setupTimeHours": 2,
+    "pricing": "free",
+    "technologies": [
+      {
+        "id": "react",
+        "name": "React",
+        "category": "frontend",
+        "role": "primary"
+      },
+      {
+        "id": "nextjs",
+        "name": "Next.js",
+        "category": "frontend",
+        "role": "primary"
+      }
+    ],
+    "useCases": ["Testing", "Development"],
+    "pros": ["Easy to test", "Fast setup"],
+    "cons": ["Limited scope"],
+    "alternatives": ["Other test stacks"],
+    "installationSteps": ["Install dependencies", "Run tests"],
+    "stars": 4.5,
+    "uses": 100,
+    "author": "Test Author",
+    "createdAt": "2024-01-01"
+  },
+  "technologies": [
+    {
+      "id": "react",
+      "name": "React",
+      "category": "frontend",
+      "description": "A JavaScript library for building user interfaces",
+      "setupTimeHours": 2,
+      "difficulty": "intermediate",
+      "pricing": "free",
+      "stars": 4.8
+    },
+    {
+      "id": "nextjs",
+      "name": "Next.js",
+      "category": "frontend",
+      "description": "The React Framework for Production",
+      "setupTimeHours": 3,
+      "difficulty": "intermediate",
+      "pricing": "free",
+      "stars": 4.9
+    }
+  ]
+}
