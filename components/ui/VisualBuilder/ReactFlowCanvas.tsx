@@ -55,6 +55,8 @@ interface ReactFlowCanvasProps {
   onNodeSelect?: (nodeId: string) => void;
   onDocumentationSave?: (nodeId: string, documentation: string) => void;
   onAddSubTechnology?: (mainTechId: string, subTechId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  onRemoveSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
@@ -77,6 +79,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   onNodeSelect,
   onDocumentationSave,
   onAddSubTechnology,
+  onDeleteNode,
+  onRemoveSubTechnology,
   onDropComponent,
   availableSubTechnologies,
   className,
@@ -97,7 +101,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       position: node.position,
       data: {
         ...node,
-        onDelete: (id: string) => {
+        onDelete: onDeleteNode || ((id: string) => {
           const updatedNodes = externalNodes.filter(n => n.id !== id);
           onNodesChange(updatedNodes);
           
@@ -105,7 +109,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
             conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
           );
           onConnectionsChange(updatedConnections);
-        },
+        }),
         onToggleMode: (id: string) => {
           // Find the current state of the node
           const currentNode = externalNodes.find(n => n.id === id);
@@ -142,13 +146,35 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         },
         onDocumentationSave,
         onAddSubTechnology,
+        onRemoveSubTechnology: onRemoveSubTechnology || ((mainTechId: string, subTechId: string) => {
+          const updatedNodes = externalNodes.map(node => {
+            if (node.id === mainTechId && node.subTechnologies) {
+              const newSubTechnologies = node.subTechnologies.filter(st => st.id !== subTechId);
+              const isCompact = node.isCompact ?? true;
+              
+              // Adjust height when removing sub-technology
+              const newHeight = isCompact ? 
+                (newSubTechnologies.length > 0 ? Math.min(120 + (newSubTechnologies.length * 10), 200) : 80) : 
+                (newSubTechnologies.length > 0 ? Math.min(180 + (newSubTechnologies.length * 15), 280) : 140);
+              
+              return {
+                ...node,
+                subTechnologies: newSubTechnologies,
+                height: newHeight
+              };
+            }
+            return node;
+          });
+          
+          onNodesChange(updatedNodes);
+        }),
         onStyleChange: onNodeStyleChange,
         onNodeSelect,
         availableSubTechnologies,
         isReadOnly
       }
     }));
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onNodeStyleChange, onNodeSelect, availableSubTechnologies, isReadOnly]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNodeSelect, availableSubTechnologies, isReadOnly]);
 
   const convertToReactFlowEdges = useCallback((connectionList: typeof externalConnections): Edge[] =>
     connectionList.map(conn => {
@@ -184,10 +210,31 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChangeInternal(changes);
     
-    // TODO: Temporarily disabled position sync to prevent state loss
-    // We'll handle position sync separately later
+    // Handle node deletions through ReactFlow (when using Delete key)
+    const deleteChanges = changes.filter(change => change.type === 'remove');
+    if (deleteChanges.length > 0) {
+      deleteChanges.forEach(change => {
+        if ('id' in change && onDeleteNode) {
+          onDeleteNode(change.id);
+        }
+      });
+    }
+    
+    // Handle position changes
+    const positionChanges = changes.filter(change => change.type === 'position' && 'position' in change && change.position);
+    if (positionChanges.length > 0 && onNodesChange) {
+      const updatedNodes = externalNodes.map(node => {
+        const change = positionChanges.find(c => 'id' in c && c.id === node.id);
+        if (change && 'position' in change && change.position) {
+          return { ...node, position: change.position };
+        }
+        return node;
+      });
+      onNodesChange(updatedNodes);
+    }
+    
     console.log('ReactFlow nodes changed:', changes);
-  }, [onNodesChangeInternal]);
+  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes]);
 
   // Handle new connections
   const onConnect = useCallback((params: ReactFlowConnection) => {
@@ -330,7 +377,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         snapGrid={[15, 15]}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Meta"
-        panOnDrag={[1, 2]} // Pan only with middle mouse or right mouse
+        panOnDrag={true} // Allow pan with left mouse button
         panOnScroll={false}
         zoomOnScroll={true}
         zoomOnPinch={true}

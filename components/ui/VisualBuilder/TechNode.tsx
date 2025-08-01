@@ -20,6 +20,7 @@ interface TechNodeData extends NodeData {
   onResize?: (id: string, width: number, height: number) => void;
   onDocumentationSave?: (nodeId: string, documentation: string) => void;
   onAddSubTechnology?: (nodeId: string, subTechId: string) => void;
+  onRemoveSubTechnology?: (nodeId: string, subTechId: string) => void;
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
   onNodeSelect?: (nodeId: string) => void;
   availableSubTechnologies?: SubTechnology[];
@@ -158,7 +159,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
               borderColor: nodeStyle.borderColor,
               color: nodeStyle.color
             } : {}),
-            pointerEvents: 'auto'
+            cursor: 'move'
           }}
         >
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -177,7 +178,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             </h3>
           </div>
           
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0 nodrag">
             {/* Documentation indicator */}
             {data.documentation && (
               <button
@@ -209,7 +210,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   e.stopPropagation();
                 }}
                 className={cn(
-                  "p-1 rounded transition-colors relative z-10 cursor-pointer",
+                  "nodrag p-1 rounded transition-colors relative z-10 cursor-pointer",
                   data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
                 )}
                 style={{
@@ -233,7 +234,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 className={cn(
-                  "p-1 rounded transition-colors",
+                  "nodrag p-1 rounded transition-colors",
                   data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
                 )}
                 style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
@@ -256,7 +257,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 className={cn(
-                  "p-1 rounded transition-colors",
+                  "nodrag p-1 rounded transition-colors",
                   data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
                 )}
                 style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
@@ -269,14 +270,27 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   data.onDelete(data.id);
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onMouseUp={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
                 className={cn(
-                  "p-1 hover:bg-red-500/20 rounded transition-colors",
+                  "nodrag p-1 hover:bg-red-500/20 rounded transition-colors relative z-50",
                   data.customStyle ? "hover:text-red-300" : "text-white/80 hover:text-red-300"
                 )}
-                style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+                style={{
+                  ...(data.customStyle ? { color: nodeStyle.color + '80' } : {}),
+                  pointerEvents: 'auto',
+                  cursor: 'pointer'
+                }}
+                title="Delete node"
               >
                 <X className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
               </button>
@@ -328,28 +342,42 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                 isCompact && "justify-center"
               )}>
                 {data.subTechnologies.map((subTech) => (
-                  <Badge
-                    key={subTech.id}
-                    variant="default"
-                    size="sm"
-                    className={cn(
-                      "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border-blue-500/30 hover:border-blue-400/50 transition-colors cursor-help",
-                      isCompact ? "text-xs px-2 py-1" : "text-xs px-2 py-1"
+                  <div key={subTech.id} className="relative group">
+                    <Badge
+                      variant="default"
+                      size="sm"
+                      className={cn(
+                        "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border-blue-500/30 hover:border-blue-400/50 transition-colors cursor-help",
+                        isCompact ? "text-xs px-2 py-1 pr-6" : "text-xs px-2 py-1 pr-6"
+                      )}
+                      title={`${subTech.name} - ${subTech.description}\nType: ${subTech.type}\nDifficulty: ${subTech.difficulty}`}
+                    >
+                      <span className="mr-1">
+                        {subTech.type === 'styling' && '🎨'}
+                        {subTech.type === 'testing' && '🧪'}
+                        {subTech.type === 'documentation' && '📚'}
+                        {subTech.type === 'state-management' && '📊'}
+                        {subTech.type === 'routing' && '🗺️'}
+                        {subTech.type === 'build-tool' && '🔨'}
+                        {subTech.type === 'linting' && '✅'}
+                        {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(subTech.type) && '🔧'}
+                      </span>
+                      {isCompact ? subTech.name.split(' ')[0] : subTech.name}
+                    </Badge>
+                    {!data.isReadOnly && data.onRemoveSubTechnology && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          data.onRemoveSubTechnology!(data.id, subTech.id);
+                        }}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove tool"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
                     )}
-                    title={`${subTech.name} - ${subTech.description}\nType: ${subTech.type}\nDifficulty: ${subTech.difficulty}`}
-                  >
-                    <span className="mr-1">
-                      {subTech.type === 'styling' && '🎨'}
-                      {subTech.type === 'testing' && '🧪'}
-                      {subTech.type === 'documentation' && '📚'}
-                      {subTech.type === 'state-management' && '📊'}
-                      {subTech.type === 'routing' && '🗺️'}
-                      {subTech.type === 'build-tool' && '🔨'}
-                      {subTech.type === 'linting' && '✅'}
-                      {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(subTech.type) && '🔧'}
-                    </span>
-                    {isCompact ? subTech.name.split(' ')[0] : subTech.name}
-                  </Badge>
+                  </div>
                 ))}
               </div>
             </div>

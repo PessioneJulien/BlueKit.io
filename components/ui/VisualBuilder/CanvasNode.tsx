@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ConnectionHandle } from './ConnectionHandle';
 import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
+import { nodeVariants, buttonVariants } from '@/lib/animations/variants';
 import { X, MoreVertical, Settings, Info, Palette } from 'lucide-react';
 
 export interface NodePosition {
@@ -211,15 +213,15 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   };
 
   return (
-    <div
+    <motion.div
       ref={nodeRef}
       className={cn(
-        'absolute bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg transition-all duration-150',
+        'absolute bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg',
         'hover:shadow-xl hover:border-slate-600/70',
         isSelected && 'ring-2 ring-blue-500 ring-opacity-60 shadow-blue-500/20',
-        isDragging && 'shadow-2xl scale-105 cursor-grabbing',
         isConnecting && 'ring-2 ring-green-500 ring-opacity-60',
         !isDragging && 'cursor-grab',
+        isDragging && 'cursor-grabbing',
         className
       )}
       style={{
@@ -227,9 +229,16 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
         top: position.y,
         width: isCompact ? '200px' : '280px',
         minHeight: isCompact ? '80px' : '120px',
-        transform: isDragging ? 'scale(1.05)' : 'scale(1)',
         zIndex: isDragging ? 1000 : isSelected ? 100 : 1
       }}
+      variants={nodeVariants}
+      initial="hidden"
+      animate={isCompact ? "compact" : "expanded"}
+      whileHover={!isDragging ? "hover" : undefined}
+      whileTap="tap"
+      exit="exit"
+      layout
+      transition={{ type: "spring", damping: 25, stiffness: 300 }}
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
@@ -285,7 +294,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               </div>
             </button>
           )}
-          <button
+          <motion.button
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -297,10 +306,13 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               data.customStyle ? "hover:bg-black/20" : "hover:bg-white/20 text-white/80 hover:text-white"
             )}
             style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
           >
             <MoreVertical className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -312,9 +324,12 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               data.customStyle ? "hover:text-red-300" : "text-white/80 hover:text-red-300"
             )}
             style={data.customStyle ? { color: nodeStyle.color + '80' } : {}}
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
           >
             <X className={cn(isCompact ? "w-3 h-3" : "w-4 h-4")} />
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -367,13 +382,20 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
       />
 
       {/* Context Menu */}
-      {showMenu && (
-        <>
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setShowMenu(false)}
-          />
-          <div className="absolute top-12 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[160px]">
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <div 
+              className="fixed inset-0 z-10" 
+              onClick={() => setShowMenu(false)}
+            />
+            <motion.div 
+              className="absolute top-12 right-0 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg min-w-[160px]"
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
             <div className="p-1">
               {onStyleChange && (
                 <button 
@@ -411,9 +433,10 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
                 Details
               </button>
             </div>
-          </div>
-        </>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Color Picker */}
       {showColorPicker && onStyleChange && (
@@ -427,6 +450,6 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
           }}
         />
       )}
-    </div>
+    </motion.div>
   );
 };

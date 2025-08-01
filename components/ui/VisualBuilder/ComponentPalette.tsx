@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { NodeData, SubTechnology } from './CanvasNode';
+import { dragVariants, containerVariants, listItemVariants } from '@/lib/animations/variants';
 import { 
   Search, 
   Plus, 
@@ -33,6 +35,11 @@ interface CommunityNodeData extends NodeData {
   rating?: number;
   usageCount?: number;
   author?: string;
+  logoUrl?: string;
+  githubUrl?: string;
+  npmUrl?: string;
+  officialDocsUrl?: string;
+  tags?: string[];
 }
 
 // Convert community component to NodeData format
@@ -51,7 +58,6 @@ const convertCommunityToNodeData = (component: CommunityComponent): CommunityNod
     githubUrl: component.githubUrl,
     npmUrl: component.npmUrl,
     officialDocsUrl: component.officialDocsUrl,
-    documentation: component.documentation,
     tags: component.tags || [],
     compatibleWith: component.compatibleWith || [],
     // Community-specific fields
@@ -61,7 +67,7 @@ const convertCommunityToNodeData = (component: CommunityComponent): CommunityNod
   };
 };
 
-const categoryIcons = {
+const defaultCategoryIcons = {
   frontend: '🎨',
   backend: '⚙️',
   database: '💾',
@@ -108,6 +114,9 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
   const [communityComponents, setCommunityComponents] = useState<CommunityNodeData[]>([]);
   const [loadingCommunity, setLoadingCommunity] = useState(false);
   const [importedComponents, setImportedComponents] = useState<CommunityNodeData[]>([]);
+  
+  // Use default category icons
+  const categoryIcons = defaultCategoryIcons;
 
   // Load community components when tab is switched
   useEffect(() => {
@@ -251,7 +260,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
       
       // Special handling for imported components
       if (selectedCategory === 'imported') {
-        displayCategory = 'imported';
+        displayCategory = 'other' as NodeData['category'];
       } else {
         // Map sub-technologies to proper category
         if (component.isMainTechnology === false) {
@@ -392,22 +401,10 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                         <div
                           key={component.id}
                           className={cn(
-                            'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-grab active:cursor-grabbing transition-all duration-200 border border-transparent hover:border-slate-600',
+                            'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-600',
                             isUsed && 'opacity-50 cursor-not-allowed',
                             'border-l-4 border-l-blue-500/30' // Community indicator
                           )}
-                          draggable={!isUsed}
-                          onDragStart={(e) => {
-                            if (isUsed) {
-                              e.preventDefault();
-                              return;
-                            }
-                            e.dataTransfer.setData('application/json', JSON.stringify({
-                              type: component.isMainTechnology ? 'main-component' : 'tool',
-                              component: component
-                            }));
-                            e.dataTransfer.effectAllowed = 'copy';
-                          }}
                           onClick={() => {
                             if (!isUsed) {
                               // Save to imported components when used
@@ -543,23 +540,11 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                           <div
                             key={component.id}
                             className={cn(
-                              'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-grab active:cursor-grabbing transition-all duration-200 border border-transparent hover:border-slate-600',
+                              'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-600',
                               isUsed && 'opacity-50 cursor-not-allowed',
                               component.isMainTechnology === false && 'border-l-4 border-l-orange-500/50 bg-orange-900/10',
                               isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/30'
                             )}
-                            draggable={!isUsed}
-                            onDragStart={(e) => {
-                              if (isUsed) {
-                                e.preventDefault();
-                                return;
-                              }
-                              e.dataTransfer.setData('application/json', JSON.stringify({
-                                type: component.isMainTechnology ? 'main-component' : 'tool',
-                                component: component
-                              }));
-                              e.dataTransfer.effectAllowed = 'copy';
-                            }}
                             onClick={() => !isUsed && onAddComponent(component)}
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">

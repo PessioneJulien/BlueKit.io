@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { ComponentPalette } from './ComponentPalette';
 import { ReactFlowCanvas } from './ReactFlowCanvas';
@@ -27,7 +27,10 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Users
+  Users,
+  Monitor,
+  Undo,
+  Redo
 } from 'lucide-react';
 import { ExportModal } from './ExportModal';
 import { TemplatesModal } from './TemplatesModal';
@@ -35,6 +38,7 @@ import { ConnectionToolbar } from './ConnectionToolbar';
 import { NodeToolbar } from './NodeToolbar';
 import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
+import { PresentationMode } from '@/components/ui/PresentationMode';
 import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
@@ -278,9 +282,163 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
+  const [showPresentationMode, setShowPresentationMode] = useState(false);
+
+  // Undo/Redo state
+  const historyRef = useRef<Array<{
+    stackName: string;
+    stackDescription: string;
+    nodes: CanvasNode[];
+    connections: Connection[];
+  }>>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedState, setLastSavedState] = useState<string>('');
+  const [showSavedNotification, setShowSavedNotification] = useState(false);
 
   // Get used component IDs
   const usedComponentIds = useMemo(() => nodes.map(node => node.id), [nodes]);
+
+  // Save current state to history
+  const saveToHistory = useCallback(() => {
+    const currentState = {
+      stackName,
+      stackDescription,
+      nodes,
+      connections
+    };
+    
+    // Remove any states after current index
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    
+    // Add new state
+    historyRef.current.push(currentState);
+    
+    // Limit history size to 50 states
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+    } else {
+      historyIndexRef.current++;
+    }
+    
+    // Update can undo/redo states
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(false);
+  }, [stackName, stackDescription, nodes, connections]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const previousState = historyRef.current[historyIndexRef.current];
+      
+      setStackName(previousState.stackName);
+      setStackDescription(previousState.stackDescription);
+      setNodes(previousState.nodes);
+      setConnections(previousState.connections);
+      
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(true);
+    }
+  }, []);
+
+  // Redo function
+  const redo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const nextState = historyRef.current[historyIndexRef.current];
+      
+      setStackName(nextState.stackName);
+      setStackDescription(nextState.stackDescription);
+      setNodes(nextState.nodes);
+      setConnections(nextState.connections);
+      
+      setCanUndo(true);
+      setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    }
+  }, []);
+
+  // Track changes and save to history
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      // Save initial state
+      saveToHistory();
+      // Set initial saved state
+      const initialState = JSON.stringify({ stackName, stackDescription, nodes, connections });
+      setLastSavedState(initialState);
+      return;
+    }
+    
+    // Debounce history saves
+    const timeoutId = setTimeout(() => {
+      saveToHistory();
+      
+      // Check if there are unsaved changes
+      const currentState = JSON.stringify({ stackName, stackDescription, nodes, connections });
+      setHasUnsavedChanges(currentState !== lastSavedState);
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [stackName, stackDescription, nodes, connections, saveToHistory, lastSavedState]);
+
+  // Manual save function
+  const saveWork = useCallback(() => {
+    const currentState = { stackName, stackDescription, nodes, connections };
+    const stateString = JSON.stringify(currentState);
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('visual_stack_builder_manual_save', stateString);
+      setLastSavedState(stateString);
+      setHasUnsavedChanges(false);
+      
+      // Show saved notification
+      setShowSavedNotification(true);
+      setTimeout(() => setShowSavedNotification(false), 2000);
+    } catch (error) {
+      console.error('Failed to save:', error);
+    }
+  }, [stackName, stackDescription, nodes, connections]);
+
+  // Load saved work on mount
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem('visual_stack_builder_manual_save');
+      if (savedData && !initialStack) {
+        const parsed = JSON.parse(savedData);
+        setStackName(parsed.stackName || '');
+        setStackDescription(parsed.stackDescription || '');
+        setNodes(parsed.nodes || []);
+        setConnections(parsed.connections || []);
+        setLastSavedState(savedData);
+      }
+    } catch (error) {
+      console.error('Failed to load saved data:', error);
+    }
+  }, [initialStack]);
+
+  // Keyboard shortcuts for undo/redo and save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        redo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveWork();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo, saveWork]);
 
   // Handle template selection
   const handleTemplateSelect = (template: StackTemplate) => {
@@ -892,6 +1050,41 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+                className="p-2"
+              >
+                <Undo className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Shift+Z)"
+                className="p-2"
+              >
+                <Redo className="h-4 w-4" />
+              </Button>
+              <div className="w-px h-6 bg-slate-700 mx-1" />
+              <Button
+                variant={hasUnsavedChanges ? "warning" : "ghost"}
+                size="sm"
+                onClick={saveWork}
+                title="Save (Ctrl+S)"
+                className="p-2"
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+              {hasUnsavedChanges && (
+                <span className="text-xs text-orange-400 ml-1">Unsaved</span>
+              )}
+            </div>
             <Button
               variant="secondary"
               size="sm"
@@ -899,6 +1092,16 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             >
               <Layers className="h-4 w-4 mr-1" />
               Templates
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowPresentationMode(true)}
+              disabled={nodes.length === 0}
+              title="View in presentation mode"
+            >
+              <Monitor className="h-4 w-4 mr-1" />
+              Present
             </Button>
             <Button
               variant="primary"
@@ -923,12 +1126,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                 </>
               )}
             </Button>
-            <Badge variant="default" size="sm">
-              {stackStats.nodeCount} components
-            </Badge>
-            <Badge variant="default" size="sm">
-              {stackStats.connectionCount} connections
-            </Badge>
+            
           </div>
         </div>
 
@@ -1005,6 +1203,26 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         onConfirm={handleVisibilityChange}
         stackName={stackName || 'Untitled Stack'}
       />
+
+      {/* Presentation Mode */}
+      {showPresentationMode && (
+        <PresentationMode
+          stackName={stackName}
+          stackDescription={stackDescription}
+          nodes={nodes}
+          connections={connections}
+          stackStats={stackStats}
+          onClose={() => setShowPresentationMode(false)}
+        />
+      )}
+
+      {/* Save Notification */}
+      {showSavedNotification && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+          <Save className="h-4 w-4" />
+          <span>Saved successfully!</span>
+        </div>
+      )}
     </div>
   );
 };

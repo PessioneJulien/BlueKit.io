@@ -1,10 +1,12 @@
 import React from 'react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { cardVariants } from '@/lib/animations/variants';
 import { 
   GripVertical, 
   Star, 
