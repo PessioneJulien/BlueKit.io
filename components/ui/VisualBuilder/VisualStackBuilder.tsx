@@ -38,7 +38,7 @@ import { ConnectionToolbar } from './ConnectionToolbar';
 import { NodeToolbar } from './NodeToolbar';
 import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
-import { PresentationMode } from '@/components/ui/PresentationMode';
+import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
 import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
@@ -1106,23 +1106,23 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             <Button
               variant="primary"
               size="sm"
-              onClick={handlePresent}
-              disabled={nodes.length === 0 || !user}
+              onClick={handleSave}
+              disabled={!user || !stackName?.trim() || nodes.length === 0}
               className={cn(
                 "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700",
                 !user && "from-gray-600 to-gray-700 hover:from-gray-600 hover:to-gray-700 cursor-not-allowed"
               )}
-              title={!user ? "Login required to present stacks" : "Present your stack"}
+              title={!user ? "Login required to save stacks" : "Save stack to database"}
             >
               {!user ? (
                 <>
                   <Lock className="h-4 w-4 mr-1" />
-                  Present
+                  Save to Cloud
                 </>
               ) : (
                 <>
                   <Share2 className="h-4 w-4 mr-1" />
-                  Present
+                  Save to Cloud
                 </>
               )}
             </Button>
@@ -1205,16 +1205,16 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       />
 
       {/* Presentation Mode */}
-      {showPresentationMode && (
-        <PresentationMode
-          stackName={stackName}
-          stackDescription={stackDescription}
-          nodes={nodes}
-          connections={connections}
-          stackStats={stackStats}
-          onClose={() => setShowPresentationMode(false)}
-        />
-      )}
+      <SimplePresentationMode
+        isOpen={showPresentationMode}
+        onClose={() => setShowPresentationMode(false)}
+        stackData={{
+          name: stackName || 'Untitled Stack',
+          description: stackDescription || 'No description provided',
+          nodes: nodes,
+          connections: connections
+        }}
+      />
 
       {/* Save Notification */}
       {showSavedNotification && (
