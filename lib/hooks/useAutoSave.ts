@@ -6,8 +6,8 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export interface AutoSaveData {
   stackName: string;
   stackDescription: string;
-  nodes: any[];
-  connections: any[];
+  nodes: unknown[];
+  connections: unknown[];
   lastSaved: number;
 }
 

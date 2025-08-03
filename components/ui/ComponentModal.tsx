@@ -205,7 +205,7 @@ export const ComponentModal: React.FC<ComponentModalProps> = ({
                   </label>
                   <Select
                     value={formData.category}
-                    onChange={(value) => setFormData({ ...formData, category: value as any })}
+                    onChange={(value) => setFormData({ ...formData, category: value as 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'testing' })}
                     options={[
                       { value: 'frontend', label: 'Frontend' },
                       { value: 'backend', label: 'Backend' },

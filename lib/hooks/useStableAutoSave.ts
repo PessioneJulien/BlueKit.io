@@ -11,8 +11,8 @@ interface UseStableAutoSaveOptions {
 interface SavedData {
   stackName: string;
   stackDescription: string;
-  nodes: any[];
-  connections: any[];
+  nodes: unknown[];
+  connections: unknown[];
   lastSaved: number;
 }
 

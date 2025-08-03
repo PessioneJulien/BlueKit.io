@@ -8,6 +8,7 @@ interface CustomEdgeData {
   style?: ConnectionStyle;
   onStyleChange?: (connectionId: string, style: ConnectionStyle) => void;
   onSelect?: (connectionId: string) => void;
+  onContextMenu?: (connectionId: string, event: React.MouseEvent) => void;
   isSelected?: boolean;
 }
 
@@ -42,6 +43,16 @@ export const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
     
     // Select this connection to show toolbar
     data.onSelect(data.connectionId);
+  };
+
+  const handleEdgeContextMenu = (event: React.MouseEvent) => {
+    if (!data?.onContextMenu) return;
+    
+    event.stopPropagation();
+    event.preventDefault();
+    
+    // Show context menu
+    data.onContextMenu(data.connectionId, event);
   };
 
   // Remove handleStyleChange - styles will be handled by toolbar
@@ -81,6 +92,7 @@ export const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
         d={edgePath}
         markerEnd={markerEnd}
         onClick={handleEdgeClick}
+        onContextMenu={handleEdgeContextMenu}
         cursor="pointer"
       />
       
@@ -91,6 +103,7 @@ export const CustomEdge: React.FC<EdgeProps<CustomEdgeData>> = ({
         stroke="transparent"
         strokeWidth={20}
         onClick={handleEdgeClick}
+        onContextMenu={handleEdgeContextMenu}
         cursor="pointer"
       />
 

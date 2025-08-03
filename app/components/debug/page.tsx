@@ -286,9 +286,9 @@ export default function ComponentsDebugPage() {
                         </p>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">{component.category}</Badge>
-                          <Badge variant="outline">{component.type}</Badge>
-                          <Badge variant="outline">{component.difficulty}</Badge>
-                          <Badge variant="outline">{component.pricing}</Badge>
+                          <Badge variant="secondary">{component.type}</Badge>
+                          <Badge variant="secondary">{component.difficulty}</Badge>
+                          <Badge variant="secondary">{component.pricing}</Badge>
                           {component.is_official && (
                             <Badge variant="primary">Official</Badge>
                           )}

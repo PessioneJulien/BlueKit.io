@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -26,10 +26,13 @@ import { NodeData, SubTechnology } from './CanvasNode';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { NodeCustomStyle } from './NodeColorPicker';
 import { CustomEdge } from './CustomEdge';
+import { ContainerNode } from './ContainerNode';
+import { ConnectionContextMenu } from './ConnectionContextMenu';
 
 // Custom node types
 const nodeTypes: NodeTypes = {
   techNode: TechNode,
+  containerNode: ContainerNode as React.ComponentType<unknown>,
 };
 
 // Custom edge types
@@ -92,14 +95,23 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
+  
+  // Context menu state
+  const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Convert our data format to ReactFlow format
   const convertToReactFlowNodes = useCallback((nodeList: typeof externalNodes): Node[] => {
-    return nodeList.map(node => ({
-      id: node.id,
-      type: 'techNode',
-      position: node.position,
-      data: {
+    return nodeList.map(node => {
+      // Check if it's a container node
+      const isContainer = 'isContainer' in node && node.isContainer === true;
+      const nodeType = isContainer ? 'containerNode' : 'techNode';
+
+      return {
+        id: node.id,
+        type: nodeType,
+        position: node.position,
+        data: {
         ...node,
         onDelete: onDeleteNode || ((id: string) => {
           const updatedNodes = externalNodes.filter(n => n.id !== id);
@@ -172,9 +184,35 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onNodeSelect,
         availableSubTechnologies,
         isReadOnly
-      }
-    }));
+        }
+      };
+    });
   }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNodeSelect, availableSubTechnologies, isReadOnly]);
+
+  // Handle connection context menu
+  const handleConnectionContextMenu = useCallback((connectionId: string, event: React.MouseEvent) => {
+    setContextMenuConnectionId(connectionId);
+    setContextMenuPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
+  }, []);
+
+  // Handle connection deletion from context menu
+  const handleConnectionDelete = useCallback((connectionId: string) => {
+    const updatedConnections = externalConnections.filter(conn => conn.id !== connectionId);
+    if (onConnectionsChange) {
+      onConnectionsChange(updatedConnections);
+    }
+    setContextMenuConnectionId(null);
+  }, [externalConnections, onConnectionsChange]);
+
+  // Handle canvas click to close context menu
+  const handleCanvasClick = useCallback(() => {
+    if (contextMenuConnectionId) {
+      setContextMenuConnectionId(null);
+    }
+  }, [contextMenuConnectionId]);
 
   const convertToReactFlowEdges = useCallback((connectionList: typeof externalConnections): Edge[] =>
     connectionList.map(conn => {
@@ -200,10 +238,11 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           style: conn.style,
           onStyleChange: onConnectionStyleChange,
           onSelect: onConnectionSelect,
+          onContextMenu: handleConnectionContextMenu,
           isSelected: selectedConnectionId === conn.id
         }
       };
-    }), [onConnectionStyleChange, onConnectionSelect, selectedConnectionId]
+    }), [onConnectionStyleChange, onConnectionSelect, handleConnectionContextMenu, selectedConnectionId]
   );
 
   // Sync ReactFlow nodes back to our format when they change
@@ -366,6 +405,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onPaneClick={handleCanvasClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
@@ -426,6 +466,15 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           </div>
         </Panel>
       </ReactFlow>
+      
+      {/* Connection Context Menu */}
+      <ConnectionContextMenu
+        connectionId={contextMenuConnectionId || ''}
+        isVisible={!!contextMenuConnectionId}
+        onDelete={handleConnectionDelete}
+        onClose={() => setContextMenuConnectionId(null)}
+        position={contextMenuPosition}
+      />
     </div>
   );
 };

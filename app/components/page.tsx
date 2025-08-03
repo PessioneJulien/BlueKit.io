@@ -337,7 +337,7 @@ export default function ComponentsPage() {
             <div className="flex gap-4">
               <Select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(value) => setSelectedCategory(value)}
                 className="w-40"
               >
                 <option value="all">All Categories</option>
@@ -348,7 +348,7 @@ export default function ComponentsPage() {
               
               <Select
                 value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
+                onChange={(value) => setSelectedType(value)}
                 className="w-40"
               >
                 <option value="all">All Types</option>
@@ -358,7 +358,7 @@ export default function ComponentsPage() {
               
               <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
+                onChange={(value) => setSortBy(value as 'rating' | 'usage' | 'recent')}
                 className="w-40"
               >
                 <option value="rating">Top Rated</option>
@@ -435,12 +435,12 @@ export default function ComponentsPage() {
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1 mb-4">
                     {component.tags.slice(0, 3).map(tag => (
-                      <Badge key={tag} variant="outline" size="sm">
+                      <Badge key={tag} variant="secondary" size="sm">
                         #{tag}
                       </Badge>
                     ))}
                     {component.tags.length > 3 && (
-                      <Badge variant="outline" size="sm">
+                      <Badge variant="secondary" size="sm">
                         +{component.tags.length - 3}
                       </Badge>
                     )}

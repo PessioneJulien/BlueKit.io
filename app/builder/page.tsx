@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useStoreHydration } from '@/lib/hooks/useStoreHydration';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -10,7 +10,7 @@ import { getStackById } from '@/lib/data/stacksData';
 import type { CanvasNode } from '@/lib/stores/stackStore';
 import type { Connection } from '@/components/ui/VisualBuilder/ConnectionLine';
 
-export default function BuilderPage() {
+function BuilderContent() {
   const searchParams = useSearchParams();
   const presetId = searchParams.get('preset');
   const isHydrated = useStoreHydration();
@@ -47,22 +47,17 @@ export default function BuilderPage() {
     const stackData = {
       name: stack.name,
       description: stack.description,
-      technologies: stack.nodes.map(node => ({
-        id: node.id,
-        name: node.name,
-        category: node.category,
-        description: node.description,
-        setupTimeHours: node.setupTimeHours,
-        difficulty: node.difficulty,
-        pricing: node.pricing,
-        stars: 4.5 // Default rating
+      nodes: stack.nodes.map((node, index) => ({
+        ...node,
+        position: { x: index * 200, y: 100 }
+      })) as CanvasNode[],
+      connections: stack.connections.map(conn => ({
+        ...conn,
+        sourcePosition: { x: 0, y: 0 },
+        targetPosition: { x: 0, y: 0 },
+        type: conn.type as 'compatible' | 'incompatible' | 'neutral'
       })),
-      author: 'You',
-      stars: 0,
-      uses: 0,
-      difficulty: 'intermediate' as const,
-      category: 'Custom',
-      isPublic: false,
+      is_public: false,
     };
 
     saveStack(stackData);
@@ -129,5 +124,13 @@ export default function BuilderPage() {
         onSave={handleSaveStack} 
       />
     </div>
+  );
+}
+
+export default function BuilderPage() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <BuilderContent />
+    </Suspense>
   );
 }

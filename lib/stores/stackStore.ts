@@ -110,7 +110,7 @@ export const useStackStore = create<StackState>()(
             const newNode: CanvasNode = {
               id: technology.id,
               name: technology.name,
-              category: technology.category as any,
+              category: technology.category as string,
               description: technology.description,
               setupTimeHours: technology.setupTimeHours || 1,
               difficulty: technology.difficulty || 'beginner',
@@ -151,7 +151,7 @@ export const useStackStore = create<StackState>()(
               return {
                 id: tech.id,
                 name: tech.name,
-                category: tech.category as any,
+                category: tech.category as string,
                 description: tech.description,
                 setupTimeHours: tech.setupTimeHours || 1,
                 difficulty: tech.difficulty || 'beginner',
@@ -237,9 +237,13 @@ export const useStackStore = create<StackState>()(
               
               data = result.data;
               error = result.error;
-            } catch (insertError: any) {
+            } catch (insertError: unknown) {
               // If columns don't exist yet, try without them (fallback)
-              if (insertError?.message?.includes('column') && (insertError?.message?.includes('nodes') || insertError?.message?.includes('connections'))) {
+              if ((insertError as Record<string, unknown>)?.message && 
+                  typeof (insertError as Record<string, unknown>).message === 'string' &&
+                  ((insertError as Record<string, unknown>).message as string).includes('column') && 
+                  (((insertError as Record<string, unknown>).message as string).includes('nodes') || 
+                   ((insertError as Record<string, unknown>).message as string).includes('connections'))) {
                 console.log('Falling back to legacy format (missing nodes/connections columns)');
                 const result = await supabase
                   .from('stacks')
@@ -267,12 +271,12 @@ export const useStackStore = create<StackState>()(
             }), false, 'saveStack');
             
             return data.id;
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Failed to save stack:', {
-              message: error?.message,
-              code: error?.code,
-              details: error?.details,
-              hint: error?.hint,
+              message: (error as Record<string, unknown>)?.message,
+              code: (error as Record<string, unknown>)?.code,
+              details: (error as Record<string, unknown>)?.details,
+              hint: (error as Record<string, unknown>)?.hint,
               fullError: error
             });
             throw error; // Re-throw to see the actual error in the UI

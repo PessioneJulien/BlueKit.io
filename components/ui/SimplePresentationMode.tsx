@@ -39,7 +39,7 @@ interface PresentationSlide {
   id: string;
   title: string;
   type: 'intro' | 'overview' | 'category' | 'technology' | 'summary';
-  content: any;
+  content: unknown;
 }
 
 const slideVariants = {

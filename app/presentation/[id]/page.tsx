@@ -120,7 +120,7 @@ export default function PresentationPage() {
           // Fallback to mock data for existing presentations
           const mockStack = mockStacks[stackId as keyof typeof mockStacks];
           if (mockStack) {
-            setStack(mockStack as any);
+            setStack(mockStack as unknown as Stack);
           } else {
             setError('Stack not found');
           }
@@ -131,7 +131,7 @@ export default function PresentationPage() {
         // Fallback to mock data
         const mockStack = mockStacks[stackId as keyof typeof mockStacks];
         if (mockStack) {
-          setStack(mockStack as any);
+          setStack(mockStack as unknown as Stack);
         } else {
           setError('Stack not found');
         }

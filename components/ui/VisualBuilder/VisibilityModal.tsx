@@ -52,7 +52,7 @@ export const VisibilityModal: React.FC<VisibilityModalProps> = ({
         <CardContent className="space-y-4">
           <div className="text-sm text-slate-300">
             Are you sure you want to change the visibility of 
-            <span className="font-medium text-slate-100"> "{stackName}"</span>?
+            <span className="font-medium text-slate-100"> &quot;{stackName}&quot;</span>?
           </div>
 
           {/* Current vs New State */}
@@ -111,7 +111,7 @@ export const VisibilityModal: React.FC<VisibilityModalProps> = ({
                     <strong className="text-slate-300">Making private means:</strong>
                     <ul className="mt-1 space-y-1 text-xs">
                       <li>• Only you can access this stack</li>
-                      <li>• Stack won't appear in public searches</li>
+                      <li>• Stack won&apos;t appear in public searches</li>
                       <li>• Others cannot discover or fork it</li>
                     </ul>
                   </>

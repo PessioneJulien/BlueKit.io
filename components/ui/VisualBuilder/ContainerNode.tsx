@@ -1,0 +1,103 @@
+'use client';
+
+import { memo, useContext } from 'react';
+import { NodeProps } from 'reactflow';
+import { NodeData, SubTechnology } from './CanvasNode';
+import { NestedContainerNode, NestedContainerNodeData } from './NestedContainerNode';
+import { ConnectedContainerNode, ConnectedContainerNodeData } from './ConnectedContainerNode';
+
+// Context for container view mode
+import { createContext } from 'react';
+
+export type ContainerViewMode = 'nested' | 'connected';
+
+export const ContainerViewContext = createContext<ContainerViewMode>('nested');
+
+export interface ContainerNodeData extends NodeData {
+  isContainer: true;
+  containerType: 'docker' | 'kubernetes';
+  containedNodes?: NodeData[];
+  connectedServices?: {
+    id: string;
+    name: string;
+    port: string;
+    status: 'connected' | 'disconnected' | 'pending';
+  }[];
+  ports?: string[];
+  volumes?: string[];
+  networks?: string[];
+  resources?: {
+    cpu: string;
+    memory: string;
+  };
+  status?: 'running' | 'stopped' | 'building' | 'pending';
+  replicas?: number;
+  isCompact?: boolean;
+  width?: number;
+  height?: number;
+  documentation?: string;
+  onDelete: (id: string) => void;
+  onToggleCompact: (id: string) => void;
+  onAddSubTechnology?: (mainTechId: string, subTechId: string) => void;
+  onRemoveSubTechnology?: (mainTechId: string, subTechId: string) => void;
+  onDocumentationSave?: (nodeId: string, documentation: string) => void;
+  onStyleChange?: (nodeId: string, style: Record<string, unknown>) => void;
+  onNodeSelect?: (nodeId: string) => void;
+  availableSubTechnologies?: SubTechnology[];
+  isReadOnly?: boolean;
+}
+
+export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({ 
+  data,
+  selected,
+  ...props
+}) => {
+  const viewMode = useContext(ContainerViewContext);
+
+  // Convert data to the appropriate format for each view
+  const convertToNestedData = (): NestedContainerNodeData => ({
+    ...data,
+    containedNodes: data.containedNodes || [],
+    status: (data.status as 'running' | 'stopped' | 'pending') || 'running',
+    resources: data.resources || { cpu: '1 CPU', memory: '512MB' },
+    width: data.width || 400,
+    height: data.height || 300,
+    isCompact: data.isCompact || false,
+    onDelete: () => data.onDelete(data.id),
+    onToggleCompact: () => data.onToggleCompact(data.id)
+  });
+
+  const convertToConnectedData = (): ConnectedContainerNodeData => ({
+    ...data,
+    connectedServices: data.connectedServices || [],
+    status: (data.status as 'running' | 'stopped' | 'pending') || 'running',
+    resources: data.resources || { cpu: '1 CPU', memory: '512MB' },
+    width: data.width || 300,
+    height: data.height || 200,
+    isCompact: data.isCompact || false,
+    onDelete: () => data.onDelete(data.id),
+    onToggleCompact: () => data.onToggleCompact(data.id)
+  });
+
+  // Render the appropriate view based on context
+  if (viewMode === 'connected') {
+    return (
+      <ConnectedContainerNode 
+        data={convertToConnectedData()} 
+        selected={selected}
+        {...props}
+      />
+    );
+  }
+
+  // Default to nested view
+  return (
+    <NestedContainerNode 
+      data={convertToNestedData()} 
+      selected={selected}
+      {...props}
+    />
+  );
+});
+
+ContainerNode.displayName = 'ContainerNode';

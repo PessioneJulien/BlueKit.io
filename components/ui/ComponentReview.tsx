@@ -11,7 +11,8 @@ import {
   ThumbsDown,
   Calendar,
   MessageCircle,
-  CheckCircle
+  CheckCircle,
+  Star
 } from 'lucide-react';
 
 interface Review {
@@ -41,8 +42,6 @@ interface ComponentReviewProps {
 }
 
 export const ComponentReview: React.FC<ComponentReviewProps> = ({
-  componentId,
-  componentName,
   currentUserId,
   onReviewSubmit
 }) => {

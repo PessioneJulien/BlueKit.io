@@ -8,6 +8,8 @@ import { NodeData, NodePosition, SubTechnology } from './CanvasNode';
 import { Connection } from './ConnectionLine';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { NodeCustomStyle } from './NodeColorPicker';
+import { ContainerViewManager, ContainerViewType } from './ContainerViewManager';
+import { ContainerViewContext } from './ContainerNode';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -39,6 +41,7 @@ import { NodeToolbar } from './NodeToolbar';
 import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
 import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
+import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
@@ -129,6 +132,28 @@ const mainTechnologies: NodeData[] = [
     canAcceptSubTech: ['testing'],
     compatibleWith: ['nodejs', 'express'],
     incompatibleWith: ['postgresql']
+  },
+  {
+    id: 'docker',
+    name: 'Docker',
+    category: 'devops',
+    description: 'Container platform for packaging applications',
+    setupTimeHours: 2,
+    difficulty: 'intermediate',
+    pricing: 'free',
+    isMainTechnology: true,
+    compatibleWith: ['nodejs', 'react', 'postgresql', 'mongodb']
+  },
+  {
+    id: 'kubernetes',
+    name: 'Kubernetes',
+    category: 'devops',
+    description: 'Container orchestration platform',
+    setupTimeHours: 5,
+    difficulty: 'expert',
+    pricing: 'free',
+    isMainTechnology: true,
+    compatibleWith: ['docker']
   }
 ];
 
@@ -272,6 +297,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [stackDescription, setStackDescription] = useState(initialStack?.description || '');
   const [nodes, setNodes] = useState<CanvasNode[]>(initialStack?.nodes || []);
   const [connections, setConnections] = useState<Connection[]>(initialStack?.connections || []);
+  const [containerViewMode, setContainerViewMode] = useState<ContainerViewType>('nested');
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'components' | 'export'>('components');
   const [showExportModal, setShowExportModal] = useState(false);
@@ -283,6 +309,13 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [isPublic, setIsPublic] = useState(true);
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPresentationMode, setShowPresentationMode] = useState(false);
+
+  // Container logic
+  const { 
+    convertToContainer, 
+    processContainerRelationships,
+    handleNodeDrop 
+  } = useContainerLogic();
 
   // Undo/Redo state
   const historyRef = useRef<Array<{
@@ -553,7 +586,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       return;
     }
 
-    const newNode: CanvasNode = {
+    let newNode: CanvasNode = {
       ...component,
       position,
       isCompact: true,
@@ -561,8 +594,20 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       height: 80
     };
 
-    setNodes(prev => [...prev, newNode]);
-  }, [usedComponentIds, handleAddSubTechnology, nodes]);
+    // Convert Docker/Kubernetes to container nodes
+    if (component.id === 'docker' || component.id === 'kubernetes') {
+      newNode = convertToContainer(newNode);
+    }
+
+    // Check if node is being dropped into a container
+    const { updatedNodes, wasContained } = handleNodeDrop(newNode, position, nodes);
+    
+    if (wasContained) {
+      setNodes(updatedNodes);
+    } else {
+      setNodes(prev => [...prev, newNode]);
+    }
+  }, [usedComponentIds, handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop]);
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
@@ -786,13 +831,22 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
           {/* Sidebar Content */}
           {selectedTab === 'components' && (
-            <ComponentPalette
-              availableComponents={availableComponents}
-              subTechnologies={subTechnologies}
-              onAddComponent={handleAddComponent}
-              usedComponentIds={usedComponentIds}
-              className="flex-1"
-            />
+            <div className="flex-1 flex flex-col gap-4 p-4">
+              {/* Container View Manager */}
+              <ContainerViewManager
+                currentView={containerViewMode}
+                onViewChange={setContainerViewMode}
+              />
+              
+              {/* Component Palette */}
+              <ComponentPalette
+                availableComponents={availableComponents}
+                subTechnologies={subTechnologies}
+                onAddComponent={handleAddComponent}
+                usedComponentIds={usedComponentIds}
+                className="flex-1"
+              />
+            </div>
           )}
 
           {selectedTab === 'export' && (
@@ -1152,9 +1206,10 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         )}
 
         {/* Canvas */}
-        <ReactFlowCanvas
-          nodes={nodes}
-          connections={connections}
+        <ContainerViewContext.Provider value={containerViewMode}>
+          <ReactFlowCanvas
+            nodes={nodes}
+            connections={connections}
           onNodesChange={setNodes}
           onConnectionsChange={(newConnections) => {
             const convertedConnections: Connection[] = newConnections.map(conn => ({
@@ -1176,6 +1231,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           availableSubTechnologies={subTechnologies}
           className="flex-1"
         />
+        </ContainerViewContext.Provider>
       </div>
 
       {/* Export Modal */}

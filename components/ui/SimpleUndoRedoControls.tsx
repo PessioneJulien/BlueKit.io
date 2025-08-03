@@ -5,7 +5,7 @@ import { Undo2, Redo2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SimpleUndoRedoControlsProps {
-  undoRedoState: StableUndoRedoState<any>;
+  undoRedoState: StableUndoRedoState<unknown>;
   className?: string;
   showBadge?: boolean;
   showClearButton?: boolean;
