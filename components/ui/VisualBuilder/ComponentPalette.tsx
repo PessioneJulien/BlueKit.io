@@ -332,18 +332,6 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
           </button>
         </div>
         
-        {/* Custom Container Creation Button */}
-        {onOpenCustomContainerModal && (
-          <Button
-            onClick={onOpenCustomContainerModal}
-            variant="outline"
-            size="sm"
-            className="w-full mb-3 border-dashed border-purple-500/50 text-purple-400 hover:text-purple-300 hover:border-purple-400"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Créer un conteneur personnalisé
-          </Button>
-        )}
         
         {/* Search */}
         <Input
@@ -488,31 +476,68 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
         ) : (
           /* Official Components */
           <>
-            {/* Category View */}
+            {/* Simple Category Cards */}
             {!searchQuery && !selectedCategory && (
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Categories</h3>
-                {categories.map(({ category, count }) => (
-                  <Button
-                    key={category}
-                    variant="ghost"
-                    className="w-full justify-start p-3 h-auto"
-                    onClick={() => setSelectedCategory(category)}
-                  >
-                    <div className="flex items-center justify-between w-full">
+                <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">
+                  Catégories
+                </h3>
+                
+                <div className="space-y-1">
+                  {categories.map(({ category, count }) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 border border-transparent hover:border-slate-600 transition-all duration-200 text-left"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="text-2xl">{categoryIcons[category as keyof typeof categoryIcons]}</div>
-                        <div className="text-left">
-                          <div className="font-medium text-slate-200 capitalize">
-                            {category === 'imported' ? 'Recently Imported' : category}
+                        <div className="w-8 h-8 rounded bg-slate-700 flex items-center justify-center">
+                          <span className="text-lg">
+                            {categoryIcons[category as keyof typeof categoryIcons]}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-200 capitalize text-sm">
+                            {category === 'imported' ? 'Importés récemment' : category}
                           </div>
-                          <div className="text-xs text-slate-400">{count} components</div>
+                          <div className="text-xs text-slate-400">
+                            {count} composant{count > 1 ? 's' : ''}
+                          </div>
                         </div>
                       </div>
-                      <Badge variant={category === 'imported' ? 'primary' : 'default'} size="sm">{count}</Badge>
-                    </div>
-                  </Button>
-                ))}
+                      <div className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded">
+                        {count}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Special Actions */}
+                {onOpenCustomContainerModal && (
+                  <div className="mt-4 pt-3 border-t border-slate-700">
+                    <h4 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">
+                      Actions
+                    </h4>
+                    
+                    <button
+                      onClick={onOpenCustomContainerModal}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-dashed border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-400/50 text-purple-300 hover:text-purple-200 transition-all duration-200"
+                    >
+                      <div className="w-8 h-8 rounded bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                        <span className="text-lg">🛠️</span>
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-medium text-sm">
+                          Créer un conteneur personnalisé
+                        </div>
+                        <div className="text-xs text-purple-400/70">
+                          Définir votre propre template
+                        </div>
+                      </div>
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

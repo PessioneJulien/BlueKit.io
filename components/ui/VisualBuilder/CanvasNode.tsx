@@ -52,12 +52,6 @@ export interface NodeData {
   isContainer?: boolean;
   containerType?: 'docker' | 'kubernetes';
   containedNodes?: NodeData[];
-  connectedServices?: {
-    id: string;
-    name: string;
-    port: string;
-    status: 'connected' | 'disconnected' | 'pending';
-  }[];
   ports?: string[];
   status?: 'running' | 'stopped' | 'pending';
 }

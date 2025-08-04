@@ -5,13 +5,12 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { 
   Box, 
-  Network, 
   Layers,
   Settings,
   Info
 } from 'lucide-react';
 
-export type ContainerViewType = 'nested' | 'connected';
+export type ContainerViewType = 'nested';
 
 interface ContainerViewManagerProps {
   currentView: ContainerViewType;
@@ -25,10 +24,6 @@ export const ContainerViewManager: React.FC<ContainerViewManagerProps> = ({
   className = ''
 }) => {
   const [showInfo, setShowInfo] = useState(false);
-
-  const handleViewChange = useCallback((view: ContainerViewType) => {
-    onViewChange(view);
-  }, [onViewChange]);
 
   const toggleInfo = useCallback(() => {
     setShowInfo(prev => !prev);
@@ -53,34 +48,20 @@ export const ContainerViewManager: React.FC<ContainerViewManagerProps> = ({
 
       <div className="flex gap-2 mb-3">
         <Button
-          variant={currentView === 'nested' ? 'primary' : 'secondary'}
+          variant="primary"
           size="sm"
-          onClick={() => handleViewChange('nested')}
           className="flex items-center gap-2 text-xs"
         >
           <Box className="h-3 w-3" />
-          Imbriqués
-        </Button>
-        <Button
-          variant={currentView === 'connected' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => handleViewChange('connected')}
-          className="flex items-center gap-2 text-xs"
-        >
-          <Network className="h-3 w-3" />
-          Connectés
+          Mode Imbriqué
         </Button>
       </div>
 
       {showInfo && (
         <div className="bg-slate-900 rounded-md p-3 text-xs text-slate-300 space-y-2">
           <div>
-            <Badge variant="secondary" className="text-xs mb-1">Imbriqués</Badge>
+            <Badge variant="secondary" className="text-xs mb-1">Mode Imbriqué</Badge>
             <p>Docker/Kubernetes deviennent des conteneurs visuels qui englobent les composants.</p>
-          </div>
-          <div>
-            <Badge variant="secondary" className="text-xs mb-1">Connectés</Badge>
-            <p>Docker/Kubernetes apparaissent avec des ports et connexions visuelles vers les services.</p>
           </div>
         </div>
       )}
@@ -88,7 +69,7 @@ export const ContainerViewManager: React.FC<ContainerViewManagerProps> = ({
       <div className="mt-3 pt-3 border-t border-slate-700">
         <div className="text-xs text-slate-400 flex items-center gap-2">
           <Settings className="h-3 w-3" />
-          Vue actuelle: {currentView === 'nested' ? 'Conteneurs Imbriqués' : 'Docker Hub Connecté'}
+          Vue active: Conteneurs Imbriqués
         </div>
       </div>
     </div>

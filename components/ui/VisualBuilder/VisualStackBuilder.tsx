@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ComponentPalette } from './ComponentPalette';
 import { ReactFlowCanvas } from './ReactFlowCanvas';
@@ -8,7 +9,7 @@ import { NodeData, NodePosition, SubTechnology } from './CanvasNode';
 import { Connection } from './ConnectionLine';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { NodeCustomStyle } from './NodeColorPicker';
-import { ContainerViewManager, ContainerViewType } from './ContainerViewManager';
+import { ContainerViewType } from './ContainerViewManager';
 import { ContainerViewContext } from './ContainerNode';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -42,7 +43,6 @@ import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
 import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
 import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
-import { loadDockerTestTemplate } from '@/lib/data/testTemplate';
 import { CustomContainerModal, ContainerTemplate } from './CustomContainerModal';
 import Link from 'next/link';
 
@@ -424,9 +424,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [stackDescription, setStackDescription] = useState(initialStack?.description || '');
   const [nodes, setNodes] = useState<CanvasNode[]>(initialStack?.nodes || []);
   const [connections, setConnections] = useState<Connection[]>(initialStack?.connections || []);
-  const [containerViewMode, setContainerViewMode] = useState<ContainerViewType>('nested');
+  const containerViewMode: ContainerViewType = 'nested';
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'components' | 'export'>('components');
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -461,7 +460,14 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [showSavedNotification, setShowSavedNotification] = useState(false);
 
   // Get used component IDs
-  const usedComponentIds = useMemo(() => nodes.map(node => node.id), [nodes]);
+  // Extract base component IDs from node IDs (handle unique IDs)
+  const usedComponentIds = useMemo(() => {
+    return nodes.map(node => {
+      // If ID contains timestamp pattern, extract base ID
+      const baseId = node.id.split('-')[0];
+      return baseId;
+    });
+  }, [nodes]);
 
   // Save current state to history
   const saveToHistory = useCallback(() => {
@@ -610,13 +616,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setConnections(template.connections);
   };
 
-  const handleLoadTestTemplate = () => {
-    const testTemplate = loadDockerTestTemplate();
-    setStackName(testTemplate.name);
-    setStackDescription(testTemplate.description);
-    setNodes(testTemplate.nodes);
-    setConnections(testTemplate.connections);
-  };
 
   // Handle documentation save
   const handleDocumentationSave = useCallback((nodeId: string, documentation: string) => {
@@ -729,10 +728,11 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
     console.log('🚀 handleDropComponent called with:', component.name, 'at position:', position);
     
-    if (usedComponentIds.includes(component.id)) {
-      console.log('❌ Component already used:', component.id);
-      return;
-    }
+    // Remove the restriction - allow multiple instances
+    // if (usedComponentIds.includes(component.id)) {
+    //   console.log('❌ Component already used:', component.id);
+    //   return;
+    // }
 
     // If it's a sub-technology, try to add it to a compatible main technology
     if (!component.isMainTechnology) {
@@ -753,8 +753,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       return;
     }
 
+    // Generate unique ID for multiple instances
+    const uniqueId = `${component.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     let newNode: CanvasNode = {
       ...component,
+      id: uniqueId,
       position,
       isCompact: true,
       width: 200,
@@ -774,7 +778,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         height: component.containerType === 'docker' ? 300 : 350,
         isCompact: false,
         containedNodes: [],
-        connectedServices: [],
         ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
         status: 'running'
       };
@@ -792,7 +795,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
-    if (usedComponentIds.includes(component.id)) return;
+    // Remove the restriction on adding the same component multiple times
+    // if (usedComponentIds.includes(component.id)) return;
 
     // If it's a sub-technology, try to add it to a compatible main technology
     if (!component.isMainTechnology) {
@@ -839,8 +843,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       if (position.x !== padding || position.y !== padding) break;
     }
 
+    // Generate unique ID for multiple instances of the same component
+    const uniqueId = `${component.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     let newNode: CanvasNode = {
       ...component,
+      id: uniqueId,
       position,
       isCompact: true, // Start in compact mode
       width: 200,
@@ -860,7 +868,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         height: component.containerType === 'docker' ? 300 : 350,
         isCompact: false,
         containedNodes: [],
-        connectedServices: [],
         ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
         status: 'running'
       };
@@ -886,8 +893,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             isContainer: true,
             containerType,
             containedNodes: [],
-            connectedServices: [],
-            ports: containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
+                ports: containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
             status: 'running' as const,
             width: containerType === 'docker' ? 400 : 500,
             height: containerType === 'docker' ? 300 : 350,
@@ -911,8 +917,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             isContainer: true,
             containerType: template.id as 'docker' | 'kubernetes',
             containedNodes: [],
-            connectedServices: [],
-            ports: template.defaultPorts || [],
+                ports: template.defaultPorts || [],
             status: 'running' as const,
             width: 400,
             height: 300,
@@ -940,7 +945,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         isContainer: true,
         containerType: template.id as 'docker' | 'kubernetes',
         containedNodes: [],
-        connectedServices: [],
         ports: template.defaultPorts || [],
         status: 'running',
         resources: template.defaultResources,
@@ -1085,401 +1089,227 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   return (
     <div className={cn('flex h-screen bg-slate-950', className)}>
-      {/* Component Palette Sidebar */}
+      {/* Subtle Sidebar */}
       {showSidebar && (
-        <div className="w-80 flex flex-col border-r border-slate-700">
-          {/* Sidebar Header */}
+        <div className="w-80 flex flex-col border-r border-slate-700 bg-slate-900/50">
+          {/* Simple Sidebar Header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <Button
-                variant={selectedTab === 'components' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setSelectedTab('components')}
-              >
-                <Layers className="h-4 w-4 mr-1" />
-                Components
-              </Button>
-              <Button
-                variant={selectedTab === 'export' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setSelectedTab('export')}
-              >
-                <Code className="h-4 w-4 mr-1" />
-                Export
-              </Button>
+              <div className="w-6 h-6 rounded bg-slate-800 border border-slate-600 flex items-center justify-center">
+                <Layers className="h-3 w-3 text-slate-400" />
+              </div>
+              <div>
+                <h2 className="font-medium text-sm text-slate-200">
+                  Composants
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Glissez pour ajouter
+                </p>
+              </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowSidebar(false)}
+              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Sidebar Content */}
-          {selectedTab === 'components' && (
-            <div className="flex-1 flex flex-col gap-4 p-4">
-              {/* Container View Manager */}
-              <ContainerViewManager
-                currentView={containerViewMode}
-                onViewChange={setContainerViewMode}
-              />
-              
-              {/* Component Palette */}
-              <ComponentPalette
-                availableComponents={availableComponents}
-                subTechnologies={subTechnologies}
-                onAddComponent={handleAddComponent}
-                onOpenCustomContainerModal={() => setShowCustomContainerModal(true)}
-                usedComponentIds={usedComponentIds}
-                className="flex-1"
-              />
+          {/* Component Palette */}
+          <div className="flex-1 p-4 overflow-y-auto">
+            <ComponentPalette
+              availableComponents={availableComponents}
+              subTechnologies={subTechnologies}
+              onAddComponent={handleAddComponent}
+              onOpenCustomContainerModal={() => setShowCustomContainerModal(true)}
+              usedComponentIds={usedComponentIds}
+              className="h-full"
+            />
+          </div>
+          
+          {/* Simple Footer */}
+          <div className="border-t border-slate-700 p-3">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>{availableComponents.length} disponibles</span>
+              <span>{nodes.length} ajoutés</span>
             </div>
-          )}
-
-          {selectedTab === 'export' && (
-            <div className="flex-1 p-4 space-y-4">
-              {/* Stack Info */}
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-slate-300 mb-2 block">
-                    Stack Name
-                  </label>
-                  <Input
-                    value={stackName}
-                    onChange={(e) => setStackName(e.target.value)}
-                    placeholder="My Awesome Stack"
-                    className="text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-slate-300 mb-2 block">
-                    Description
-                  </label>
-                  <textarea
-                    value={stackDescription}
-                    onChange={(e) => setStackDescription(e.target.value)}
-                    placeholder="Describe your technology stack..."
-                    className="w-full h-20 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 resize-none text-sm"
-                  />
-                </div>
-
-                {/* Visibility Settings */}
-                <div>
-                  <label className="text-sm font-medium text-slate-300 mb-2 block">
-                    Visibility
-                  </label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={isPublic ? 'primary' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        if (!isPublic) {
-                          setShowVisibilityModal(true);
-                        }
-                      }}
-                      className="flex-1 text-xs h-8"
-                    >
-                      <Globe className="w-3 h-3 mr-1" />
-                      Public
-                    </Button>
-                    <Button
-                      variant={!isPublic ? 'primary' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        if (isPublic) {
-                          setShowVisibilityModal(true);
-                        }
-                      }}
-                      className="flex-1 text-xs h-8"
-                    >
-                      <Lock className="w-3 h-3 mr-1" />
-                      Private
-                    </Button>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {isPublic 
-                      ? "Anyone can view and discover your stack"
-                      : "Only you can access this stack"
-                    }
-                  </p>
-                </div>
-              </div>
-
-              {/* Statistics */}
-              <Card variant="glass">
-                <CardHeader>
-                  <CardTitle className="text-sm">Stack Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Components</span>
-                    <span className="text-slate-200">{stackStats.nodeCount}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Connections</span>
-                    <span className="text-slate-200">{stackStats.connectionCount}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Setup Time</span>
-                    <span className="text-slate-200">{stackStats.totalSetupTime}h</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Difficulty</span>
-                    <Badge 
-                      variant={
-                        stackStats.averageDifficulty === 'beginner' ? 'success' :
-                        stackStats.averageDifficulty === 'intermediate' ? 'warning' : 'danger'
-                      }
-                      size="sm"
-                    >
-                      {stackStats.averageDifficulty}
-                    </Badge>
-                  </div>
-                  {stackStats.hasIncompatible && (
-                    <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded mt-2">
-                      <Info className="h-4 w-4 text-red-400" />
-                      <span className="text-xs text-red-300">
-                        Incompatible components detected
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Actions */}
-              <div className="space-y-2">
-                {!user ? (
-                  <div className="space-y-2">
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-amber-400 text-sm mb-2">
-                        <Lock className="w-4 h-4" />
-                        Login Required
-                      </div>
-                      <p className="text-xs text-slate-400 mb-3">
-                        You need to be logged in to save and share your stacks.
-                      </p>
-                      <Link href="/auth/login">
-                        <Button variant="primary" size="sm" className="w-full">
-                          <LogIn className="w-4 h-4 mr-2" />
-                          Login to Save
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button 
-                      variant="primary" 
-                      className="w-full"
-                      onClick={handleSave}
-                      disabled={!stackName || nodes.length === 0 || isSaving}
-                      isLoading={isSaving}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {isSaving ? 'Saving...' : `Save ${isPublic ? 'Public' : 'Private'}`}
-                    </Button>
-                    
-                    {/* Quick Save Options */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setIsPublic(true);
-                          setTimeout(handleSave, 100);
-                        }}
-                        disabled={!stackName || nodes.length === 0 || isSaving}
-                        className="text-xs"
-                      >
-                        <Globe className="w-3 h-3 mr-1" />
-                        Public
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setIsPublic(false);
-                          setTimeout(handleSave, 100);
-                        }}
-                        disabled={!stackName || nodes.length === 0 || isSaving}
-                        className="text-xs"
-                      >
-                        <Lock className="w-3 h-3 mr-1" />
-                        Private
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={() => setShowExportModal(true)}
-                    disabled={nodes.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
-                  </Button>
-                  <Button variant="secondary" size="sm">
-                    <Share2 className="h-4 w-4 mr-1" />
-                    Share
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
       {/* Main Canvas Area */}
       <div className="flex-1 flex flex-col">
-        {/* Top Toolbar */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700 bg-slate-900/50">
-          <div className="flex items-center gap-4">
-            {!showSidebar && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(true)}
-              >
-                <Layers className="h-4 w-4 mr-2" />
-                Show Sidebar
-              </Button>
-            )}
-            
-            <div className="text-slate-300">
-              <h1 className="font-semibold">
-                {stackName || 'Untitled Stack'}
-              </h1>
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-slate-500">
-                  Visual Stack Builder
-                </p>
-                {user && (
-                  <Badge variant="success" size="sm" className="text-xs">
-                    Logged in as {user.name}
-                  </Badge>
-                )}
-                {!user && (
-                  <Badge variant="warning" size="sm" className="text-xs">
-                    Not logged in
-                  </Badge>
-                )}
-                {user && (
-                  <Badge 
-                    variant={isPublic ? "default" : "secondary"} 
-                    size="sm" 
-                    className="text-xs"
-                  >
-                    {isPublic ? (
-                      <>
-                        <Globe className="w-3 h-3 mr-1" />
-                        Public
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-3 h-3 mr-1" />
-                        Private
-                      </>
-                    )}
-                  </Badge>
-                )}
+        {/* Subtle Modern Topbar */}
+        <div className="relative border-b border-slate-700 bg-slate-900/60 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 py-3">
+            {/* Left Section - Project Info */}
+            <div className="flex items-center gap-4">
+              {!showSidebar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSidebar(true)}
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  <Layers className="h-4 w-4 mr-2" />
+                  Composants
+                </Button>
+              )}
+              
+              <div className="flex items-center gap-3">
+                {/* Subtle Project Icon */}
+                <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+                  <div className="text-blue-400 text-sm">⚡</div>
+                </div>
+                
+                {/* Editable Project Details */}
+                <div className="flex items-center gap-3">
+                  {/* Editable Title */}
+                  <input
+                    type="text"
+                    value={stackName}
+                    onChange={(e) => setStackName(e.target.value)}
+                    placeholder="Nom du stack"
+                    className="bg-transparent text-slate-200 font-medium text-base border-none outline-none hover:bg-slate-800/50 focus:bg-slate-800 px-2 py-1 rounded transition-colors min-w-[200px]"
+                  />
+                  
+                  {/* Clickable Public/Private Badge */}
+                  {user && (
+                    <button
+                      onClick={() => setShowVisibilityModal(true)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors hover:opacity-80 ${
+                        isPublic 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      }`}
+                      title="Cliquez pour changer la visibilité"
+                    >
+                      {isPublic ? (
+                        <>
+                          <Globe className="w-3 h-3" />
+                          Public
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3 h-3" />
+                          Privé
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Test Template Button */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleLoadTestTemplate}
-              className="text-xs"
-            >
-              🧪 Test Template
-            </Button>
-            
-            <div className="flex items-center gap-1 mr-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={undo}
-                disabled={!canUndo}
-                title="Undo (Ctrl+Z)"
-                className="p-2"
-              >
-                <Undo className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={redo}
-                disabled={!canRedo}
-                title="Redo (Ctrl+Shift+Z)"
-                className="p-2"
-              >
-                <Redo className="h-4 w-4" />
-              </Button>
-              <div className="w-px h-6 bg-slate-700 mx-1" />
-              <Button
-                variant={hasUnsavedChanges ? "warning" : "ghost"}
-                size="sm"
-                onClick={saveWork}
-                title="Save (Ctrl+S)"
-                className="p-2"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
+              
+              {/* Unsaved Changes Indicator */}
               {hasUnsavedChanges && (
-                <span className="text-xs text-orange-400 ml-1">Unsaved</span>
+                <div className="flex items-center gap-1 text-xs text-orange-400">
+                  <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
+                  Non sauvegardé
+                </div>
               )}
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowTemplatesModal(true)}
-            >
-              <Layers className="h-4 w-4 mr-1" />
-              Templates
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowPresentationMode(true)}
-              disabled={nodes.length === 0}
-              title="View in presentation mode"
-            >
-              <Monitor className="h-4 w-4 mr-1" />
-              Present
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSave}
-              disabled={!user || !stackName?.trim() || nodes.length === 0}
-              className={cn(
-                "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700",
-                !user && "from-gray-600 to-gray-700 hover:from-gray-600 hover:to-gray-700 cursor-not-allowed"
-              )}
-              title={!user ? "Login required to save stacks" : "Save stack to database"}
-            >
-              {!user ? (
-                <>
-                  <Lock className="h-4 w-4 mr-1" />
-                  Save to Cloud
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4 mr-1" />
-                  Save to Cloud
-                </>
-              )}
-            </Button>
-            
+
+            {/* Right Section - Actions */}
+            <div className="flex items-center gap-2">
+              {/* Quick Actions */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  title="Annuler (Ctrl+Z)"
+                  className="h-10 w-10 p-0 text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                >
+                  <Undo className="h-10 w-10" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  title="Refaire (Ctrl+Shift+Z)"
+                  className="h-10 w-10 p-0 text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                >
+                  <Redo className="h-10 w-10" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={saveWork}
+                  title="Sauvegarder local (Ctrl+S)"
+                  className={`h-10 w-10 p-0 hover:text-slate-200 ${
+                    hasUnsavedChanges ? 'text-orange-400' : 'text-slate-400'
+                  }`}
+                >
+                  <Save className="h-10 w-10" />
+                </Button>
+              </div>
+              
+              <div className="w-px h-4 bg-slate-600" />
+              
+              {/* Secondary Actions */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExportModal(true)}
+                  disabled={nodes.length === 0}
+                  className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                  title="Exporter le stack"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTemplatesModal(true)}
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  <Layers className="h-4 w-4 mr-1" />
+                  Templates
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPresentationMode(true)}
+                  disabled={nodes.length === 0}
+                  className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                >
+                  <Monitor className="h-4 w-4 mr-1" />
+                  Présenter
+                </Button>
+              </div>
+              
+              <div className="w-px h-4 bg-slate-600" />
+              
+              {/* Primary Save Action */}
+              <Button
+                onClick={handleSave}
+                disabled={!user || !stackName?.trim() || nodes.length === 0}
+                className={`bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 ${
+                  (!user || !stackName?.trim() || nodes.length === 0) 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : ''
+                }`}
+                title={!user ? "Connexion requise" : "Sauvegarder dans le cloud"}
+              >
+                {!user ? (
+                  <>
+                    <Lock className="h-3 w-3 mr-1" />
+                    Connexion
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-3 w-3 mr-1" />
+                    Sauvegarder
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1584,12 +1414,20 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         }}
       />
 
-      {/* Save Notification */}
+      {/* Simple Save Notification */}
       {showSavedNotification && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
-          <Save className="h-4 w-4" />
-          <span>Saved successfully!</span>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.3 }}
+          className="fixed bottom-4 right-4 z-50"
+        >
+          <div className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <Save className="h-10 w-10" />
+            <span className="text-sm font-medium">Sauvegardé !</span>
+          </div>
+        </motion.div>
       )}
     </div>
   );

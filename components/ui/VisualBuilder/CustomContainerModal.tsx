@@ -244,7 +244,7 @@ export const CustomContainerModal: React.FC<CustomContainerModalProps> = ({
                     </div>
                   )}
                   <div className="text-slate-500">
-                    🔧 {Object.keys(template.environmentVariables).length} variables d'env.
+                    🔧 {Object.keys(template.environmentVariables).length} variables d&apos;env.
                   </div>
                 </div>
               </div>

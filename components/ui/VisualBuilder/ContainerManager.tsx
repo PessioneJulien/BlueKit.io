@@ -19,7 +19,7 @@ export class ContainerManager {
     id: string,
     position: { x: number; y: number },
     containedNodes: NodeData[] = [],
-    viewMode: 'nested' | 'connected' = 'nested'
+    viewMode: 'nested' = 'nested'
   ): ContainerNodeData {
     const baseContainer = {
       id,
@@ -43,22 +43,7 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    if (viewMode === 'connected') {
-      return {
-        ...baseContainer,
-        connectedServices: containedNodes.map((node, index) => ({
-          id: node.id,
-          name: node.name,
-          port: `${3000 + index}`,
-          status: 'connected' as const
-        })),
-        ports: ['3000', '5000', '8080'],
-        width: 300,
-        height: 200
-      };
-    }
-
-    // Nested view (default)
+    // Nested view
     return {
       ...baseContainer,
       containedNodes,
@@ -75,7 +60,7 @@ export class ContainerManager {
     id: string,
     position: { x: number; y: number },
     containedNodes: NodeData[] = [],
-    viewMode: 'nested' | 'connected' = 'nested'
+    viewMode: 'nested' = 'nested'
   ): ContainerNodeData {
     const baseCluster = {
       id,
@@ -101,22 +86,7 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    if (viewMode === 'connected') {
-      return {
-        ...baseCluster,
-        connectedServices: containedNodes.map((node, index) => ({
-          id: node.id,
-          name: node.name,
-          port: `${8080 + index}`,
-          status: 'connected' as const
-        })),
-        ports: ['80', '443', '8080', '9090'],
-        width: 400,
-        height: 250
-      };
-    }
-
-    // Nested view (default)
+    // Nested view
     return {
       ...baseCluster,
       containedNodes,

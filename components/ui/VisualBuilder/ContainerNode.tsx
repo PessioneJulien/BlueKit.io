@@ -4,12 +4,11 @@ import { memo, useContext } from 'react';
 import { NodeProps } from 'reactflow';
 import { NodeData, SubTechnology, ResourceStats } from './CanvasNode';
 import { NestedContainerNode, NestedContainerNodeData } from './NestedContainerNode';
-import { ConnectedContainerNode, ConnectedContainerNodeData } from './ConnectedContainerNode';
 
 // Context for container view mode
 import { createContext } from 'react';
 
-export type ContainerViewMode = 'nested' | 'connected';
+export type ContainerViewMode = 'nested';
 
 export const ContainerViewContext = createContext<ContainerViewMode>('nested');
 
@@ -17,12 +16,6 @@ export interface ContainerNodeData extends NodeData {
   isContainer: true;
   containerType: 'docker' | 'kubernetes';
   containedNodes?: NodeData[];
-  connectedServices?: {
-    id: string;
-    name: string;
-    port: string;
-    status: 'connected' | 'disconnected' | 'pending';
-  }[];
   ports?: string[];
   volumes?: string[];
   networks?: string[];
@@ -81,31 +74,7 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
     onDropComponent: data.onDropComponent
   });
 
-  const convertToConnectedData = (): ConnectedContainerNodeData => ({
-    ...data,
-    connectedServices: data.connectedServices || [],
-    status: (data.status as 'running' | 'stopped' | 'pending') || 'running',
-    resources: data.resources || { cpu: '1 CPU', memory: '512MB' },
-    width: data.width || 300,
-    height: data.height || 200,
-    isCompact: data.isCompact || false,
-    onDelete: () => data.onDelete(data.id),
-    onToggleCompact: () => data.onToggleCompact(data.id),
-    onConfigure: data.onConfigure ? (resources: ResourceStats, envVars: Record<string, string>) => data.onConfigure!(data.id, resources, envVars) : undefined
-  });
-
-  // Render the appropriate view based on context
-  if (viewMode === 'connected') {
-    return (
-      <ConnectedContainerNode 
-        data={convertToConnectedData()} 
-        selected={selected}
-        {...props}
-      />
-    );
-  }
-
-  // Default to nested view
+  // Always use nested view
   return (
     <NestedContainerNode 
       data={convertToNestedData()} 
