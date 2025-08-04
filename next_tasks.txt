@@ -50,6 +50,14 @@ PROCHAINES TÂCHES - BlueKit.io Stack Builder Platform
 - ✅ **Panel Documentation Flottant** : Fenêtre redimensionnable et déplaçable
 - ✅ **Interface Intuitive** : UX moderne avec curseurs et affordances visuelles
 
+### ✅ AMÉLIORATION EXPÉRIENCE MODALES - TERMINÉ
+- ✅ **Scroll Conditionnel** : Scroll uniquement quand souris sur modal ou clic dessus
+- ✅ **Modales Indépendantes** : ComponentConfigModal centrée comme DocumentationModal
+- ✅ **Hook useConditionalScroll** : Gestion intelligente du scroll selon focus/hover
+- ✅ **Restauration Scroll** : Retour automatique au scroll normal à la fermeture
+- ✅ **Indicateur Visuel Focus** : Ring bleu quand modal est focusée
+- ✅ **Optimisation UX** : Prévention du scroll de page lors de l'interaction avec les modales
+
 ## 🚀 PROCHAINES TÂCHES PRIORITAIRES
 
 ### IMMÉDIAT : Fonctionnalités Avancées & UX

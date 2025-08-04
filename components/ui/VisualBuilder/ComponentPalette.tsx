@@ -26,6 +26,7 @@ interface ComponentPaletteProps {
   availableComponents: NodeData[];
   subTechnologies: SubTechnology[];
   onAddComponent: (component: NodeData) => void;
+  onOpenCustomContainerModal?: () => void;
   usedComponentIds: string[];
   className?: string;
 }
@@ -104,6 +105,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
   availableComponents,
   subTechnologies,
   onAddComponent,
+  onOpenCustomContainerModal,
   usedComponentIds,
   className
 }) => {
@@ -330,6 +332,19 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
           </button>
         </div>
         
+        {/* Custom Container Creation Button */}
+        {onOpenCustomContainerModal && (
+          <Button
+            onClick={onOpenCustomContainerModal}
+            variant="outline"
+            size="sm"
+            className="w-full mb-3 border-dashed border-purple-500/50 text-purple-400 hover:text-purple-300 hover:border-purple-400"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Créer un conteneur personnalisé
+          </Button>
+        )}
+        
         {/* Search */}
         <Input
           placeholder="Search components..."
@@ -546,6 +561,20 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                               isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/30'
                             )}
                             onClick={() => !isUsed && onAddComponent(component)}
+                            draggable={!isUsed}
+                            onDragStart={(e) => {
+                              if (!isUsed) {
+                                e.dataTransfer.effectAllowed = 'copy';
+                                e.dataTransfer.setData('application/json', JSON.stringify({
+                                  type: 'main-component',
+                                  component: component
+                                }));
+                                e.currentTarget.style.opacity = '0.5';
+                              }
+                            }}
+                            onDragEnd={(e) => {
+                              e.currentTarget.style.opacity = '';
+                            }}
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               {component.isMainTechnology === false ? (

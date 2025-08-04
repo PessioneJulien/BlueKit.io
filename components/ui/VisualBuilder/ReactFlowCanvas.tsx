@@ -28,6 +28,7 @@ import { NodeCustomStyle } from './NodeColorPicker';
 import { CustomEdge } from './CustomEdge';
 import { ContainerNode } from './ContainerNode';
 import { ConnectionContextMenu } from './ConnectionContextMenu';
+import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 
 // Custom node types
 const nodeTypes: NodeTypes = {
@@ -61,6 +62,8 @@ interface ReactFlowCanvasProps {
   onDeleteNode?: (nodeId: string) => void;
   onRemoveSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
+  onRemoveFromContainer?: (containerId: string, nodeId: string) => void;
+  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
   // Presentation mode props
@@ -85,6 +88,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   onDeleteNode,
   onRemoveSubTechnology,
   onDropComponent,
+  onRemoveFromContainer,
+  onConvertToContainer,
   availableSubTechnologies,
   className,
   // Presentation mode props with defaults
@@ -95,6 +100,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
+  const { updateContainerNodes } = useContainerLogic();
   
   // Context menu state
   const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null);
@@ -113,7 +119,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         position: node.position,
         data: {
         ...node,
-        onDelete: onDeleteNode || ((id: string) => {
+        onDelete: isContainer ? ((id: string) => {
+          // Container deletion handler
           const updatedNodes = externalNodes.filter(n => n.id !== id);
           onNodesChange(updatedNodes);
           
@@ -121,7 +128,22 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
             conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
           );
           onConnectionsChange(updatedConnections);
-        }),
+        }) : (onDeleteNode || ((id: string) => {
+          const updatedNodes = externalNodes.filter(n => n.id !== id);
+          onNodesChange(updatedNodes);
+          
+          const updatedConnections = externalConnections.filter(
+            conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
+          );
+          onConnectionsChange(updatedConnections);
+        })),
+        onToggleCompact: isContainer ? ((id: string) => {
+          // Container toggle compact handler
+          const updatedNodes = externalNodes.map(n =>
+            n.id === id ? { ...n, isCompact: !n.isCompact } : n
+          );
+          onNodesChange(updatedNodes);
+        }) : undefined,
         onToggleMode: (id: string) => {
           // Find the current state of the node
           const currentNode = externalNodes.find(n => n.id === id);
@@ -156,6 +178,16 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           );
           onNodesChange(updatedNodes);
         },
+        onConfigure: (id: string, resources: unknown, envVars: Record<string, string>) => {
+          const updatedNodes = externalNodes.map(n =>
+            n.id === id ? { 
+              ...n, 
+              resources,
+              environmentVariables: envVars
+            } : n
+          );
+          onNodesChange(updatedNodes);
+        },
         onDocumentationSave,
         onAddSubTechnology,
         onRemoveSubTechnology: onRemoveSubTechnology || ((mainTechId: string, subTechId: string) => {
@@ -182,12 +214,15 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         }),
         onStyleChange: onNodeStyleChange,
         onNodeSelect,
+        onRemoveFromContainer,
+        onDropComponent,
+        onConvertToContainer,
         availableSubTechnologies,
         isReadOnly
         }
       };
     });
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNodeSelect, availableSubTechnologies, isReadOnly]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onConvertToContainer, availableSubTechnologies, isReadOnly]);
 
   // Handle connection context menu
   const handleConnectionContextMenu = useCallback((connectionId: string, event: React.MouseEvent) => {
@@ -269,11 +304,14 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         }
         return node;
       });
-      onNodesChange(updatedNodes);
+      
+      // Update container relationships after position changes
+      const nodesWithContainerUpdates = updateContainerNodes(updatedNodes);
+      onNodesChange(nodesWithContainerUpdates);
     }
     
     console.log('ReactFlow nodes changed:', changes);
-  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes]);
+  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, updateContainerNodes]);
 
   // Handle new connections
   const onConnect = useCallback((params: ReactFlowConnection) => {
@@ -322,7 +360,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     };
 
     setEdges((eds) => addEdge(newEdge, eds));
-  }, [externalNodes, externalConnections, onConnectionsChange, setEdges]);
+  }, [externalNodes, externalConnections, onConnectionsChange, setEdges, onConnectionStyleChange]);
 
   // Handle edge deletion
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -383,13 +421,13 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         return newNode;
       });
     });
-  }, [externalNodes, convertToReactFlowNodes]);
+  }, [externalNodes, convertToReactFlowNodes, setNodes]);
 
   // Update edges when external connections change  
   useEffect(() => {
     const reactFlowEdges = convertToReactFlowEdges(externalConnections);
     setEdges(reactFlowEdges);
-  }, [externalConnections, convertToReactFlowEdges]);
+  }, [externalConnections, convertToReactFlowEdges, setEdges]);
 
 
   return (

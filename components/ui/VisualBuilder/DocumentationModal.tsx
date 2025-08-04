@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Save, Edit3, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { useConditionalScroll } from '@/lib/hooks/useConditionalScroll';
 
 interface DocumentationModalProps {
   isOpen: boolean;
@@ -29,6 +30,9 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({
   const [documentation, setDocumentation] = useState(initialDocumentation);
   const [isEditing, setIsEditing] = useState(!initialDocumentation);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Hook pour la gestion du scroll conditionnel
+  const { modalRef, isModalFocused } = useConditionalScroll(isOpen);
 
   useEffect(() => {
     setDocumentation(initialDocumentation);
@@ -81,7 +85,14 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-slate-900 border border-slate-700 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+      <div 
+        ref={modalRef}
+        className={cn(
+          "relative bg-slate-900 border border-slate-700 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden",
+          isModalFocused && "ring-2 ring-blue-500/50"
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div>
@@ -103,7 +114,7 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div data-scrollable className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
           {isEditing ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">

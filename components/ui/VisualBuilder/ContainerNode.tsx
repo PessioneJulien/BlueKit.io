@@ -2,7 +2,7 @@
 
 import { memo, useContext } from 'react';
 import { NodeProps } from 'reactflow';
-import { NodeData, SubTechnology } from './CanvasNode';
+import { NodeData, SubTechnology, ResourceStats } from './CanvasNode';
 import { NestedContainerNode, NestedContainerNodeData } from './NestedContainerNode';
 import { ConnectedContainerNode, ConnectedContainerNodeData } from './ConnectedContainerNode';
 
@@ -38,6 +38,9 @@ export interface ContainerNodeData extends NodeData {
   documentation?: string;
   onDelete: (id: string) => void;
   onToggleCompact: (id: string) => void;
+  onConfigure?: (id: string, resources: ResourceStats, envVars: Record<string, string>) => void;
+  onRemoveFromContainer?: (containerId: string, nodeId: string) => void;
+  onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
   onAddSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onRemoveSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onDocumentationSave?: (nodeId: string, documentation: string) => void;
@@ -54,6 +57,14 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
 }) => {
   const viewMode = useContext(ContainerViewContext);
 
+  // Debug: Log des données du conteneur
+  console.log('ContainerNode data:', {
+    id: data.id,
+    name: data.name,
+    containedNodes: data.containedNodes?.length || 0,
+    containedNodesDetails: data.containedNodes?.map(n => ({ id: n.id, name: n.name })) || []
+  });
+
   // Convert data to the appropriate format for each view
   const convertToNestedData = (): NestedContainerNodeData => ({
     ...data,
@@ -64,7 +75,10 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
     height: data.height || 300,
     isCompact: data.isCompact || false,
     onDelete: () => data.onDelete(data.id),
-    onToggleCompact: () => data.onToggleCompact(data.id)
+    onToggleCompact: () => data.onToggleCompact(data.id),
+    onConfigure: data.onConfigure ? (resources: ResourceStats, envVars: Record<string, string>) => data.onConfigure!(data.id, resources, envVars) : undefined,
+    onRemoveFromContainer: data.onRemoveFromContainer,
+    onDropComponent: data.onDropComponent
   });
 
   const convertToConnectedData = (): ConnectedContainerNodeData => ({
@@ -76,7 +90,8 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
     height: data.height || 200,
     isCompact: data.isCompact || false,
     onDelete: () => data.onDelete(data.id),
-    onToggleCompact: () => data.onToggleCompact(data.id)
+    onToggleCompact: () => data.onToggleCompact(data.id),
+    onConfigure: data.onConfigure ? (resources: ResourceStats, envVars: Record<string, string>) => data.onConfigure!(data.id, resources, envVars) : undefined
   });
 
   // Render the appropriate view based on context

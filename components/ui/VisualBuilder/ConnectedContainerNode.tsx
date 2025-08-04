@@ -20,7 +20,9 @@ import {
   ArrowRight,
   Circle
 } from 'lucide-react';
-import { NodeData } from './CanvasNode';
+import { NodeData, ResourceStats } from './CanvasNode';
+import { ResourceConfigModal } from './ResourceConfigModal';
+import { PortVolumeModal } from './PortVolumeModal';
 
 export interface ConnectedContainerNodeData extends NodeData {
   isContainer: true;
@@ -45,6 +47,7 @@ export interface ConnectedContainerNodeData extends NodeData {
   isCompact: boolean;
   onDelete: () => void;
   onToggleCompact: () => void;
+  onConfigure?: (resources: ResourceStats, envVars: Record<string, string>) => void;
 }
 
 export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>>(({ 
@@ -53,6 +56,8 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showPortVolumeModal, setShowPortVolumeModal] = useState(false);
 
   const {
     id,
@@ -61,6 +66,7 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
     containerType,
     connectedServices = [],
     ports = [],
+    networks = [],
     replicas,
     status,
     resources,
@@ -68,7 +74,8 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
     height = 200,
     isCompact = false,
     onDelete,
-    onToggleCompact
+    onToggleCompact,
+    onConfigure
   } = data;
 
   const toggleMenu = useCallback(() => {
@@ -86,6 +93,12 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
   const handleToggleCompact = useCallback(() => {
     onToggleCompact();
   }, [onToggleCompact]);
+
+  const handleConfigure = useCallback((resources: ResourceStats, envVars: Record<string, string>) => {
+    if (onConfigure) {
+      onConfigure(resources, envVars);
+    }
+  }, [onConfigure]);
 
   const getContainerIcon = () => {
     switch (containerType) {
@@ -278,28 +291,43 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
           </div>
         )}
 
-        {/* Container Stats */}
-        {showDetails && (
-          <div className="absolute inset-x-3 bottom-3 bg-slate-900/90 backdrop-blur-sm border border-slate-700 rounded-lg p-3">
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-slate-400">Ressources:</span>
-                <div className="text-slate-200 mt-1">
-                  <div>CPU: {resources.cpu}</div>
-                  <div>RAM: {resources.memory}</div>
+        {/* Real-time Container Stats */}
+        <div className="absolute bottom-3 left-3 right-3 z-10">
+          {showDetails ? (
+            <div className="bg-slate-900/90 backdrop-blur-sm border border-slate-700 rounded-lg p-3">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-400">Ressources totales:</span>
+                  <div className="text-slate-200 mt-1">
+                    <div>CPU: {resources.cpu}</div>
+                    <div>RAM: {resources.memory}</div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <span className="text-slate-400">Réseau:</span>
-                <div className="text-slate-200 mt-1">
-                  <div>{connectedServices.length} services</div>
-                  {networks.length > 0 && <div>Networks: {networks.join(', ')}</div>}
-                  {replicas && <div>Réplicas: {replicas}</div>}
+                <div>
+                  <span className="text-slate-400">Réseau:</span>
+                  <div className="text-slate-200 mt-1">
+                    <div>{connectedServices.length} services connectés</div>
+                    {ports.length > 0 && <div>{ports.length} ports exposés</div>}
+                    {replicas && <div>Réplicas: {replicas}</div>}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            // Always show compact stats
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3 text-slate-300">
+                  <span>📊 {resources.cpu}</span>
+                  <span>💾 {resources.memory}</span>
+                </div>
+                <div className="text-slate-400">
+                  {connectedServices.length} connectés
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Context Menu */}
@@ -314,11 +342,21 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
               className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
               onClick={() => {
                 setShowMenu(false);
-                // TODO: Open container settings
+                setShowConfigModal(true);
               }}
             >
               <Settings className="h-4 w-4" />
               Paramètres
+            </button>
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
+              onClick={() => {
+                setShowMenu(false);
+                setShowPortVolumeModal(true);
+              }}
+            >
+              <Server className="h-4 w-4" />
+              Ports & Volumes
             </button>
             <button
               className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white"
@@ -354,6 +392,36 @@ export const ConnectedContainerNode = memo<NodeProps<ConnectedContainerNodeData>
           </div>
         </>
       )}
+
+      {/* Resource Configuration Modal */}
+      <ResourceConfigModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        onSave={handleConfigure}
+        initialResources={resources}
+        initialEnvVars={data.environmentVariables || {}}
+        componentName={name}
+      />
+
+      {/* Port & Volume Configuration Modal */}
+      <PortVolumeModal
+        isOpen={showPortVolumeModal}
+        onClose={() => setShowPortVolumeModal(false)}
+        onSave={(ports, volumes) => {
+          // TODO: Handle ports and volumes save
+          console.log('Ports:', ports, 'Volumes:', volumes);
+        }}
+        initialPorts={ports.map((port, index) => ({
+          id: `port-${index}`,
+          containerPort: port,
+          hostPort: port,
+          protocol: 'tcp' as const,
+          description: `Port ${port}`
+        }))}
+        initialVolumes={[]}
+        containerName={name}
+        containerType={containerType}
+      />
     </div>
   );
 });

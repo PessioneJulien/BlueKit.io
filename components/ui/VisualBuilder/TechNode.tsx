@@ -5,10 +5,11 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { X, MoreVertical, Settings, Info, FileText, Palette } from 'lucide-react';
-import { NodeData, SubTechnology } from './CanvasNode';
+import { NodeData, SubTechnology, ResourceStats } from './CanvasNode';
+import { ResourceConfigModal } from './ResourceConfigModal';
 import { NodeResizeHandle } from './NodeResizeHandle';
 import { FloatingDocPanel } from './FloatingDocPanel';
-import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
+import { NodeCustomStyle } from './NodeColorPicker';
 
 interface TechNodeData extends NodeData {
   isCompact?: boolean;
@@ -23,6 +24,8 @@ interface TechNodeData extends NodeData {
   onRemoveSubTechnology?: (nodeId: string, subTechId: string) => void;
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
   onNodeSelect?: (nodeId: string) => void;
+  onConfigure?: (nodeId: string, resources: ResourceStats, envVars: Record<string, string>) => void;
+  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   availableSubTechnologies?: SubTechnology[];
   // Presentation mode
   isReadOnly?: boolean;
@@ -42,8 +45,16 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [showDocViewer, setShowDocViewer] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+  
+  // Handle configuration save
+  const handleConfigurationSave = (resources: ResourceStats, envVars: Record<string, string>) => {
+    if (data.onConfigure) {
+      data.onConfigure(data.id, resources, envVars);
+    }
+  };
   
   // Get custom style or default category colors
   const getNodeStyle = () => {
@@ -328,6 +339,19 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             </div>
           </div>
 
+          {/* Resource stats */}
+          {!isCompact && data.resources && (
+            <div className="text-xs text-slate-400 border-t border-slate-700 pt-2 space-y-1">
+              <div className="font-medium text-slate-300 mb-1">📊 Resources</div>
+              <div className="grid grid-cols-2 gap-1">
+                <div>CPU: {data.resources.cpu}</div>
+                <div>RAM: {data.resources.memory}</div>
+                {data.resources.storage && <div>Storage: {data.resources.storage}</div>}
+                {data.resources.network && <div>Net: {data.resources.network}</div>}
+              </div>
+            </div>
+          )}
+
           {/* Sub-technologies section */}
           {data.isMainTechnology && data.subTechnologies && data.subTechnologies.length > 0 && (
             <div className="border-t border-slate-600 pt-3 mt-3">
@@ -442,7 +466,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Configure', data.name);
+                    setShowConfigModal(true);
                     setShowMenu(false);
                   }}
                 >
@@ -460,6 +484,47 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   <Info className="w-4 h-4" />
                   Details
                 </button>
+                {!data.isContainer && data.onConvertToContainer && (
+                  <>
+                    <div className="h-px bg-slate-700 my-1" />
+                    <div className="px-2 py-1 text-xs text-slate-500 font-medium">
+                      Convertir en conteneur
+                    </div>
+                    <button 
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        data.onConvertToContainer!(data.id, 'docker');
+                        setShowMenu(false);
+                      }}
+                    >
+                      <div className="w-4 h-4 bg-blue-400 rounded flex items-center justify-center text-xs text-white">🐳</div>
+                      Docker Container
+                    </button>
+                    <button 
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        data.onConvertToContainer!(data.id, 'kubernetes');
+                        setShowMenu(false);
+                      }}
+                    >
+                      <div className="w-4 h-4 bg-green-400 rounded flex items-center justify-center text-xs text-white">☸️</div>
+                      Kubernetes Pod
+                    </button>
+                    <button 
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        data.onConvertToContainer!(data.id, 'custom');
+                        setShowMenu(false);
+                      }}
+                    >
+                      <div className="w-4 h-4 bg-purple-400 rounded flex items-center justify-center text-xs text-white">🛠️</div>
+                      Conteneur personnalisé
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </>
@@ -521,6 +586,18 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           isSubTechnology={!data.isMainTechnology}
           parentTechnologyName={data.isMainTechnology ? undefined : 'Parent Technology'}
           isReadOnly={true}
+        />
+      )}
+
+      {/* Resource Configuration Modal */}
+      {showConfigModal && (
+        <ResourceConfigModal
+          isOpen={showConfigModal}
+          onClose={() => setShowConfigModal(false)}
+          onSave={handleConfigurationSave}
+          initialResources={data.resources}
+          initialEnvVars={data.environmentVariables || {}}
+          componentName={data.name}
         />
       )}
 

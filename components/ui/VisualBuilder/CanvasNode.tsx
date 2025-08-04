@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { ConnectionHandle } from './ConnectionHandle';
 import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
 import { nodeVariants, buttonVariants } from '@/lib/animations/variants';
-import { X, MoreVertical, Settings, Info, Palette } from 'lucide-react';
+import { X, MoreVertical, Settings, Info, Palette, Box } from 'lucide-react';
 
 export interface NodePosition {
   x: number;
@@ -25,6 +25,13 @@ export interface SubTechnology {
   pricing: 'free' | 'freemium' | 'paid';
 }
 
+export interface ResourceStats {
+  cpu: string; // CPU requirements (e.g., "2 cores", "1 CPU")
+  memory: string; // Memory requirements (e.g., "512MB", "2GB")
+  storage?: string; // Storage requirements (e.g., "10GB", "1TB")
+  network?: string; // Network usage (e.g., "1Mbps", "100Mbps")
+}
+
 export interface NodeData {
   id: string;
   name: string;
@@ -39,6 +46,20 @@ export interface NodeData {
   subTechnologies?: SubTechnology[]; // Sous-technologies intégrées
   canAcceptSubTech?: string[]; // Types de sous-technos acceptées
   customStyle?: NodeCustomStyle; // Style personnalisé
+  resources?: ResourceStats; // Resource requirements
+  environmentVariables?: Record<string, string>; // Environment variables for configuration
+  // Container properties (optional)
+  isContainer?: boolean;
+  containerType?: 'docker' | 'kubernetes';
+  containedNodes?: NodeData[];
+  connectedServices?: {
+    id: string;
+    name: string;
+    port: string;
+    status: 'connected' | 'disconnected' | 'pending';
+  }[];
+  ports?: string[];
+  status?: 'running' | 'stopped' | 'pending';
 }
 
 interface CanvasNodeProps {
@@ -54,6 +75,7 @@ interface CanvasNodeProps {
   onEndConnection: (nodeId: string, position: 'left' | 'right') => void;
   onToggleMode?: (id: string) => void;
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
+  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   className?: string;
 }
 
@@ -86,6 +108,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   onEndConnection,
   onToggleMode,
   onStyleChange,
+  onConvertToContainer,
   className
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -432,6 +455,47 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
                 <Info className="w-4 h-4" />
                 Details
               </button>
+              {!data.isContainer && onConvertToContainer && (
+                <>
+                  <div className="h-px bg-slate-700 my-1" />
+                  <div className="px-2 py-1 text-xs text-slate-500 font-medium">
+                    Convertir en conteneur
+                  </div>
+                  <button 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onConvertToContainer(data.id, 'docker');
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Box className="w-4 h-4 text-blue-400" />
+                    Docker Container
+                  </button>
+                  <button 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onConvertToContainer(data.id, 'kubernetes');
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Box className="w-4 h-4 text-green-400" />
+                    Kubernetes Pod
+                  </button>
+                  <button 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onConvertToContainer(data.id, 'custom');
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Box className="w-4 h-4 text-purple-400" />
+                    Conteneur personnalisé
+                  </button>
+                </>
+              )}
             </div>
             </motion.div>
           </>

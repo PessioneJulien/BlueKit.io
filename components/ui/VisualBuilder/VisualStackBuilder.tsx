@@ -42,6 +42,8 @@ import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
 import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
 import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
+import { loadDockerTestTemplate } from '@/lib/data/testTemplate';
+import { CustomContainerModal, ContainerTemplate } from './CustomContainerModal';
 import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
@@ -81,7 +83,17 @@ const mainTechnologies: NodeData[] = [
     isMainTechnology: true,
     canAcceptSubTech: ['styling', 'state-management', 'routing', 'testing', 'documentation'],
     compatibleWith: ['typescript', 'nextjs', 'nodejs'],
-    incompatibleWith: ['angular', 'vue']
+    incompatibleWith: ['angular', 'vue'],
+    resources: {
+      cpu: '0.5 cores',
+      memory: '512MB',
+      storage: '100MB',
+      network: '10Mbps'
+    },
+    environmentVariables: {
+      'NODE_ENV': 'development',
+      'REACT_APP_API_URL': 'http://localhost:3001'
+    }
   },
   {
     id: 'nextjs',
@@ -94,7 +106,17 @@ const mainTechnologies: NodeData[] = [
     isMainTechnology: true,
     canAcceptSubTech: ['styling', 'testing', 'documentation', 'deployment'],
     compatibleWith: ['react', 'typescript', 'vercel', 'supabase'],
-    incompatibleWith: ['gatsby', 'create-react-app']
+    incompatibleWith: ['gatsby', 'create-react-app'],
+    resources: {
+      cpu: '1 core',
+      memory: '1GB',
+      storage: '200MB',
+      network: '20Mbps'
+    },
+    environmentVariables: {
+      'NODE_ENV': 'development',
+      'NEXT_PUBLIC_API_URL': 'http://localhost:3001'
+    }
   },
   {
     id: 'nodejs',
@@ -106,7 +128,18 @@ const mainTechnologies: NodeData[] = [
     pricing: 'free',
     isMainTechnology: true,
     canAcceptSubTech: ['testing', 'linting', 'build-tool'],
-    compatibleWith: ['express', 'typescript', 'mongodb', 'postgresql']
+    compatibleWith: ['express', 'typescript', 'mongodb', 'postgresql'],
+    resources: {
+      cpu: '1 core',
+      memory: '512MB',
+      storage: '150MB',
+      network: '50Mbps'
+    },
+    environmentVariables: {
+      'NODE_ENV': 'development',
+      'PORT': '3000',
+      'API_KEY': ''
+    }
   },
   {
     id: 'postgresql',
@@ -118,7 +151,20 @@ const mainTechnologies: NodeData[] = [
     pricing: 'free',
     isMainTechnology: true,
     canAcceptSubTech: ['testing'],
-    compatibleWith: ['nodejs', 'supabase', 'prisma']
+    compatibleWith: ['nodejs', 'supabase', 'prisma'],
+    resources: {
+      cpu: '2 cores',
+      memory: '2GB',
+      storage: '10GB',
+      network: '100Mbps'
+    },
+    environmentVariables: {
+      'POSTGRES_DB': 'myapp',
+      'POSTGRES_USER': 'user',
+      'POSTGRES_PASSWORD': 'password',
+      'POSTGRES_HOST': 'localhost',
+      'POSTGRES_PORT': '5432'
+    }
   },
   {
     id: 'mongodb',
@@ -131,7 +177,20 @@ const mainTechnologies: NodeData[] = [
     isMainTechnology: true,
     canAcceptSubTech: ['testing'],
     compatibleWith: ['nodejs', 'express'],
-    incompatibleWith: ['postgresql']
+    incompatibleWith: ['postgresql'],
+    resources: {
+      cpu: '1 core',
+      memory: '1GB',
+      storage: '5GB',
+      network: '50Mbps'
+    },
+    environmentVariables: {
+      'MONGO_INITDB_DATABASE': 'myapp',
+      'MONGO_INITDB_ROOT_USERNAME': 'admin',
+      'MONGO_INITDB_ROOT_PASSWORD': 'password',
+      'MONGODB_HOST': 'localhost',
+      'MONGODB_PORT': '27017'
+    }
   },
   {
     id: 'docker',
@@ -142,7 +201,17 @@ const mainTechnologies: NodeData[] = [
     difficulty: 'intermediate',
     pricing: 'free',
     isMainTechnology: true,
-    compatibleWith: ['nodejs', 'react', 'postgresql', 'mongodb']
+    compatibleWith: ['nodejs', 'react', 'postgresql', 'mongodb'],
+    resources: {
+      cpu: '0.5 cores',
+      memory: '256MB',
+      storage: '1GB',
+      network: '10Mbps'
+    },
+    environmentVariables: {
+      'DOCKER_HOST': 'unix:///var/run/docker.sock',
+      'COMPOSE_PROJECT_NAME': 'myapp'
+    }
   },
   {
     id: 'kubernetes',
@@ -153,7 +222,65 @@ const mainTechnologies: NodeData[] = [
     difficulty: 'expert',
     pricing: 'free',
     isMainTechnology: true,
-    compatibleWith: ['docker']
+    compatibleWith: ['docker'],
+    resources: {
+      cpu: '2 cores',
+      memory: '2GB',
+      storage: '5GB',
+      network: '100Mbps'
+    },
+    environmentVariables: {
+      'KUBECONFIG': '/home/user/.kube/config',
+      'KUBERNETES_NAMESPACE': 'default',
+      'KUBECTL_VERSION': 'v1.28.0'
+    }
+  },
+  {
+    id: 'docker-container',
+    name: 'Docker Container',
+    category: 'devops',
+    description: '🐳 Ready-to-use Docker container for hosting applications',
+    setupTimeHours: 1,
+    difficulty: 'beginner',
+    pricing: 'free',
+    isMainTechnology: true,
+    isContainer: true,
+    containerType: 'docker',
+    compatibleWith: ['nodejs', 'react', 'postgresql', 'mongodb'],
+    resources: {
+      cpu: '1 core',
+      memory: '512MB',
+      storage: '2GB',
+      network: '50Mbps'
+    },
+    environmentVariables: {
+      'DOCKER_HOST': 'unix:///var/run/docker.sock',
+      'COMPOSE_PROJECT_NAME': 'myapp'
+    }
+  },
+  {
+    id: 'kubernetes-cluster',
+    name: 'Kubernetes Cluster',
+    category: 'devops',
+    description: '☸️ Ready-to-use Kubernetes cluster for orchestrating containers',
+    setupTimeHours: 3,
+    difficulty: 'intermediate',
+    pricing: 'free',
+    isMainTechnology: true,
+    isContainer: true,
+    containerType: 'kubernetes',
+    compatibleWith: ['docker'],
+    resources: {
+      cpu: '4 cores',
+      memory: '8GB',
+      storage: '20GB',
+      network: '1Gbps'
+    },
+    environmentVariables: {
+      'KUBECONFIG': '/etc/kubernetes/admin.conf',
+      'KUBE_NAMESPACE': 'default',
+      'CLUSTER_NAME': 'production'
+    }
   }
 ];
 
@@ -309,6 +436,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [isPublic, setIsPublic] = useState(true);
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPresentationMode, setShowPresentationMode] = useState(false);
+  const [showCustomContainerModal, setShowCustomContainerModal] = useState(false);
+  const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
 
   // Container logic
   const { 
@@ -481,6 +610,14 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setConnections(template.connections);
   };
 
+  const handleLoadTestTemplate = () => {
+    const testTemplate = loadDockerTestTemplate();
+    setStackName(testTemplate.name);
+    setStackDescription(testTemplate.description);
+    setNodes(testTemplate.nodes);
+    setConnections(testTemplate.connections);
+  };
+
   // Handle documentation save
   const handleDocumentationSave = useCallback((nodeId: string, documentation: string) => {
     const updatedNodes = nodes.map(node => 
@@ -563,9 +700,39 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setNodes(updatedNodes);
   }, [nodes]);
 
+  // Remove component from container
+  const handleRemoveFromContainer = useCallback((containerId: string, nodeId: string) => {
+    console.log('🗑️ Remove node', nodeId, 'from container', containerId);
+    
+    setNodes(prevNodes => {
+      return prevNodes.map(node => {
+        if (node.id === containerId && 'isContainer' in node && node.isContainer) {
+          const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
+          const updatedContainedNodes = (container.containedNodes || []).filter(n => n.id !== nodeId);
+          
+          // Find the removed node to restore it to canvas
+          const removedNode = container.containedNodes?.find(n => n.id === nodeId);
+          
+          console.log('🔄 Updated container contained nodes:', updatedContainedNodes.length);
+          
+          return {
+            ...container,
+            containedNodes: updatedContainedNodes
+          };
+        }
+        return node;
+      });
+    });
+  }, []);
+
   // Handle dropping component from palette
   const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
-    if (usedComponentIds.includes(component.id)) return;
+    console.log('🚀 handleDropComponent called with:', component.name, 'at position:', position);
+    
+    if (usedComponentIds.includes(component.id)) {
+      console.log('❌ Component already used:', component.id);
+      return;
+    }
 
     // If it's a sub-technology, try to add it to a compatible main technology
     if (!component.isMainTechnology) {
@@ -594,13 +761,27 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       height: 80
     };
 
-    // Convert Docker/Kubernetes to container nodes
-    if (component.id === 'docker' || component.id === 'kubernetes') {
+    // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
+    if ((component.id === 'docker' || component.id === 'kubernetes') && !component.isContainer) {
       newNode = convertToContainer(newNode);
+    }
+    
+    // Handle pre-configured container components
+    if (component.isContainer) {
+      newNode = {
+        ...newNode,
+        width: component.containerType === 'docker' ? 400 : 500,
+        height: component.containerType === 'docker' ? 300 : 350,
+        isCompact: false,
+        containedNodes: [],
+        connectedServices: [],
+        ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
+        status: 'running'
+      };
     }
 
     // Check if node is being dropped into a container
-    const { updatedNodes, wasContained } = handleNodeDrop(newNode, position, nodes);
+    const { updatedNodes, wasContained } = handleNodeDrop(newNode, nodes);
     
     if (wasContained) {
       setNodes(updatedNodes);
@@ -658,7 +839,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       if (position.x !== padding || position.y !== padding) break;
     }
 
-    const newNode: CanvasNode = {
+    let newNode: CanvasNode = {
       ...component,
       position,
       isCompact: true, // Start in compact mode
@@ -666,8 +847,115 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       height: 80
     };
 
+    // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
+    if ((component.id === 'docker' || component.id === 'kubernetes') && !component.isContainer) {
+      newNode = convertToContainer(newNode);
+    }
+    
+    // Handle pre-configured container components
+    if (component.isContainer) {
+      newNode = {
+        ...newNode,
+        width: component.containerType === 'docker' ? 400 : 500,
+        height: component.containerType === 'docker' ? 300 : 350,
+        isCompact: false,
+        containedNodes: [],
+        connectedServices: [],
+        ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
+        status: 'running'
+      };
+    }
+
     setNodes(prev => [...prev, newNode]);
-  }, [handleAddSubTechnology, nodes, usedComponentIds]);
+  }, [handleAddSubTechnology, nodes, usedComponentIds, convertToContainer]);
+
+  // Convert node to container
+  const handleConvertToContainer = useCallback((nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => {
+    const nodeToConvert = nodes.find(n => n.id === nodeId);
+    if (!nodeToConvert) return;
+
+    if (containerType === 'custom') {
+      setNodeToConvert(nodeToConvert);
+      setShowCustomContainerModal(true);
+    } else {
+      // Direct conversion for Docker/Kubernetes
+      setNodes(prev => prev.map(node => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            isContainer: true,
+            containerType,
+            containedNodes: [],
+            connectedServices: [],
+            ports: containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
+            status: 'running' as const,
+            width: containerType === 'docker' ? 400 : 500,
+            height: containerType === 'docker' ? 300 : 350,
+            isCompact: false
+          };
+        }
+        return node;
+      }));
+    }
+  }, [nodes]);
+
+  // Handle custom container creation
+  const handleCreateCustomContainer = useCallback((template: ContainerTemplate, customName?: string) => {
+    if (nodeToConvert) {
+      // Convert existing node
+      setNodes(prev => prev.map(node => {
+        if (node.id === nodeToConvert.id) {
+          return {
+            ...node,
+            name: customName || `${node.name} Container`,
+            isContainer: true,
+            containerType: template.id as 'docker' | 'kubernetes',
+            containedNodes: [],
+            connectedServices: [],
+            ports: template.defaultPorts || [],
+            status: 'running' as const,
+            width: 400,
+            height: 300,
+            isCompact: false,
+            resources: template.defaultResources,
+            environmentVariables: {
+              ...node.environmentVariables,
+              ...template.environmentVariables
+            }
+          };
+        }
+        return node;
+      }));
+    } else {
+      // Create new container
+      const newContainer: CanvasNode = {
+        id: `container-${Date.now()}`,
+        name: customName || template.name,
+        category: 'devops',
+        description: template.description,
+        setupTimeHours: 2,
+        difficulty: 'intermediate',
+        pricing: 'free',
+        isMainTechnology: true,
+        isContainer: true,
+        containerType: template.id as 'docker' | 'kubernetes',
+        containedNodes: [],
+        connectedServices: [],
+        ports: template.defaultPorts || [],
+        status: 'running',
+        resources: template.defaultResources,
+        environmentVariables: template.environmentVariables,
+        position: { x: 100, y: 100 },
+        width: 400,
+        height: 300,
+        isCompact: false
+      };
+      
+      setNodes(prev => [...prev, newContainer]);
+    }
+    
+    setNodeToConvert(null);
+  }, [nodeToConvert]);
 
   // Calculate stack statistics
   const stackStats = useMemo(() => {
@@ -733,9 +1021,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       } else {
         throw new Error('Failed to save stack');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save stack:', error);
-      const errorMessage = error?.message || 'Unknown error occurred';
+      const errorMessage = (error as Error)?.message || 'Unknown error occurred';
       alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
     } finally {
       setIsSaving(false);
@@ -779,9 +1067,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         } else {
           throw new Error('Failed to save stack');
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Failed to save before presenting:', error);
-        const errorMessage = error?.message || 'Unknown error occurred';
+        const errorMessage = (error as Error)?.message || 'Unknown error occurred';
         alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
         return;
       } finally {
@@ -843,6 +1131,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                 availableComponents={availableComponents}
                 subTechnologies={subTechnologies}
                 onAddComponent={handleAddComponent}
+                onOpenCustomContainerModal={() => setShowCustomContainerModal(true)}
                 usedComponentIds={usedComponentIds}
                 className="flex-1"
               />
@@ -1104,6 +1393,16 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Test Template Button */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLoadTestTemplate}
+              className="text-xs"
+            >
+              🧪 Test Template
+            </Button>
+            
             <div className="flex items-center gap-1 mr-2">
               <Button
                 variant="ghost"
@@ -1228,6 +1527,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           onDocumentationSave={handleDocumentationSave}
           onAddSubTechnology={handleAddSubTechnology}
           onDropComponent={handleDropComponent}
+          onRemoveFromContainer={handleRemoveFromContainer}
+          onConvertToContainer={handleConvertToContainer}
           availableSubTechnologies={subTechnologies}
           className="flex-1"
         />
@@ -1258,6 +1559,17 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         currentVisibility={isPublic}
         onConfirm={handleVisibilityChange}
         stackName={stackName || 'Untitled Stack'}
+      />
+
+      {/* Custom Container Modal */}
+      <CustomContainerModal
+        isOpen={showCustomContainerModal}
+        onClose={() => {
+          setShowCustomContainerModal(false);
+          setNodeToConvert(null);
+        }}
+        onCreateContainer={handleCreateCustomContainer}
+        sourceNode={nodeToConvert || undefined}
       />
 
       {/* Presentation Mode */}
