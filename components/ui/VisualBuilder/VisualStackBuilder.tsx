@@ -1196,7 +1196,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   };
 
   return (
-    <div className={cn('flex h-screen bg-slate-950', className)}>
+    <div className={cn('flex h-full bg-slate-950', className)}>
       {/* Subtle Sidebar */}
       {showSidebar && (
         <div className="w-80 flex flex-col border-r border-slate-700 bg-slate-900/50">

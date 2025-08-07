@@ -118,7 +118,7 @@ function BuilderContent() {
   }
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="h-[calc(100vh-64px)] overflow-hidden">
       <VisualStackBuilder 
         initialStack={initialStack}
         onSave={handleSaveStack} 

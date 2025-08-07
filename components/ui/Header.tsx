@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
-  const { user } = useUserStore();
+  const { user, logout } = useUserStore();
 
   const navigation = [
     { name: 'Home', href: '/', icon: null },
@@ -46,7 +46,8 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
   ];
 
   const handleLogout = async () => {
-    await signOut();
+    await signOut(); // Sign out from Supabase
+    await logout(); // Clear user store
     setIsUserMenuOpen(false);
     router.push('/');
   };

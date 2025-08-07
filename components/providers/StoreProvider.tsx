@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useStackStore } from '@/lib/stores/stackStore'
 import { useUserStore } from '@/lib/stores/userStore'
+import { AuthSyncProvider } from './AuthSyncProvider'
 
 /**
  * Provider qui initialise les stores Zustand côté client
@@ -15,5 +16,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     useUserStore.persist.rehydrate()
   }, [])
 
-  return <>{children}</>
+  return (
+    <AuthSyncProvider>
+      {children}
+    </AuthSyncProvider>
+  )
 }

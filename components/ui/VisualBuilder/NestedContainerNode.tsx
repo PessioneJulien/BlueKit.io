@@ -109,14 +109,14 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
   const shouldShowGhost = draggingNodeId && draggingNode && isDragOver && draggingNodeId !== id;
   const ghostNode = shouldShowGhost ? draggingNode : null;
 
-  // Debug ghost mode
-  console.log('🎯 Ghost debug for container', id, {
-    draggingNodeId,
-    hasDraggingNode: !!draggingNode,
-    isDragOver,
-    shouldShowGhost,
-    ghostNode: ghostNode?.name
-  });
+  // Debug ghost mode (commented out for production)
+  // console.log('🎯 Ghost debug for container', id, {
+  //   draggingNodeId,
+  //   hasDraggingNode: !!draggingNode,
+  //   isDragOver,
+  //   shouldShowGhost,
+  //   ghostNode: ghostNode?.name
+  // });
 
   // Sync editName with data.name when it changes
   useEffect(() => {

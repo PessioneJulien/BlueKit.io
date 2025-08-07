@@ -297,16 +297,16 @@ export const VisualCanvas: React.FC<VisualCanvasProps> = ({
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg p-2">
           <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="h-4 w-4" />
+            <ZoomOut className="h-4 w-4" color="white"/>
           </Button>
           <span className="px-2 text-sm text-slate-300">
             {Math.round(zoom * 100)}%
           </span>
-          <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="h-4 w-4" />
+          <Button size="sm" onClick={handleZoomIn}>
+            <ZoomIn className="h-4 w-4" color="white"/>
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleZoomReset}>
-            <Maximize className="h-4 w-4" />
+          <Button size="sm" onClick={handleZoomReset}>
+            <Maximize className="h-4 w-4" color="white"/>
           </Button>
         </div>
         
