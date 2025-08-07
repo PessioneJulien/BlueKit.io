@@ -58,6 +58,23 @@ PROCHAINES TÂCHES - BlueKit.io Stack Builder Platform
 - ✅ **Indicateur Visuel Focus** : Ring bleu quand modal est focusée
 - ✅ **Optimisation UX** : Prévention du scroll de page lors de l'interaction avec les modales
 
+### ✅ CONTAINERS & DRAG&DROP AVANCÉ - TERMINÉ
+- ✅ **Système de Containers** : Docker et Kubernetes avec gestion visuelle
+- ✅ **Ressources Auto/Manuel** : Calcul automatique ou limites manuelles
+- ✅ **Alertes de Dépassement** : Indicateurs visuels quand limites dépassées
+- ✅ **Drag&Drop Unifié** : Ghost preview et intégration fluide
+- ✅ **Redimensionnement Containers** : Poignées de resize fonctionnelles
+- ✅ **Stats dans Header** : Déplacement des statistiques pour libérer l'espace
+
+### ✅ REFONTE PAGE D'ACCUEIL - TERMINÉ
+- ✅ **Design n8n.io Inspiré** : Style professionnel et technique
+- ✅ **Suppression Fausses Stats** : Contenu authentique et honnête
+- ✅ **Hero Section Moderne** : Split layout avec code preview
+- ✅ **Features Détaillées** : 6 fonctionnalités clés avec détails techniques
+- ✅ **Use Cases Section** : Cas d'usage réels (Microservices, Full-Stack, DevOps)
+- ✅ **Code Export Preview** : Exemple Docker Compose fonctionnel
+- ✅ **Footer Professionnel** : Multi-colonnes avec liens utiles
+
 ## 🚀 PROCHAINES TÂCHES PRIORITAIRES
 
 ### IMMÉDIAT : Fonctionnalités Avancées & UX

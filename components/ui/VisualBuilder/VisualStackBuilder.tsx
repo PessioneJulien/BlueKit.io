@@ -44,6 +44,7 @@ import { StackTemplate } from '@/lib/data/stackTemplates';
 import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
 import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 import { CustomContainerModal, ContainerTemplate } from './CustomContainerModal';
+import { ShareModal } from './ShareModal';
 import Link from 'next/link';
 
 interface CanvasNode extends NodeData {
@@ -436,6 +437,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPresentationMode, setShowPresentationMode] = useState(false);
   const [showCustomContainerModal, setShowCustomContainerModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
 
   // Container logic
@@ -663,6 +665,23 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     ));
   }, []);
 
+  // Handle name change for nodes
+  const handleNameChange = useCallback((nodeId: string, newName: string) => {
+    setNodes(prev => prev.map(node => 
+      node.id === nodeId 
+        ? { ...node, name: newName } 
+        : node
+    ));
+  }, []);
+
+  // Handle opening custom container modal
+  const handleOpenCustomContainerModal = useCallback(() => {
+    setNodeToConvert(null);
+    setShowCustomContainerModal(true);
+  }, []);
+
+
+
   // Add sub-technology to main component
   const handleAddSubTechnology = useCallback((subTechId: string, mainTechId: string) => {
     const subTech = subTechnologies.find(st => st.id === subTechId);
@@ -723,6 +742,95 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       });
     });
   }, []);
+
+  // Handle moving a node into a container
+  const handleMoveNodeToContainer = useCallback((nodeId: string, containerId: string) => {
+    console.log('🎯 Moving node to container:', nodeId, '→', containerId);
+    
+    setNodes(prevNodes => {
+      // Find the node to move
+      const nodeToMove = prevNodes.find(n => n.id === nodeId);
+      if (!nodeToMove) {
+        console.error('Node not found:', nodeId);
+        return prevNodes;
+      }
+      
+      // Remove the node from canvas
+      const nodesWithoutMoved = prevNodes.filter(n => n.id !== nodeId);
+      
+      // Add the node to the container
+      return nodesWithoutMoved.map(node => {
+        if (node.id === containerId && 'isContainer' in node && node.isContainer) {
+          const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
+          
+          // Create a compact version of the node for the container
+          const nodeForContainer: NodeData = {
+            ...nodeToMove,
+            position: { x: 20 + (container.containedNodes?.length || 0) * 10, y: 20 + (container.containedNodes?.length || 0) * 10 },
+            width: 180,
+            height: 60,
+            isCompact: true
+          };
+          
+          const updatedContainedNodes = [...(container.containedNodes || []), nodeForContainer];
+          
+          console.log('✅ Moved node', nodeId, 'to container', containerId);
+          
+          return {
+            ...container,
+            containedNodes: updatedContainedNodes
+          };
+        }
+        return node;
+      });
+    });
+    
+    saveToHistory();
+  }, [saveToHistory]);
+
+  // Handle adding component to a specific container (for new components from palette)
+  const handleAddComponentToContainer = useCallback((component: NodeData, containerId: string, isMoving = false) => {
+    console.log('🚀 Adding component to container:', component.name, 'container:', containerId, 'isMoving:', isMoving);
+    
+    // If it's an existing node being moved, use the move function
+    const existingNode = nodes.find(n => n.id === component.id);
+    if (existingNode) {
+      console.log('🔄 Existing node detected, using move function');
+      handleMoveNodeToContainer(component.id, containerId);
+      return;
+    }
+    
+    // Otherwise, create a new node
+    const nodeId = `${component.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const nodeToAdd: NodeData = {
+      ...component,
+      id: nodeId,
+      position: { x: 20, y: 20 },
+      width: 180,
+      height: 60,
+      isCompact: true
+    };
+    
+    setNodes(prevNodes => {
+      return prevNodes.map(node => {
+        if (node.id === containerId && 'isContainer' in node && node.isContainer) {
+          const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
+          const updatedContainedNodes = [...(container.containedNodes || []), nodeToAdd];
+          
+          console.log('🔄 Added new component to container', containerId);
+          
+          return {
+            ...container,
+            containedNodes: updatedContainedNodes
+          };
+        }
+        return node;
+      });
+    });
+    
+    saveToHistory();
+  }, [nodes, saveToHistory, handleMoveNodeToContainer]);
 
   // Handle dropping component from palette
   const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
@@ -1021,7 +1129,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       const stackId = await saveStack(stackData);
       if (stackId) {
         setSavedStackId(stackId);
-        alert('Stack saved successfully!');
+        setShowShareModal(true);
       } else {
         throw new Error('Failed to save stack');
       }
@@ -1095,8 +1203,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           {/* Simple Sidebar Header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-slate-800 border border-slate-600 flex items-center justify-center">
-                <Layers className="h-3 w-3 text-slate-400" />
+              <div className="w-10 h-10 rounded bg-slate-800 border border-slate-600 flex items-center justify-center">
+                <Layers className="h-6 w-6 text-slate-400" />
               </div>
               <div>
                 <h2 className="font-medium text-sm text-slate-200">
@@ -1111,9 +1219,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setShowSidebar(false)}
-              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200"
+              className="h-10 w-10 p-0 text-slate-400 hover:text-slate-200"
             >
-              <X className="h-4 w-4" />
+              <X className="h-10 w-10" />
             </Button>
           </div>
 
@@ -1123,7 +1231,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               availableComponents={availableComponents}
               subTechnologies={subTechnologies}
               onAddComponent={handleAddComponent}
-              onOpenCustomContainerModal={() => setShowCustomContainerModal(true)}
+              onOpenCustomContainerModal={handleOpenCustomContainerModal}
               usedComponentIds={usedComponentIds}
               className="h-full"
             />
@@ -1353,10 +1461,13 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           onConnectionSelect={handleConnectionSelect}
           selectedConnectionId={selectedConnectionId}
           onNodeStyleChange={handleNodeStyleChange}
+          onNameChange={handleNameChange}
           onNodeSelect={handleNodeSelect}
           onDocumentationSave={handleDocumentationSave}
           onAddSubTechnology={handleAddSubTechnology}
           onDropComponent={handleDropComponent}
+          onAddComponentToContainer={handleAddComponentToContainer}
+          onMoveNodeToContainer={handleMoveNodeToContainer}
           onRemoveFromContainer={handleRemoveFromContainer}
           onConvertToContainer={handleConvertToContainer}
           availableSubTechnologies={subTechnologies}
@@ -1400,6 +1511,14 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         }}
         onCreateContainer={handleCreateCustomContainer}
         sourceNode={nodeToConvert || undefined}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        stackId={savedStackId || ''}
+        stackName={stackName || 'Untitled Stack'}
       />
 
       {/* Presentation Mode */}

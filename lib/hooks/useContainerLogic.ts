@@ -117,56 +117,62 @@ export function useContainerLogic() {
     };
   }, [viewMode]);
 
-  // Update container with new contained nodes
+  // Update container with new contained nodes - detect when nodes are dropped into containers
   const updateContainerNodes = useCallback((
-    nodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>
+    nodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>,
+    forceDetection = false
   ): Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> => {
-    console.log('🔄 updateContainerNodes called with', nodes.length, 'nodes');
+    console.log('🔄 updateContainerNodes called with', nodes.length, 'nodes, forceDetection:', forceDetection);
     
     let updatedNodes = [...nodes];
     const nodesToRemove: string[] = [];
 
-    // First pass: identify nodes that should be contained and update containers
+    // Process containers and detect nodes that should be contained
     updatedNodes = updatedNodes.map(node => {
       if ('isContainer' in node && node.isContainer) {
         const container = node as ContainerNodeData;
         console.log('📦 Processing container:', container.name, 'at position', container.position);
         
-        // Preserve existing contained nodes and find new ones
+        // Preserve existing contained nodes
         const existingContainedNodes = container.containedNodes || [];
         console.log('🔍 Existing contained nodes:', existingContainedNodes.map(n => n.name));
         
-        // Find nodes that are physically inside the container (new ones)
-        const newlyContainedNodes = nodes.filter(n => {
-          if (n.id === container.id || ('isContainer' in n && n.isContainer)) {
-            return false;
-          }
-          
-          // Skip if already contained
-          const isAlreadyContained = existingContainedNodes.some(contained => contained.id === n.id);
-          if (isAlreadyContained) {
-            return false;
-          }
-          
-          // Check if node is physically inside the container
-          const isPhysicallyInside = ContainerManager.isNodeInsideContainer(
-            n.position,
-            container.position,
-            { width: container.width || 400, height: container.height || 300 },
-            { width: n.width || 200, height: n.height || 80 }
-          );
+        // Only detect new contained nodes if forced (during explicit drops)
+        let newlyContainedNodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> = [];
+        
+        if (forceDetection) {
+          // Find nodes that are physically inside the container (new ones)
+          newlyContainedNodes = nodes.filter(n => {
+            if (n.id === container.id || ('isContainer' in n && n.isContainer)) {
+              return false;
+            }
+            
+            // Skip if already contained
+            const isAlreadyContained = existingContainedNodes.some(contained => contained.id === n.id);
+            if (isAlreadyContained) {
+              return false;
+            }
+            
+            // Check if node is physically inside the container
+            const isPhysicallyInside = ContainerManager.isNodeInsideContainer(
+              n.position,
+              container.position,
+              { width: container.width || 400, height: container.height || 300 },
+              { width: n.width || 200, height: n.height || 80 }
+            );
 
-          console.log('🔍 Checking NEW node', n.name, 'at', n.position, {
-            isAlreadyContained,
-            isPhysicallyInside
+            console.log('🔍 Checking NEW node', n.name, 'at', n.position, {
+              isAlreadyContained,
+              isPhysicallyInside
+            });
+
+            if (isPhysicallyInside) {
+              nodesToRemove.push(n.id);
+            }
+
+            return isPhysicallyInside;
           });
-
-          if (isPhysicallyInside) {
-            nodesToRemove.push(n.id);
-          }
-
-          return isPhysicallyInside;
-        });
+        }
         
         // Combine existing and new contained nodes
         const containedNodes = [...existingContainedNodes, ...newlyContainedNodes];
@@ -199,17 +205,27 @@ export function useContainerLogic() {
       return node;
     });
 
-    // Second pass: remove contained nodes from the main canvas
-    console.log('🗑️ Removing nodes from canvas:', nodesToRemove);
-    updatedNodes = updatedNodes.filter(node => !nodesToRemove.includes(node.id));
+    // Remove contained nodes from the main canvas only if we detected new ones
+    if (forceDetection && nodesToRemove.length > 0) {
+      console.log('🗑️ Removing nodes from canvas:', nodesToRemove);
+      updatedNodes = updatedNodes.filter(node => !nodesToRemove.includes(node.id));
+    }
     
     console.log('🔄 Final result:', updatedNodes.length, 'nodes remaining');
     return updatedNodes;
-  }, []);
+  }, [viewMode]);
+
+  // New function to handle drag and drop detection after position changes
+  const detectContainerDrops = useCallback((
+    nodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>
+  ): Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> => {
+    return updateContainerNodes(nodes, true);
+  }, [updateContainerNodes]);
 
   return {
     convertToContainer,
     handleNodeDrop,
-    updateContainerNodes
+    updateContainerNodes,
+    detectContainerDrops
   };
 }

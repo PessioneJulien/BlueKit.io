@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Layers, Zap, Smartphone, Brain, Package } from 'lucide-react';
+import { X, Layers, Zap, Smartphone, Brain, Package, Server } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,8 @@ const categoryIcons = {
   frontend: <Zap className="w-5 h-5" />,
   backend: <Package className="w-5 h-5" />,
   mobile: <Smartphone className="w-5 h-5" />,
-  ai: <Brain className="w-5 h-5" />
+  ai: <Brain className="w-5 h-5" />,
+  devops: <Server className="w-5 h-5" />
 };
 
 const categoryColors = {
@@ -26,7 +27,8 @@ const categoryColors = {
   frontend: 'text-purple-400 bg-purple-500/10',
   backend: 'text-green-400 bg-green-500/10',
   mobile: 'text-pink-400 bg-pink-500/10',
-  ai: 'text-yellow-400 bg-yellow-500/10'
+  ai: 'text-yellow-400 bg-yellow-500/10',
+  devops: 'text-orange-400 bg-orange-500/10'
 };
 
 export const TemplatesModal: React.FC<TemplatesModalProps> = ({

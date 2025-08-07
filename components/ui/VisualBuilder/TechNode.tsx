@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -26,6 +26,7 @@ interface TechNodeData extends NodeData {
   onNodeSelect?: (nodeId: string) => void;
   onConfigure?: (nodeId: string, resources: ResourceStats, envVars: Record<string, string>) => void;
   onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
+  onNameChange?: (nodeId: string, newName: string) => void;
   availableSubTechnologies?: SubTechnology[];
   // Presentation mode
   isReadOnly?: boolean;
@@ -47,7 +48,16 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [showDocViewer, setShowDocViewer] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState(data.name);
+  const [isBeingDragged, setIsBeingDragged] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+
+  // Sync editName with data.name when it changes
+  useEffect(() => {
+    setEditName(data.name);
+  }, [data.name]);
   
   // Handle configuration save
   const handleConfigurationSave = (resources: ResourceStats, envVars: Record<string, string>) => {
@@ -122,6 +132,36 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     }
   };
 
+  // Handle node drag start
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsBeingDragged(true);
+    console.log('🎯 Node drag started:', data.name);
+    
+    // Set drag data for container drop detection
+    try {
+      const dragData = {
+        type: 'node',
+        node: data
+      };
+      const jsonData = JSON.stringify(dragData);
+      console.log('🎯 Setting drag data:', jsonData);
+      
+      e.dataTransfer.setData('application/json', jsonData);
+      e.dataTransfer.setData('text/plain', data.id);
+      e.dataTransfer.effectAllowed = 'move';
+      
+      console.log('🎯 Drag data set successfully');
+    } catch (error) {
+      console.error('Error setting drag data:', error);
+    }
+  };
+
+  // Handle node drag end
+  const handleDragEnd = () => {
+    setIsBeingDragged(false);
+    console.log('🎯 Node drag ended:', data.name);
+  };
+
   return (
     <div className="tech-node">
       {/* Input Handle (left) */}
@@ -145,7 +185,8 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           'bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg transition-all duration-200',
           'hover:shadow-xl hover:border-slate-600/70',
           selected && 'ring-2 ring-blue-500 ring-opacity-60 shadow-blue-500/20',
-          data.isMainTechnology && isDragOver && 'ring-2 ring-green-500 ring-opacity-80 shadow-green-500/30 border-green-500/50'
+          data.isMainTechnology && isDragOver && 'ring-2 ring-green-500 ring-opacity-80 shadow-green-500/30 border-green-500/50',
+          isBeingDragged && 'opacity-50 scale-95'
         )}
         style={{
           width: nodeWidth,
@@ -178,18 +219,62 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
               'bg-white/30 rounded-full flex-shrink-0',
               isCompact ? 'w-2 h-2' : 'w-3 h-3'
             )} />
-            <h3 className={cn(
-              'font-semibold truncate',
-              isCompact ? 'text-sm' : 'text-base',
-              !data.customStyle && 'text-white'
+            {isEditingName ? (
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={() => {
+                  setIsEditingName(false);
+                  if (editName.trim() && editName !== data.name && data.onNameChange) {
+                    data.onNameChange(data.id, editName.trim());
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setIsEditingName(false);
+                    if (editName.trim() && editName !== data.name && data.onNameChange) {
+                      data.onNameChange(data.id, editName.trim());
+                    }
+                  } else if (e.key === 'Escape') {
+                    setEditName(data.name);
+                    setIsEditingName(false);
+                  }
+                }}
+                className={cn(
+                  'nodrag bg-transparent border-none outline-none font-semibold',
+                  isCompact ? 'text-sm' : 'text-base',
+                  !data.customStyle && 'text-white',
+                  'w-full min-w-0'
+                )}
+                style={data.customStyle ? { color: nodeStyle.color } : {}}
+                autoFocus
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <h3 
+                className={cn(
+                  'font-semibold truncate cursor-text',
+                  isCompact ? 'text-sm' : 'text-base',
+                  !data.customStyle && 'text-white'
+                )}
+                style={data.customStyle ? { color: nodeStyle.color } : {}}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (data.onNameChange && !data.isReadOnly) {
+                    setIsEditingName(true);
+                    setEditName(data.name);
+                  }
+                }}
+                title={data.isReadOnly ? data.name : "Cliquer pour éditer le nom"}
+              >
+                {data.name}
+              </h3>
             )}
-            style={data.customStyle ? { color: nodeStyle.color } : {}}
-            >
-              {data.name}
-            </h3>
           </div>
           
-          <div className="flex items-center gap-1 flex-shrink-0 nodrag">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {/* Documentation indicator */}
             {data.documentation && (
               <button
@@ -310,7 +395,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         </div>
 
         {/* Content */}
-        <div className={cn("space-y-2", isCompact ? "p-2" : "p-3")}>
+        <div className={cn("space-y-2 cursor-move", isCompact ? "p-2" : "p-3")}>
           {!isCompact && (
             <p className="text-sm text-slate-300 line-clamp-2 mb-3">
               {data.description}

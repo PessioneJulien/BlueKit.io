@@ -23,7 +23,7 @@ export interface ContainerNodeData extends NodeData {
     cpu: string;
     memory: string;
   };
-  status?: 'running' | 'stopped' | 'building' | 'pending';
+  // status?: 'running' | 'stopped' | 'building' | 'pending'; // Removed - not useful
   replicas?: number;
   isCompact?: boolean;
   width?: number;
@@ -41,6 +41,7 @@ export interface ContainerNodeData extends NodeData {
   onNodeSelect?: (nodeId: string) => void;
   availableSubTechnologies?: SubTechnology[];
   isReadOnly?: boolean;
+  onResize?: (id: string, width: number, height: number) => void;
 }
 
 export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({ 
@@ -62,7 +63,7 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
   const convertToNestedData = (): NestedContainerNodeData => ({
     ...data,
     containedNodes: data.containedNodes || [],
-    status: (data.status as 'running' | 'stopped' | 'pending') || 'running',
+    // status: (data.status as 'running' | 'stopped' | 'pending') || 'running', // Removed
     resources: data.resources || { cpu: '1 CPU', memory: '512MB' },
     width: data.width || 400,
     height: data.height || 300,
@@ -71,7 +72,8 @@ export const ContainerNode = memo<NodeProps<ContainerNodeData>>(({
     onToggleCompact: () => data.onToggleCompact(data.id),
     onConfigure: data.onConfigure ? (resources: ResourceStats, envVars: Record<string, string>) => data.onConfigure!(data.id, resources, envVars) : undefined,
     onRemoveFromContainer: data.onRemoveFromContainer,
-    onDropComponent: data.onDropComponent
+    onDropComponent: data.onDropComponent,
+    onResize: data.onResize
   });
 
   // Always use nested view

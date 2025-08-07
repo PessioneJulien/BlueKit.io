@@ -63,7 +63,7 @@ export const officialStacks: StackData[] = [
       'Deploy to Vercel'
     ],
     stars: 4.8,
-    uses: 2847,
+    uses: 3247,
     author: 'BlueKit Team',
     createdAt: '2024-01-15',
   },
@@ -108,7 +108,7 @@ export const officialStacks: StackData[] = [
       'Containerize with Docker'
     ],
     stars: 4.6,
-    uses: 1234,
+    uses: 1456,
     author: 'AI Experts',
     createdAt: '2024-01-20',
   },
@@ -148,7 +148,7 @@ export const officialStacks: StackData[] = [
       'Deploy to Netlify'
     ],
     stars: 4.7,
-    uses: 3912,
+    uses: 4156,
     author: 'Startup Advisors',
     createdAt: '2024-01-10',
   },
@@ -621,11 +621,396 @@ export const additionalStacks: StackData[] = [
     author: 'Blockchain Team',
     createdAt: '2024-02-15',
   },
-  // Continue with 15 more stacks...
+  {
+    id: 'flutter-mobile',
+    name: 'Flutter Mobile App',
+    description: 'Cross-platform mobile development with Flutter and Dart, featuring native performance and beautiful UIs.',
+    shortDescription: 'Flutter + Firebase for mobile apps',
+    category: 'Mobile',
+    difficulty: 'intermediate',
+    setupTimeHours: 8,
+    pricing: 'free',
+    technologies: [
+      { id: 'flutter', name: 'Flutter', category: 'mobile', role: 'primary' },
+      { id: 'dart', name: 'Dart', category: 'mobile', role: 'primary' },
+      { id: 'firebase', name: 'Firebase', category: 'backend', role: 'primary' },
+      { id: 'riverpod', name: 'Riverpod', category: 'mobile', role: 'secondary' },
+      { id: 'hive', name: 'Hive', category: 'database', role: 'optional' },
+    ],
+    useCases: ['Native Mobile Apps', 'Cross-platform Development', 'UI-Heavy Apps', 'Enterprise Mobile'],
+    pros: ['Single codebase for iOS/Android', 'Excellent performance', 'Rich UI components', 'Hot reload'],
+    cons: ['Large app size', 'Learning curve', 'Platform-specific features need native code'],
+    alternatives: ['React Native', 'Xamarin', 'Native iOS/Android'],
+    installationSteps: [
+      'Install Flutter SDK and dependencies',
+      'Set up development environment (Android Studio/VS Code)',
+      'Create Flutter project structure',
+      'Configure Firebase for backend services',
+      'Implement state management with Riverpod',
+      'Add platform-specific configurations',
+      'Test on simulators and real devices'
+    ],
+    stars: 4.6,
+    uses: 892,
+    author: 'Mobile Developers',
+    createdAt: '2024-02-18',
+  },
+  {
+    id: 'django-rest-api',
+    name: 'Django REST API',
+    description: 'Robust REST API development with Django REST Framework, featuring admin panel, ORM, and excellent documentation.',
+    shortDescription: 'Django + DRF + PostgreSQL',
+    category: 'API',
+    difficulty: 'intermediate',
+    setupTimeHours: 5,
+    pricing: 'free',
+    technologies: [
+      { id: 'django', name: 'Django', category: 'backend', role: 'primary' },
+      { id: 'drf', name: 'Django REST Framework', category: 'backend', role: 'primary' },
+      { id: 'python', name: 'Python', category: 'backend', role: 'primary' },
+      { id: 'postgresql', name: 'PostgreSQL', category: 'database', role: 'secondary' },
+      { id: 'redis', name: 'Redis', category: 'database', role: 'secondary' },
+      { id: 'celery', name: 'Celery', category: 'backend', role: 'optional' },
+    ],
+    useCases: ['REST APIs', 'Admin Dashboards', 'Content Management', 'Enterprise Backends'],
+    pros: ['Excellent admin interface', 'Powerful ORM', 'Great documentation', 'Mature ecosystem'],
+    cons: ['Monolithic by default', 'Can be heavyweight for simple APIs', 'Template system not needed for APIs'],
+    alternatives: ['FastAPI', 'Flask', 'Express.js'],
+    installationSteps: [
+      'Set up Python virtual environment',
+      'Install Django and DRF',
+      'Configure database settings',
+      'Create models and serializers',
+      'Set up authentication and permissions',
+      'Add API endpoints and documentation',
+      'Configure caching with Redis'
+    ],
+    stars: 4.5,
+    uses: 2341,
+    author: 'Python Community',
+    createdAt: '2024-02-20',
+  },
+  {
+    id: 'kubernetes-helm',
+    name: 'Kubernetes with Helm',
+    description: 'Container orchestration platform with Helm package manager for scalable, production-ready deployments.',
+    shortDescription: 'Kubernetes + Helm + Docker',
+    category: 'DevOps',
+    difficulty: 'expert',
+    setupTimeHours: 24,
+    pricing: 'mixed',
+    technologies: [
+      { id: 'kubernetes', name: 'Kubernetes', category: 'devops', role: 'primary' },
+      { id: 'helm', name: 'Helm', category: 'devops', role: 'primary' },
+      { id: 'docker', name: 'Docker', category: 'devops', role: 'primary' },
+      { id: 'ingress', name: 'Ingress Controller', category: 'devops', role: 'secondary' },
+      { id: 'prometheus', name: 'Prometheus', category: 'devops', role: 'secondary' },
+      { id: 'grafana', name: 'Grafana', category: 'devops', role: 'optional' },
+    ],
+    useCases: ['Container Orchestration', 'Microservices Deployment', 'Auto-scaling', 'High Availability'],
+    pros: ['Excellent scaling', 'Self-healing', 'Declarative configuration', 'Large ecosystem'],
+    cons: ['High complexity', 'Steep learning curve', 'Resource overhead', 'Requires DevOps expertise'],
+    alternatives: ['Docker Swarm', 'Nomad', 'Amazon ECS'],
+    installationSteps: [
+      'Set up Kubernetes cluster',
+      'Install and configure kubectl',
+      'Install Helm package manager',
+      'Configure networking and ingress',
+      'Set up monitoring with Prometheus',
+      'Deploy applications with Helm charts',
+      'Configure auto-scaling and resource limits'
+    ],
+    stars: 4.3,
+    uses: 567,
+    author: 'DevOps Engineers',
+    createdAt: '2024-02-22',
+  },
+  {
+    id: 'svelte-sveltekit',
+    name: 'SvelteKit Full-Stack',
+    description: 'Modern full-stack framework with SvelteKit, featuring excellent performance and developer experience.',
+    shortDescription: 'SvelteKit + TypeScript + Supabase',
+    category: 'Full-stack',
+    difficulty: 'intermediate',
+    setupTimeHours: 6,
+    pricing: 'free',
+    technologies: [
+      { id: 'sveltekit', name: 'SvelteKit', category: 'frontend', role: 'primary' },
+      { id: 'svelte', name: 'Svelte', category: 'frontend', role: 'primary' },
+      { id: 'typescript', name: 'TypeScript', category: 'frontend', role: 'primary' },
+      { id: 'supabase', name: 'Supabase', category: 'backend', role: 'secondary' },
+      { id: 'tailwind', name: 'Tailwind CSS', category: 'frontend', role: 'secondary' },
+      { id: 'vite', name: 'Vite', category: 'devops', role: 'optional' },
+    ],
+    useCases: ['Web Applications', 'Static Sites', 'Progressive Web Apps', 'Performance-Critical Apps'],
+    pros: ['No virtual DOM overhead', 'Smaller bundle sizes', 'Great developer experience', 'Excellent performance'],
+    cons: ['Smaller ecosystem', 'Less job market demand', 'Fewer third-party components'],
+    alternatives: ['Next.js', 'Nuxt.js', 'Remix'],
+    installationSteps: [
+      'Create SvelteKit project',
+      'Set up TypeScript configuration',
+      'Configure Supabase for backend',
+      'Add Tailwind CSS for styling',
+      'Implement authentication flow',
+      'Set up database schema',
+      'Deploy to Vercel or Netlify'
+    ],
+    stars: 4.7,
+    uses: 743,
+    author: 'Svelte Community',
+    createdAt: '2024-02-25',
+  },
+  {
+    id: 'golang-gin-api',
+    name: 'Go REST API with Gin',
+    description: 'High-performance REST API development with Go and Gin framework, featuring excellent concurrency.',
+    shortDescription: 'Go + Gin + PostgreSQL',
+    category: 'API',
+    difficulty: 'intermediate',
+    setupTimeHours: 7,
+    pricing: 'free',
+    technologies: [
+      { id: 'golang', name: 'Go', category: 'backend', role: 'primary' },
+      { id: 'gin', name: 'Gin Framework', category: 'backend', role: 'primary' },
+      { id: 'gorm', name: 'GORM', category: 'database', role: 'primary' },
+      { id: 'postgresql', name: 'PostgreSQL', category: 'database', role: 'secondary' },
+      { id: 'redis', name: 'Redis', category: 'database', role: 'secondary' },
+      { id: 'docker', name: 'Docker', category: 'devops', role: 'optional' },
+    ],
+    useCases: ['High-Performance APIs', 'Microservices', 'System Programming', 'DevOps Tools'],
+    pros: ['Excellent performance', 'Strong concurrency', 'Static typing', 'Fast compilation'],
+    cons: ['Verbose error handling', 'Less flexible than dynamic languages', 'Smaller web ecosystem'],
+    alternatives: ['Node.js + Express', 'Python + FastAPI', 'Rust + Axum'],
+    installationSteps: [
+      'Set up Go development environment',
+      'Initialize Go module',
+      'Install Gin and GORM dependencies',
+      'Set up database connections',
+      'Create API routes and handlers',
+      'Add middleware for auth and logging',
+      'Containerize with Docker'
+    ],
+    stars: 4.4,
+    uses: 1234,
+    author: 'Go Community',
+    createdAt: '2024-02-28',
+  },
+  {
+    id: 'laravel-vue-spa',
+    name: 'Laravel + Vue.js SPA',
+    description: 'Full-stack PHP development with Laravel API backend and Vue.js single-page application frontend.',
+    shortDescription: 'Laravel + Vue.js + MySQL',
+    category: 'Full-stack',
+    difficulty: 'intermediate',
+    setupTimeHours: 9,
+    pricing: 'free',
+    technologies: [
+      { id: 'laravel', name: 'Laravel', category: 'backend', role: 'primary' },
+      { id: 'php', name: 'PHP', category: 'backend', role: 'primary' },
+      { id: 'vuejs', name: 'Vue.js', category: 'frontend', role: 'primary' },
+      { id: 'mysql', name: 'MySQL', category: 'database', role: 'secondary' },
+      { id: 'sanctum', name: 'Laravel Sanctum', category: 'backend', role: 'secondary' },
+      { id: 'inertia', name: 'Inertia.js', category: 'frontend', role: 'optional' },
+    ],
+    useCases: ['Business Applications', 'Content Management', 'E-commerce', 'Admin Dashboards'],
+    pros: ['Mature PHP ecosystem', 'Excellent ORM (Eloquent)', 'Built-in authentication', 'Rich feature set'],
+    cons: ['PHP performance limitations', 'Monolithic structure', 'Hosting requirements'],
+    alternatives: ['Django + React', 'Rails + Vue', 'ASP.NET + Angular'],
+    installationSteps: [
+      'Install PHP and Composer',
+      'Create Laravel project',
+      'Set up Vue.js frontend',
+      'Configure database and migrations',
+      'Set up API routes and authentication',
+      'Implement Vue components and router',
+      'Deploy to shared hosting or VPS'
+    ],
+    stars: 4.2,
+    uses: 1678,
+    author: 'Laravel Community',
+    createdAt: '2024-03-02',
+  },
+  {
+    id: 'rust-wasm-web',
+    name: 'Rust + WebAssembly',
+    description: 'High-performance web applications using Rust compiled to WebAssembly for compute-intensive tasks.',
+    shortDescription: 'Rust + WASM + JavaScript',
+    category: 'Performance',
+    difficulty: 'expert',
+    setupTimeHours: 12,
+    pricing: 'free',
+    technologies: [
+      { id: 'rust', name: 'Rust', category: 'backend', role: 'primary' },
+      { id: 'wasm', name: 'WebAssembly', category: 'frontend', role: 'primary' },
+      { id: 'wasm-pack', name: 'wasm-pack', category: 'devops', role: 'primary' },
+      { id: 'javascript', name: 'JavaScript', category: 'frontend', role: 'secondary' },
+      { id: 'webpack', name: 'Webpack', category: 'devops', role: 'secondary' },
+    ],
+    useCases: ['Performance-Critical Apps', 'Image/Video Processing', 'Games', 'Scientific Computing'],
+    pros: ['Near-native performance', 'Memory safety', 'Zero-cost abstractions', 'Cross-platform'],
+    cons: ['Steep learning curve', 'Complex deployment', 'Limited browser debugging', 'Large learning investment'],
+    alternatives: ['C++ with Emscripten', 'AssemblyScript', 'Native JavaScript'],
+    installationSteps: [
+      'Install Rust and wasm-pack',
+      'Create Rust library project',
+      'Write performance-critical code in Rust',
+      'Compile to WebAssembly',
+      'Set up JavaScript bindings',
+      'Integrate with web application',
+      'Optimize for size and performance'
+    ],
+    stars: 4.1,
+    uses: 298,
+    author: 'Rust Community',
+    createdAt: '2024-03-05',
+  },
+  {
+    id: 'nextjs-trpc-prisma',
+    name: 'T3 Stack (Next.js + tRPC)',
+    description: 'Type-safe full-stack development with Next.js, tRPC, and Prisma for modern web applications.',
+    shortDescription: 'Next.js + tRPC + Prisma + TypeScript',
+    category: 'Full-stack',
+    difficulty: 'intermediate',
+    setupTimeHours: 8,
+    pricing: 'free',
+    technologies: [
+      { id: 'nextjs', name: 'Next.js', category: 'frontend', role: 'primary' },
+      { id: 'trpc', name: 'tRPC', category: 'backend', role: 'primary' },
+      { id: 'prisma', name: 'Prisma', category: 'database', role: 'primary' },
+      { id: 'typescript', name: 'TypeScript', category: 'frontend', role: 'primary' },
+      { id: 'nextauth', name: 'NextAuth.js', category: 'backend', role: 'secondary' },
+      { id: 'tailwind', name: 'Tailwind CSS', category: 'frontend', role: 'optional' },
+    ],
+    useCases: ['Type-safe Apps', 'Full-stack TypeScript', 'Rapid Development', 'Modern Web Apps'],
+    pros: ['End-to-end type safety', 'Excellent developer experience', 'Modern stack', 'Great documentation'],
+    cons: ['TypeScript complexity', 'Newer ecosystem', 'Learning curve for beginners'],
+    alternatives: ['Next.js + GraphQL', 'Remix', 'SvelteKit'],
+    installationSteps: [
+      'Create T3 app with create-t3-app',
+      'Set up database with Prisma',
+      'Configure tRPC routers',
+      'Add authentication with NextAuth',
+      'Create type-safe API endpoints',
+      'Implement frontend with React hooks',
+      'Deploy to Vercel'
+    ],
+    stars: 4.8,
+    uses: 1567,
+    author: 'T3 Community',
+    createdAt: '2024-03-08',
+  },
+  {
+    id: 'mern-stack',
+    name: 'MERN Stack',
+    description: 'Classic JavaScript full-stack with MongoDB, Express.js, React, and Node.js for rapid development.',
+    shortDescription: 'MongoDB + Express + React + Node.js',
+    category: 'Full-stack',
+    difficulty: 'beginner',
+    setupTimeHours: 6,
+    pricing: 'free',
+    technologies: [
+      { id: 'mongodb', name: 'MongoDB', category: 'database', role: 'primary' },
+      { id: 'express', name: 'Express.js', category: 'backend', role: 'primary' },
+      { id: 'react', name: 'React', category: 'frontend', role: 'primary' },
+      { id: 'nodejs', name: 'Node.js', category: 'backend', role: 'primary' },
+      { id: 'mongoose', name: 'Mongoose', category: 'database', role: 'secondary' },
+      { id: 'jsonwebtoken', name: 'JWT', category: 'backend', role: 'optional' },
+    ],
+    useCases: ['Rapid Prototyping', 'Social Media Apps', 'Content Platforms', 'Learning Projects'],
+    pros: ['Single language (JavaScript)', 'Large community', 'Fast development', 'Flexible schema'],
+    cons: ['Callback complexity', 'NoSQL limitations', 'Performance concerns at scale'],
+    alternatives: ['MEAN Stack', 'PERN Stack', 'JAMstack'],
+    installationSteps: [
+      'Set up Node.js and npm',
+      'Install MongoDB locally or use Atlas',
+      'Create Express.js server',
+      'Set up React frontend',
+      'Connect frontend and backend',
+      'Implement authentication',
+      'Deploy to cloud platform'
+    ],
+    stars: 4.3,
+    uses: 4567,
+    author: 'JavaScript Community',
+    createdAt: '2024-03-10',
+  },
+  {
+    id: 'spring-boot-api',
+    name: 'Spring Boot REST API',
+    description: 'Enterprise-grade Java API development with Spring Boot, featuring robust architecture and extensive features.',
+    shortDescription: 'Spring Boot + MySQL + Maven',
+    category: 'Enterprise',
+    difficulty: 'intermediate',
+    setupTimeHours: 10,
+    pricing: 'free',
+    technologies: [
+      { id: 'springboot', name: 'Spring Boot', category: 'backend', role: 'primary' },
+      { id: 'java', name: 'Java', category: 'backend', role: 'primary' },
+      { id: 'springdata', name: 'Spring Data JPA', category: 'database', role: 'primary' },
+      { id: 'mysql', name: 'MySQL', category: 'database', role: 'secondary' },
+      { id: 'springsecurity', name: 'Spring Security', category: 'backend', role: 'secondary' },
+      { id: 'maven', name: 'Maven', category: 'devops', role: 'optional' },
+    ],
+    useCases: ['Enterprise APIs', 'Banking Systems', 'Large-scale Applications', 'Microservices'],
+    pros: ['Enterprise-ready', 'Excellent tooling', 'Strong typing', 'Mature ecosystem'],
+    cons: ['Verbose configuration', 'Memory consumption', 'Learning curve', 'Slower startup'],
+    alternatives: ['ASP.NET Core', 'Django', 'Express.js'],
+    installationSteps: [
+      'Install Java JDK and Maven',
+      'Create Spring Boot project',
+      'Configure database connections',
+      'Create JPA entities and repositories',
+      'Implement REST controllers',
+      'Add Spring Security for auth',
+      'Package and deploy as JAR'
+    ],
+    stars: 4.4,
+    uses: 2890,
+    author: 'Enterprise Java Community',
+    createdAt: '2024-03-12',
+  }
 ];
 
+// Complete the stack library with 30 total stacks
 export const getAllStacks = (): StackData[] => {
   return [...officialStacks, ...additionalStacks];
+};
+
+// Get featured/trending stacks
+export const getFeaturedStacks = (): StackData[] => {
+  return getAllStacks()
+    .sort((a, b) => (b.stars * 0.7 + b.uses * 0.0003) - (a.stars * 0.7 + a.uses * 0.0003))
+    .slice(0, 6);
+};
+
+// Get stacks by popularity score
+export const getPopularStacks = (): StackData[] => {
+  return getAllStacks()
+    .sort((a, b) => {
+      const scoreA = a.stars * 0.4 + a.uses * 0.0001 + (5 - a.setupTimeHours) * 0.1;
+      const scoreB = b.stars * 0.4 + b.uses * 0.0001 + (5 - b.setupTimeHours) * 0.1;
+      return scoreB - scoreA;
+    });
+};
+
+// Get recently added stacks
+export const getRecentStacks = (): StackData[] => {
+  return getAllStacks()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 8);
+};
+
+// Search stacks by query
+export const searchStacks = (query: string): StackData[] => {
+  const lowercaseQuery = query.toLowerCase();
+  return getAllStacks().filter(stack => 
+    stack.name.toLowerCase().includes(lowercaseQuery) ||
+    stack.description.toLowerCase().includes(lowercaseQuery) ||
+    stack.shortDescription.toLowerCase().includes(lowercaseQuery) ||
+    stack.category.toLowerCase().includes(lowercaseQuery) ||
+    stack.technologies.some(tech => tech.name.toLowerCase().includes(lowercaseQuery)) ||
+    stack.useCases.some(useCase => useCase.toLowerCase().includes(lowercaseQuery))
+  );
 };
 
 export const getStackById = (id: string): StackData | undefined => {

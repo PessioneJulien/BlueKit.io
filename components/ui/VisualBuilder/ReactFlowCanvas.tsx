@@ -62,8 +62,11 @@ interface ReactFlowCanvasProps {
   onDeleteNode?: (nodeId: string) => void;
   onRemoveSubTechnology?: (mainTechId: string, subTechId: string) => void;
   onDropComponent?: (component: NodeData, position: { x: number; y: number }) => void;
+  onAddComponentToContainer?: (component: NodeData, containerId: string, isMoving?: boolean) => void;
+  onMoveNodeToContainer?: (nodeId: string, containerId: string) => void;
   onRemoveFromContainer?: (containerId: string, nodeId: string) => void;
   onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
+  onNameChange?: (nodeId: string, newName: string) => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
   // Presentation mode props
@@ -88,8 +91,11 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   onDeleteNode,
   onRemoveSubTechnology,
   onDropComponent,
+  onAddComponentToContainer,
+  onMoveNodeToContainer,
   onRemoveFromContainer,
   onConvertToContainer,
+  onNameChange,
   availableSubTechnologies,
   className,
   // Presentation mode props with defaults
@@ -100,11 +106,15 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
-  const { updateContainerNodes } = useContainerLogic();
+  const { updateContainerNodes, detectContainerDrops } = useContainerLogic();
   
   // Context menu state
   const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  
+  // Dragging state for ghost preview
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
   // Convert our data format to ReactFlow format
   const convertToReactFlowNodes = useCallback((nodeList: typeof externalNodes): Node[] => {
@@ -190,6 +200,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         },
         onDocumentationSave,
         onAddSubTechnology,
+        onNameChange: onNameChange ? (nodeId: string, newName: string) => {
+          const updatedNodes = externalNodes.map(n =>
+            n.id === nodeId ? { ...n, name: newName } : n
+          );
+          onNodesChange(updatedNodes);
+        } : undefined,
         onRemoveSubTechnology: onRemoveSubTechnology || ((mainTechId: string, subTechId: string) => {
           const updatedNodes = externalNodes.map(node => {
             if (node.id === mainTechId && node.subTechnologies) {
@@ -216,13 +232,17 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onNodeSelect,
         onRemoveFromContainer,
         onDropComponent,
+        onAddComponentToContainer,
         onConvertToContainer,
         availableSubTechnologies,
-        isReadOnly
+        isReadOnly,
+        draggingNodeId,
+        draggingNode: draggingNodeId ? externalNodes.find(n => n.id === draggingNodeId) : null,
+        mousePosition
         }
       };
     });
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onConvertToContainer, availableSubTechnologies, isReadOnly]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNameChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onAddComponentToContainer, onConvertToContainer, availableSubTechnologies, isReadOnly, draggingNodeId, mousePosition]);
 
   // Handle connection context menu
   const handleConnectionContextMenu = useCallback((connectionId: string, event: React.MouseEvent) => {
@@ -248,6 +268,70 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       setContextMenuConnectionId(null);
     }
   }, [contextMenuConnectionId]);
+
+  // Handle when a node drag starts
+  const handleNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
+    console.log('🎯 Node drag started:', node.id, 'setting draggingNodeId');
+    setDraggingNodeId(node.id);
+    setMousePosition({ x: event.clientX, y: event.clientY });
+  }, []);
+  
+  // Handle when a node drag ends - check if it's over a container
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+    console.log('🎯 Node drag stopped:', node.id, 'at position:', node.position, 'clearing draggingNodeId');
+    setDraggingNodeId(null);
+    setMousePosition(null);
+    
+    // Find if the node was dropped over a container
+    const allNodes = nodes;
+    const draggedNode = allNodes.find(n => n.id === node.id);
+    
+    if (!draggedNode) return;
+    
+    // Check each container to see if the node is within its bounds
+    for (const potentialContainer of allNodes) {
+      if (potentialContainer.data.isContainer && potentialContainer.id !== node.id) {
+        const containerBounds = {
+          x: potentialContainer.position.x,
+          y: potentialContainer.position.y,
+          width: potentialContainer.data.width || 400,
+          height: potentialContainer.data.height || 300
+        };
+        
+        const nodeBounds = {
+          x: node.position.x,
+          y: node.position.y,
+          width: draggedNode.data.width || 200,
+          height: draggedNode.data.height || 80
+        };
+        
+        // Check if node center is within container
+        const nodeCenterX = nodeBounds.x + nodeBounds.width / 2;
+        const nodeCenterY = nodeBounds.y + nodeBounds.height / 2;
+        
+        const isWithinContainer = 
+          nodeCenterX >= containerBounds.x && 
+          nodeCenterX <= containerBounds.x + containerBounds.width &&
+          nodeCenterY >= containerBounds.y && 
+          nodeCenterY <= containerBounds.y + containerBounds.height;
+        
+        if (isWithinContainer) {
+          console.log('🎯 Node dropped in container:', potentialContainer.id);
+          
+          // Move node to container - pass the node ID directly
+          if (onMoveNodeToContainer) {
+            onMoveNodeToContainer(node.id, potentialContainer.id);
+          } else if (onAddComponentToContainer) {
+            // Fallback for backward compatibility
+            onAddComponentToContainer(draggedNode.data, potentialContainer.id, true);
+          }
+          
+          // The node removal will be handled by the onAddComponentToContainer function
+          break;
+        }
+      }
+    }
+  }, [nodes, onMoveNodeToContainer, onAddComponentToContainer]);
 
   const convertToReactFlowEdges = useCallback((connectionList: typeof externalConnections): Edge[] =>
     connectionList.map(conn => {
@@ -305,13 +389,21 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         return node;
       });
       
-      // Update container relationships after position changes
-      const nodesWithContainerUpdates = updateContainerNodes(updatedNodes);
-      onNodesChange(nodesWithContainerUpdates);
+      // Only detect container drops on actual drops (not during drag)
+      const isDrop = positionChanges.some(change => !('dragging' in change) || !change.dragging);
+      
+      if (isDrop) {
+        console.log('🎯 Drop detected, checking for container integration');
+        const nodesWithContainerUpdates = detectContainerDrops(updatedNodes);
+        onNodesChange(nodesWithContainerUpdates);
+      } else {
+        // Just update positions without container detection during drag
+        onNodesChange(updatedNodes);
+      }
     }
     
     console.log('ReactFlow nodes changed:', changes);
-  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, updateContainerNodes]);
+  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, detectContainerDrops]);
 
   // Handle new connections
   const onConnect = useCallback((params: ReactFlowConnection) => {
@@ -404,18 +496,24 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     }
   }, [onDropComponent]);
 
-  // Update nodes when external nodes change - preserve positions
+  // Update nodes when external nodes change - preserve positions and dimensions
   useEffect(() => {
     const reactFlowNodes = convertToReactFlowNodes(externalNodes);
     setNodes(prevNodes => {
-      // Preserve positions from current ReactFlow nodes
+      // Preserve positions and dimensions from current ReactFlow nodes
       return reactFlowNodes.map(newNode => {
         const existingNode = prevNodes.find(n => n.id === newNode.id);
         if (existingNode) {
-          // Keep the current position from ReactFlow
+          // Keep the current position and dimensions from ReactFlow
           return {
             ...newNode,
-            position: existingNode.position
+            position: existingNode.position,
+            // Preserve custom dimensions if they exist
+            data: {
+              ...newNode.data,
+              width: existingNode.data?.width || newNode.data.width,
+              height: existingNode.data?.height || newNode.data.height,
+            }
           };
         }
         return newNode;
@@ -428,6 +526,20 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     const reactFlowEdges = convertToReactFlowEdges(externalConnections);
     setEdges(reactFlowEdges);
   }, [externalConnections, convertToReactFlowEdges, setEdges]);
+
+  // Track mouse position during drag for ghost preview
+  useEffect(() => {
+    if (!draggingNodeId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [draggingNodeId]);
 
 
   return (
@@ -444,6 +556,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={handleCanvasClick}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}

@@ -1,234 +1,499 @@
+'use client';
+
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { CodeVisualToggle } from '@/components/ui/CodeVisualToggle';
+import { PresentationCodeToggle } from '@/components/ui/PresentationCodeToggle';
 import { 
-  ArrowRight, 
   Code2, 
-  LayoutGrid, 
-  Users, 
-  Zap,
-  Shield,
-  Sparkles
+  Workflow,
+  Package,
+  Sparkles,
+  ChevronRight,
+  Github,
+  ExternalLink,
+  Terminal,
+  Layers,
+  Container,
+  FileJson,
+  Settings,
+  Boxes,
+  CircuitBoard
 } from 'lucide-react';
 
 export default function HomePage() {
+  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 500], [0, -100]);
+
   const features = [
     {
-        icon: LayoutGrid,
-      title: 'Visual Stack Builder',
-      description: 'Drag and drop technologies to build your perfect stack',
-      color: 'text-blue-400',
+      icon: Workflow,
+      title: 'React Flow Canvas',
+      description: 'Drag and drop components on an infinite canvas. Pan, zoom, and connect technologies with smart bezier curves.',
+      detail: 'Implemented with ReactFlow v11',
     },
     {
-      icon: Users,
-      title: 'Community Driven',
-      description: 'Learn from real-world stacks used by developers',
-      color: 'text-purple-400',
+      icon: Container,
+      title: 'Container Integration',
+      description: 'Drop components into Docker/K8s containers. Real-time resource calculation with auto/manual modes and limit alerts.',
+      detail: 'NestedContainerNode system',
     },
     {
-      icon: Zap,
-      title: 'Instant Setup Guides',
-      description: 'Get step-by-step instructions tailored to your stack',
-      color: 'text-yellow-400',
+      icon: Layers,
+      title: 'Sub-Technology System',
+      description: 'Add tools and libraries to main technologies. Drag Tailwind onto Next.js, or Jest onto Node.js.',
+      detail: 'Hierarchical component system',
     },
     {
-      icon: Shield,
-      title: 'Best Practices',
-      description: 'Built-in compatibility checks and recommendations',
-      color: 'text-green-400',
+      icon: FileJson,
+      title: 'Multi-Format Export',
+      description: 'Export as JSON config, Docker Compose, README.md with setup instructions, or import existing stacks.',
+      detail: '5 export formats available',
+    },
+    {
+      icon: Terminal,
+      title: 'Presentation Mode',
+      description: 'Present your architecture with a beautiful slide-based view. Navigate with keyboard or auto-play.',
+      detail: 'SimplePresentationMode',
+    },
+    {
+      icon: Sparkles,
+      title: 'Smart Templates',
+      description: 'Start with pre-configured stacks: MERN, JAMStack, Microservices, or AI-powered apps.',
+      detail: '10+ official templates',
     },
   ];
 
-  const popularStacks = [
+  const useCases = [
     {
-      name: 'Modern SaaS Stack',
-      description: 'Next.js + Supabase + Stripe',
-      tags: ['Full-stack', 'Production Ready'],
-      difficulty: 'intermediate',
+      title: 'Microservices Architecture',
+      description: 'Design and visualize complex microservices with container orchestration',
+      icon: Boxes,
     },
     {
-      name: 'AI-Powered App',
-      description: 'React + FastAPI + OpenAI',
-      tags: ['AI/ML', 'Real-time'],
-      difficulty: 'expert',
+      title: 'Full-Stack Applications',
+      description: 'Plan your frontend, backend, database, and infrastructure in one view',
+      icon: Layers,
     },
     {
-      name: 'Startup MVP',
-      description: 'Vue.js + Firebase + Tailwind',
-      tags: ['Rapid Development', 'Low Cost'],
-      difficulty: 'beginner',
+      title: 'DevOps Planning',
+      description: 'Map out CI/CD pipelines, monitoring, and deployment strategies',
+      icon: Settings,
     },
   ];
+
+  const codeExample = `// Export your visual stack as code
+const stack = {
+  services: [
+    { name: 'frontend', image: 'next:14', ports: [3000] },
+    { name: 'backend', image: 'node:20', ports: [8080] },
+    { name: 'database', image: 'postgres:15', ports: [5432] }
+  ],
+  containers: [
+    {
+      name: 'web-services',
+      contains: ['frontend', 'backend'],
+      resources: { cpu: '2 cores', memory: '4GB' }
+    }
+  ]
+}`;
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen bg-slate-950">
+      {/* Background Pattern */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
+        <motion.div 
+          style={{ y: y1 }}
+          className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl"
+        />
+        <div className="absolute inset-0" 
+          style={{
+            backgroundImage: `linear-gradient(rgba(15,23,42,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.9) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px',
+            maskImage: 'radial-gradient(ellipse at center, transparent 20%, black 70%)'
+          }}
+        />
+      </div>
+
       {/* Hero Section */}
-      <section className="relative px-4 py-20 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-purple-600/20 blur-3xl" />
-        
-        <div className="relative mx-auto max-w-7xl">
-          <div className="text-center">
-            <div className="mb-8 flex justify-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 blur-xl opacity-50" />
-                <div className="relative rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-3">
-                  <Code2 className="h-16 w-16 text-white" />
+      <section className="relative z-10 min-h-[90vh] flex items-center px-4 sm:px-6 lg:px-8 pt-20">
+        <div className="mx-auto max-w-7xl w-full">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-left"
+            >
+              <Badge variant="secondary" className="mb-6 bg-blue-500/10 text-blue-400 border-blue-500/20">
+                Open Source Visual Stack Builder
+              </Badge>
+              
+              <h1 className="mb-6 text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Design your tech stack
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                  visually
+                </span>
+              </h1>
+              
+              <p className="mb-8 text-xl text-slate-300 leading-relaxed">
+                Drag and drop technologies, organize them into containers, and export production-ready configurations. 
+                No more guessing about resource requirements.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Link href="/builder">
+                  <Button 
+                    variant="primary" 
+                    size="lg" 
+                    className="min-w-[200px] h-14 text-base font-semibold bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+                  >
+                    <Terminal className="mr-2 h-5 w-5" />
+                    Start Building
+                  </Button>
+                </Link>
+                
+                <Link href="https://github.com" target="_blank">
+                  <Button 
+                    variant="secondary" 
+                    size="lg" 
+                    className="min-w-[200px] h-14 text-base font-semibold border-slate-700 hover:border-slate-600"
+                  >
+                    <Github className="mr-2 h-5 w-5" />
+                    View on GitHub
+                  </Button>
+                </Link>
+              </div>
+              
+              <div className="flex items-center gap-6 text-sm text-slate-400">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  Free & Open Source
+                </div>
+                <div className="flex items-center gap-2">
+                  <Code2 className="h-4 w-4" />
+                  No Sign-up Required
                 </div>
               </div>
-            </div>
+            </motion.div>
             
-            <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-100 sm:text-6xl lg:text-7xl">
-              Build Your Perfect
-              <span className="bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"> Tech Stack</span>
-            </h1>
-            
-            <p className="mx-auto mb-10 max-w-2xl text-lg text-slate-300 sm:text-xl">
-              Discover, compare, and assemble technology stacks with confidence. 
-              Get personalized setup guides and learn from the community.
-            </p>
-            
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/builder">
-                <Button variant="primary" size="lg" className="min-w-[200px]">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Start Building
-                </Button>
-              </Link>
-              <Link href="/stacks">
-                <Button variant="secondary" size="lg" className="min-w-[200px]">
-                  Browse Stacks
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-          
-          {/* Stats */}
-          <div className="mt-20 grid grid-cols-2 gap-8 sm:grid-cols-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-slate-100">150+</div>
-              <div className="mt-1 text-sm text-slate-400">Technologies</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-slate-100">2.5k</div>
-              <div className="mt-1 text-sm text-slate-400">Stacks Created</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-slate-100">10k+</div>
-              <div className="mt-1 text-sm text-slate-400">Developers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-slate-100">4.9/5</div>
-              <div className="mt-1 text-sm text-slate-400">User Rating</div>
-            </div>
+            {/* Right Interactive Visual */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              className="relative hidden lg:block"
+            >
+              <CodeVisualToggle className="h-[500px]" />
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative z-10 px-4 py-24 sm:px-6 lg:px-8 border-t border-slate-800">
         <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-slate-100 sm:text-4xl">
-              Everything you need to build better
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold text-white mb-4">
+              Everything you need to design tech stacks
             </h2>
-            <p className="mt-4 text-lg text-slate-400">
-              Powerful features to help you make the right technology decisions
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              A complete visual toolkit for planning, documenting, and deploying your infrastructure
             </p>
-          </div>
+          </motion.div>
           
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature) => (
-              <Card key={feature.title} variant="glass" className="group hover:bg-slate-800/60">
-                <CardContent className="p-6">
-                  <div className={`mb-4 inline-flex rounded-lg bg-slate-800/50 p-3 ${feature.color}`}>
-                    <feature.icon className="h-6 w-6" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.6 }}
+                viewport={{ once: true }}
+                onMouseEnter={() => setHoveredFeature(index)}
+                onMouseLeave={() => setHoveredFeature(null)}
+                className="group relative"
+              >
+                <div className="relative bg-slate-900/50 border border-slate-800 hover:border-slate-700 rounded-xl p-6 transition-all duration-300 h-full">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
+                  
+                  <div className="relative">
+                    <div className="mb-4 inline-flex p-3 bg-slate-800 rounded-lg group-hover:bg-slate-700 transition-colors">
+                      <feature.icon className="h-6 w-6 text-blue-400" />
+                    </div>
+                    
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {feature.title}
+                    </h3>
+                    
+                    <p className="text-slate-400 text-sm leading-relaxed mb-3">
+                      {feature.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500 font-mono">
+                        {feature.detail}
+                      </span>
+                      <ChevronRight className={`h-4 w-4 text-slate-600 transition-all duration-300 ${hoveredFeature === index ? 'translate-x-1 text-blue-400' : ''}`} />
+                    </div>
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-slate-100">{feature.title}</h3>
-                  <p className="text-sm text-slate-400">{feature.description}</p>
-                </CardContent>
-              </Card>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Popular Stacks */}
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
+      {/* Use Cases Section */}
+      <section className="relative z-10 px-4 py-24 sm:px-6 lg:px-8 bg-slate-900/50">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-12 flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-100">Popular Stacks</h2>
-              <p className="mt-2 text-lg text-slate-400">Get started with community favorites</p>
-            </div>
-            <Link href="/stacks">
-              <Button variant="ghost">
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Built for modern development workflows
+            </h2>
+            <p className="text-lg text-slate-400">
+              Whether you&apos;re planning a simple app or complex infrastructure
+            </p>
+          </motion.div>
           
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {popularStacks.map((stack) => (
-              <Card key={stack.name} variant="glass" className="group cursor-pointer hover:bg-slate-800/60">
-                <CardContent className="p-6">
-                  <div className="mb-4 flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-100 group-hover:text-blue-400">
-                        {stack.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-400">{stack.description}</p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-1" />
+          <div className="grid gap-8 md:grid-cols-3">
+            {useCases.map((useCase, index) => (
+              <motion.div
+                key={useCase.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.6 }}
+                viewport={{ once: true }}
+                className="group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 p-3 bg-slate-800 rounded-lg group-hover:bg-slate-700 transition-colors">
+                    <useCase.icon className="h-6 w-6 text-blue-400" />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {stack.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" size="sm">
-                        {tag}
-                      </Badge>
-                    ))}
-                    <Badge 
-                      variant={
-                        stack.difficulty === 'beginner' ? 'success' :
-                        stack.difficulty === 'intermediate' ? 'warning' : 'danger'
-                      } 
-                      size="sm"
-                      outline
-                    >
-                      {stack.difficulty}
-                    </Badge>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {useCase.title}
+                    </h3>
+                    <p className="text-slate-400 text-sm">
+                      {useCase.description}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Code Example Section */}
+      <section className="relative z-10 px-4 py-24 sm:px-6 lg:px-8 border-t border-slate-800">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <Badge variant="secondary" className="mb-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">
+                Export to Any Format
+              </Badge>
+              
+              <h2 className="text-3xl font-bold text-white mb-4">
+                From visual design to production code
+              </h2>
+              
+              <p className="text-lg text-slate-300 mb-6">
+                Export your visual architecture as Docker Compose, Kubernetes manifests, 
+                or custom deployment scripts. Every connection, resource limit, and 
+                configuration is preserved.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Docker Compose</h4>
+                    <p className="text-sm text-slate-400">Ready-to-run container orchestration files</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Kubernetes</h4>
+                    <p className="text-sm text-slate-400">Production-grade K8s manifests with resource limits</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center mt-0.5">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-medium mb-1">Infrastructure as Code</h4>
+                    <p className="text-sm text-slate-400">Terraform, Pulumi, or custom scripts</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Right Interactive Block */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <PresentationCodeToggle className="h-[500px]" />
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative z-10 px-4 py-32 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-12">
-            <div className="absolute inset-0 bg-black/20" />
-            <div className="relative">
-              <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">
-                Ready to build your stack?
-              </h2>
-              <p className="mb-8 text-lg text-white/90">
-                Join thousands of developers building better applications with BlueKit
-              </p>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl font-bold text-white mb-6">
+              Start building your stack visually
+            </h2>
+            <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
+              No sign-up required. Free and open source. Export to any format.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link href="/builder">
-                <Button variant="secondary" size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-                  Get Started Free
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                <Button 
+                  size="lg" 
+                  className="min-w-[200px] h-14 text-base font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-600/20"
+                >
+                  <Workflow className="mr-2 h-5 w-5" />
+                  Launch Builder
+                </Button>
+              </Link>
+              
+              <Link href="https://github.com" target="_blank">
+                <Button 
+                  variant="secondary" 
+                  size="lg" 
+                  className="min-w-[200px] h-14 text-base font-semibold border-slate-700 hover:border-slate-600"
+                >
+                  <Github className="mr-2 h-5 w-5" />
+                  Star on GitHub
                 </Button>
               </Link>
             </div>
-          </div>
+            
+            <div className="mt-12 flex items-center justify-center gap-8 text-sm text-slate-500">
+              <div className="flex items-center gap-2">
+                <Terminal className="h-4 w-4" />
+                <span>CLI Coming Soon</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileJson className="h-4 w-4" />
+                <span>API Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                <span>npm Package</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 px-4 py-16 sm:px-6 lg:px-8 border-t border-slate-800">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid md:grid-cols-4 gap-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <CircuitBoard className="h-8 w-8 text-blue-400" />
+                <span className="text-xl font-bold text-white">BlueKit</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-4">
+                Open source visual stack builder for modern developers.
+              </p>
+              <div className="flex gap-4">
+                <Link href="https://github.com" target="_blank" className="text-slate-400 hover:text-white transition-colors">
+                  <Github className="h-5 w-5" />
+                </Link>
+                <Link href="https://twitter.com" target="_blank" className="text-slate-400 hover:text-white transition-colors">
+                  <ExternalLink className="h-5 w-5" />
+                </Link>
+              </div>
+            </div>
+            
+            {/* Product */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/builder" className="text-slate-400 hover:text-white transition-colors">Visual Builder</Link></li>
+                <li><Link href="/stacks" className="text-slate-400 hover:text-white transition-colors">Stack Library</Link></li>
+                <li><Link href="/components" className="text-slate-400 hover:text-white transition-colors">Components</Link></li>
+                <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors">Pricing</Link></li>
+              </ul>
+            </div>
+            
+            {/* Resources */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors">Documentation</Link></li>
+                <li><Link href="/guides" className="text-slate-400 hover:text-white transition-colors">Guides</Link></li>
+                <li><Link href="/api" className="text-slate-400 hover:text-white transition-colors">API Reference</Link></li>
+                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors">Changelog</Link></li>
+              </ul>
+            </div>
+            
+            {/* Company */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors">About</Link></li>
+                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/careers" className="text-slate-400 hover:text-white transition-colors">Careers</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-12 pt-8 border-t border-slate-800 text-center text-sm text-slate-500">
+            <p>&copy; 2024 BlueKit. All rights reserved. Built with Next.js and React Flow.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

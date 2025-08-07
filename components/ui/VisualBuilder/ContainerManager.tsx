@@ -32,7 +32,7 @@ export class ContainerManager {
       isMainTechnology: true,
       isContainer: true,
       containerType: 'docker',
-      status: 'running',
+      // status: 'running', // Removed - not useful
       resources: {
         cpu: '1 CPU',
         memory: '512MB'
@@ -75,7 +75,7 @@ export class ContainerManager {
       containerType: 'kubernetes',
       networks: ['cluster-network', 'service-mesh'],
       replicas: 3,
-      status: 'running',
+      // status: 'running', // Removed - not useful
       resources: {
         cpu: '4 CPU',
         memory: '8GB'

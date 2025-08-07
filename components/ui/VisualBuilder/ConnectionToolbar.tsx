@@ -182,7 +182,7 @@ export const ConnectionToolbar: React.FC<ConnectionToolbarProps> = ({
         <span className="text-slate-400 text-xs">Anim:</span>
         <select
           value={style.animation || 'none'}
-          onChange={(e) => handleStyleUpdate({ animation: e.target.value as any })}
+          onChange={(e) => handleStyleUpdate({ animation: e.target.value as 'none' | 'flow' | 'pulse' | 'glow' })}
           className="bg-slate-700 border border-slate-600 rounded px-1 py-1 text-slate-200 text-xs w-16"
         >
           {animations.map((anim) => (

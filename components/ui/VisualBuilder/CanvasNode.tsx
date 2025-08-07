@@ -53,7 +53,7 @@ export interface NodeData {
   containerType?: 'docker' | 'kubernetes';
   containedNodes?: NodeData[];
   ports?: string[];
-  status?: 'running' | 'stopped' | 'pending';
+  // status?: 'running' | 'stopped' | 'pending'; // Removed - not useful
 }
 
 interface CanvasNodeProps {
@@ -70,6 +70,7 @@ interface CanvasNodeProps {
   onToggleMode?: (id: string) => void;
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
   onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
+  onNameChange?: (nodeId: string, newName: string) => void;
   className?: string;
 }
 
@@ -103,13 +104,22 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   onToggleMode,
   onStyleChange,
   onConvertToContainer,
+  onNameChange,
   className
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showMenu, setShowMenu] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState(data.name);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync editName with data.name when it changes
+  useEffect(() => {
+    setEditName(data.name);
+  }, [data.name]);
 
   // Get custom style or default category colors
   const getNodeStyle = () => {
@@ -276,15 +286,59 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
             'bg-white/30 rounded-full flex-shrink-0',
             isCompact ? 'w-2 h-2' : 'w-3 h-3'
           )} />
-          <h3 className={cn(
-            'font-semibold truncate',
-            isCompact ? 'text-sm' : 'text-base',
-            !data.customStyle && 'text-white'
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={() => {
+                setIsEditingName(false);
+                if (editName.trim() && editName !== data.name && onNameChange) {
+                  onNameChange(data.id, editName.trim());
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setIsEditingName(false);
+                  if (editName.trim() && editName !== data.name && onNameChange) {
+                    onNameChange(data.id, editName.trim());
+                  }
+                } else if (e.key === 'Escape') {
+                  setEditName(data.name);
+                  setIsEditingName(false);
+                }
+              }}
+              className={cn(
+                'bg-transparent border-none outline-none font-semibold',
+                isCompact ? 'text-sm' : 'text-base',
+                !data.customStyle && 'text-white',
+                'w-full min-w-0'
+              )}
+              style={data.customStyle ? { color: nodeStyle.color } : {}}
+              autoFocus
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <h3 
+              className={cn(
+                'font-semibold truncate cursor-text',
+                isCompact ? 'text-sm' : 'text-base',
+                !data.customStyle && 'text-white'
+              )}
+              style={data.customStyle ? { color: nodeStyle.color } : {}}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNameChange) {
+                  setIsEditingName(true);
+                  setEditName(data.name);
+                }
+              }}
+              title="Cliquer pour éditer le nom"
+            >
+              {data.name}
+            </h3>
           )}
-          style={data.customStyle ? { color: nodeStyle.color } : {}}
-          >
-            {data.name}
-          </h3>
         </div>
         
         <div className="flex items-center gap-1 flex-shrink-0">

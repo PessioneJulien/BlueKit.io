@@ -15,8 +15,10 @@ import {
   Copy,
   Link,
   Code,
-  Sidebar
+  Sidebar,
+  ExternalLink
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface PresentationToolbarProps {
   isEditMode: boolean;
@@ -27,6 +29,7 @@ interface PresentationToolbarProps {
   onToggleSidebar: () => void;
   onFullscreen: () => void;
   onSave: () => void;
+  stackId?: string;
 }
 
 export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
@@ -37,8 +40,10 @@ export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
   onToggleEdit,
   onToggleSidebar,
   onFullscreen,
-  onSave
+  onSave,
+  stackId
 }) => {
+  const router = useRouter();
   const [showShareMenu, setShowShareMenu] = useState(false);
 
   const copyLink = () => {
@@ -58,6 +63,14 @@ export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
   const exportData = () => {
     // TODO: Implement export functionality
     console.log('Export presentation data');
+  };
+
+  const openInBuilder = () => {
+    if (stackId) {
+      router.push(`/builder?stackId=${stackId}`);
+    } else {
+      router.push('/builder');
+    }
   };
 
   return (
@@ -94,6 +107,18 @@ export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
           )}
         </Button>
       )}
+
+      {/* Open in Builder */}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={openInBuilder}
+        className="flex items-center gap-2"
+        title="Ouvrir dans le Builder pour une édition complète"
+      >
+        <ExternalLink className="w-4 h-4" />
+        Builder
+      </Button>
 
       {/* Save Button (only in edit mode) */}
       {isEditMode && canSave && (

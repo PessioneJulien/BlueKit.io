@@ -159,6 +159,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
           onFullscreen={toggleFullscreen}
           onSave={handleSave}
           canSave={isEditMode && onSave !== undefined}
+          stackId={stack.id}
         />
       </div>
 
