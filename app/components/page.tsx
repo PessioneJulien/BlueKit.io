@@ -638,6 +638,7 @@ export default function ComponentsPage() {
             
             // Handle drag & drop for adding to visual builder
             const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+              if (!e.dataTransfer) return; // Handle test environments
               e.dataTransfer.effectAllowed = 'copy';
               e.dataTransfer.setData('application/json', JSON.stringify({
                 type: 'community-component',
