@@ -631,7 +631,7 @@ export default function ComponentsPage() {
         </div>
 
         {/* Components Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="component-grid">
           {filteredComponents.map((component) => {
             const CategoryIcon = categoryConfig[component.category].icon;
             const isOwner = user?.id === component.author.id;
@@ -665,6 +665,7 @@ export default function ComponentsPage() {
                 className="hover:border-slate-600 transition-all cursor-move relative group" 
                 draggable
                 onDragStart={handleDragStart}
+                data-testid="component-card"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -701,7 +702,7 @@ export default function ComponentsPage() {
                     
                     <div className="flex gap-1 items-center">
                       {/* Drag handle always visible */}
-                      <div className="opacity-60 group-hover:opacity-100 transition-opacity mr-2">
+                      <div className="opacity-60 group-hover:opacity-100 transition-opacity mr-2" data-testid="drag-handle">
                         <Grip className="w-4 h-4 text-slate-400" />
                       </div>
                       
@@ -859,7 +860,7 @@ export default function ComponentsPage() {
 
         {/* Pagination */}
         {totalComponents > ITEMS_PER_PAGE && (
-          <div className="flex justify-center items-center gap-4 mt-8 mb-6">
+          <div className="flex justify-center items-center gap-4 mt-8 mb-6" data-testid="pagination">
             <Button
               variant="secondary"
               size="sm"

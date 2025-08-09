@@ -574,10 +574,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       style={{ width: '100%', height: '100%' }}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      data-testid="visual-canvas"
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        data-testid="drop-zone"
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
