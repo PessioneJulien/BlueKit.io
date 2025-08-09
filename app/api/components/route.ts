@@ -10,6 +10,10 @@ export async function GET(request: NextRequest) {
     const pricing = searchParams.get('pricing');
     const category = searchParams.get('category');
     const authorId = searchParams.get('author_id'); // For "My Components" filter
+    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = (page - 1) * limit;
 
     console.log('Fetching components from database...');
     
@@ -33,10 +37,33 @@ export async function GET(request: NextRequest) {
     if (authorId) {
       query = query.eq('author_id', authorId);
     }
+    
+    // Search filter
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
 
-    // Order by popularity (likes) and recency
+    // Get total count first (without pagination)
+    const { count: totalCount, error: countError } = await supabase
+      .from('components')
+      .select('*', { count: 'exact', head: true })
+      .modify((builder) => {
+        if (difficulty && difficulty !== 'all') builder.eq('difficulty', difficulty);
+        if (pricing && pricing !== 'all') builder.eq('pricing', pricing);
+        if (category && category !== 'all') builder.eq('category', category);
+        if (authorId) builder.eq('author_id', authorId);
+        if (search) builder.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      });
+    
+    if (countError) {
+      console.error('Error counting components:', countError);
+      return NextResponse.json({ error: 'Database error', details: countError.message }, { status: 500 });
+    }
+
+    // Order by popularity (likes) and recency, then apply pagination
     query = query.order('likes_count', { ascending: false })
-                 .order('created_at', { ascending: false });
+                 .order('created_at', { ascending: false })
+                 .range(offset, offset + limit - 1);
 
     const { data: components, error } = await query;
 
@@ -87,7 +114,13 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ components: componentsWithRealLikes });
+    return NextResponse.json({ 
+      components: componentsWithRealLikes,
+      total: totalCount || 0,
+      page,
+      limit,
+      totalPages: Math.ceil((totalCount || 0) / limit)
+    });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
