@@ -48,6 +48,7 @@ export interface NodeData {
   customStyle?: NodeCustomStyle; // Style personnalisé
   resources?: ResourceStats; // Resource requirements
   environmentVariables?: Record<string, string>; // Environment variables for configuration
+  isCommunity?: boolean; // Flag to identify community components
   // Container properties (optional)
   isContainer?: boolean;
   containerType?: 'docker' | 'kubernetes';

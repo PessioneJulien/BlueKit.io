@@ -26,7 +26,8 @@ import {
   Edit,
   Trash,
   Eye,
-  X
+  X,
+  Grip
 } from 'lucide-react';
 import Link from 'next/link';
 import { ComponentModal } from '@/components/ui/ComponentModal';
@@ -93,6 +94,9 @@ export default function ComponentsPage() {
   const [editingComponent, setEditingComponent] = useState<Component | null>(null);
   const [viewingComponent, setViewingComponent] = useState<Component | null>(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalComponents, setTotalComponents] = useState(0);
+  const ITEMS_PER_PAGE = 10;
   
   const { user, isLoading: userLoading } = useUserStore();
 
@@ -100,10 +104,19 @@ export default function ComponentsPage() {
   useEffect(() => {
     const loadComponents = async () => {
       try {
-        const response = await fetch('/api/components');
+        // Add pagination parameters to the API call
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: ITEMS_PER_PAGE.toString(),
+          ...(searchQuery && { search: searchQuery }),
+          ...(selectedCategory !== 'all' && { category: selectedCategory })
+        });
+        
+        const response = await fetch(`/api/components?${params}`);
         if (!response.ok) throw new Error('Failed to fetch components');
         
-        const { components: fetchedComponents } = await response.json();
+        const { components: fetchedComponents, total } = await response.json();
+        setTotalComponents(total);
         
         // Transform API response to match Component interface
         interface ComponentResponse {
@@ -170,7 +183,12 @@ export default function ComponentsPage() {
 
     setLoading(true);
     loadComponents();
-  }, []); // Only load once on mount
+  }, [page, searchQuery, selectedCategory]); // Reload when page or filters change
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategory, selectedType, selectedDifficulty, selectedPricing, sortBy, showMyComponents]);
 
   // Filter components for display (local filtering for immediate feedback)
   useEffect(() => {
@@ -224,7 +242,7 @@ export default function ComponentsPage() {
     }
 
     setFilteredComponents(filtered);
-  }, [searchQuery, selectedCategory, selectedType, selectedDifficulty, selectedPricing, showMyComponents, sortBy, components, user]);
+  }, [selectedType, showMyComponents, sortBy, components, user]);
 
   const handleCreateComponent = async (componentData: Partial<Component>) => {
     try {
@@ -613,13 +631,43 @@ export default function ComponentsPage() {
         </div>
 
         {/* Components Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="component-grid">
           {filteredComponents.map((component) => {
             const CategoryIcon = categoryConfig[component.category].icon;
             const isOwner = user?.id === component.author.id;
             
+            // Handle drag & drop for adding to visual builder
+            const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+              if (!e.dataTransfer) return; // Handle test environments
+              e.dataTransfer.effectAllowed = 'copy';
+              e.dataTransfer.setData('application/json', JSON.stringify({
+                type: 'community-component',
+                component: {
+                  id: component.id,
+                  name: component.name,
+                  category: component.category,
+                  description: component.description,
+                  setupTimeHours: component.setupTimeHours,
+                  difficulty: component.difficulty,
+                  pricing: component.pricing,
+                  documentation: component.documentation,
+                  officialDocsUrl: component.officialDocsUrl,
+                  githubUrl: component.githubUrl,
+                  npmUrl: component.npmUrl,
+                  tags: component.tags
+                }
+              }));
+            };
+            
             return (
-              <Card key={component.id} variant="glass" className="hover:border-slate-600 transition-all">
+              <Card 
+                key={component.id} 
+                variant="glass" 
+                className="hover:border-slate-600 transition-all cursor-move relative group" 
+                draggable
+                onDragStart={handleDragStart}
+                data-testid="component-card"
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -653,8 +701,14 @@ export default function ComponentsPage() {
                       </div>
                     </div>
                     
-                    {isOwner && (
-                      <div className="flex gap-1 items-center">
+                    <div className="flex gap-1 items-center">
+                      {/* Drag handle always visible */}
+                      <div className="opacity-60 group-hover:opacity-100 transition-opacity mr-2" data-testid="drag-handle">
+                        <Grip className="w-4 h-4 text-slate-400" />
+                      </div>
+                      
+                      {isOwner && (
+                        <>
                         <Badge variant="success" size="sm" className="mr-2">
                           Owner
                         </Badge>
@@ -676,8 +730,9 @@ export default function ComponentsPage() {
                         >
                           <Trash className="w-4 h-4" />
                         </Button>
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 
@@ -803,6 +858,79 @@ export default function ComponentsPage() {
             );
           })}
         </div>
+
+        {/* Pagination */}
+        {totalComponents > ITEMS_PER_PAGE && (
+          <div className="flex justify-center items-center gap-4 mt-8 mb-6" data-testid="pagination">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="flex items-center gap-2"
+            >
+              ← Previous
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, Math.ceil(totalComponents / ITEMS_PER_PAGE)) }, (_, i) => {
+                const totalPages = Math.ceil(totalComponents / ITEMS_PER_PAGE);
+                let startPage = Math.max(1, page - 2);
+                const endPage = Math.min(totalPages, startPage + 4);
+                
+                if (endPage - startPage < 4) {
+                  startPage = Math.max(1, endPage - 4);
+                }
+                
+                const pageNum = startPage + i;
+                if (pageNum <= totalPages) {
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === page ? "primary" : "ghost"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className={pageNum === page ? "px-3" : "px-3 text-slate-400 hover:text-white"}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+                return null;
+              })}
+              
+              {Math.ceil(totalComponents / ITEMS_PER_PAGE) > 5 && page < Math.ceil(totalComponents / ITEMS_PER_PAGE) - 2 && (
+                <>
+                  <span className="text-slate-500 px-2">...</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPage(Math.ceil(totalComponents / ITEMS_PER_PAGE))}
+                    className="px-3 text-slate-400 hover:text-white"
+                  >
+                    {Math.ceil(totalComponents / ITEMS_PER_PAGE)}
+                  </Button>
+                </>
+              )}
+            </div>
+            
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage(p => Math.min(Math.ceil(totalComponents / ITEMS_PER_PAGE), p + 1))}
+              disabled={page >= Math.ceil(totalComponents / ITEMS_PER_PAGE)}
+              className="flex items-center gap-2"
+            >
+              Next →
+            </Button>
+            
+            <div className="ml-4 text-sm text-slate-400">
+              Showing {(page - 1) * ITEMS_PER_PAGE + 1} to{' '}
+              {Math.min(page * ITEMS_PER_PAGE, totalComponents)} of {totalComponents} components
+            </div>
+          </div>
+        )}
 
         {/* Empty State */}
         {filteredComponents.length === 0 && (

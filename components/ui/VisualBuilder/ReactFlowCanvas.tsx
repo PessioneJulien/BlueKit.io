@@ -481,15 +481,41 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     
     try {
       const data = JSON.parse(event.dataTransfer.getData('application/json'));
+      console.log('🎯 Dropped data:', data);
       
-      if (data.type === 'main-component' && onDropComponent) {
+      if ((data.type === 'main-component' || data.type === 'community-component') && onDropComponent) {
+        console.log('✅ Handling drop for type:', data.type);
         // Calculate position relative to ReactFlow canvas
         const position = {
           x: event.clientX - reactFlowBounds.left - 100, // Offset for centering
           y: event.clientY - reactFlowBounds.top - 50
         };
         
-        onDropComponent(data.component, position);
+        // For community components, we need to convert the format to match NodeData
+        let componentToAdd = data.component;
+        
+        if (data.type === 'community-component') {
+          // Convert community component to NodeData format
+          componentToAdd = {
+            id: data.component.id,
+            name: data.component.name,
+            label: data.component.name,
+            category: data.component.category,
+            description: data.component.description,
+            setupTimeHours: data.component.setupTimeHours,
+            pricing: data.component.pricing,
+            difficulty: data.component.difficulty,
+            documentation: data.component.documentation,
+            officialDocsUrl: data.component.officialDocsUrl,
+            githubUrl: data.component.githubUrl,
+            npmUrl: data.component.npmUrl,
+            tags: data.component.tags || [],
+            isMainTechnology: true, // Community components are main technologies
+            isCommunity: true // Flag to identify community components
+          };
+        }
+        
+        onDropComponent(componentToAdd, position);
       }
     } catch (error) {
       console.error('Error parsing dropped data:', error);
@@ -548,10 +574,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       style={{ width: '100%', height: '100%' }}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      data-testid="visual-canvas"
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        data-testid="drop-zone"
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
