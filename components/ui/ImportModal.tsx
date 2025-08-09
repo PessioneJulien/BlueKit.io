@@ -7,7 +7,27 @@ import { Upload, X, FileText, AlertCircle, CheckCircle, Download } from 'lucide-
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (stackData: any) => void;
+  onImport: (stackData: ImportedStack) => void;
+}
+
+interface ImportedStackNode {
+  id: string;
+  name: string;
+  category: string;
+  position: { x: number; y: number };
+}
+
+interface ImportedConnection {
+  id: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+}
+
+interface ImportedStack {
+  name: string;
+  description?: string;
+  nodes: ImportedStackNode[];
+  connections: ImportedConnection[];
 }
 
 interface StackPreview {
@@ -23,12 +43,12 @@ interface StackPreview {
 export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
   const [dragActive, setDragActive] = useState(false);
   const [stackPreview, setStackPreview] = useState<StackPreview | null>(null);
-  const [jsonData, setJsonData] = useState<any>(null);
+  const [jsonData, setJsonData] = useState<ImportedStack | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const validateStackData = (data: any): StackPreview => {
+  const validateStackData = (data: ImportedStack): StackPreview => {
     try {
       // Check required fields
       if (!data.name || typeof data.name !== 'string') {
@@ -110,7 +130,7 @@ export function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
       }
 
       // Extract categories
-      const categories = Array.from(new Set(data.nodes.map((node: any) => node.category)));
+      const categories = Array.from(new Set(data.nodes.map((node: { category: string }) => node.category)));
 
       return {
         name: data.name,

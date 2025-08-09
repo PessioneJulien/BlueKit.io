@@ -230,7 +230,7 @@ export function CostCalculator({
                   key={tab.key}
                   variant={selectedView === tab.key ? 'primary' : 'ghost'}
                   size="sm"
-                  onClick={() => setSelectedView(tab.key as any)}
+                  onClick={() => setSelectedView(tab.key as 'breakdown' | 'scaling' | 'recommendations')}
                   className="flex items-center gap-2"
                 >
                   <Icon className="w-4 h-4" />

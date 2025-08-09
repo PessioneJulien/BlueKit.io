@@ -295,9 +295,16 @@ async function getStackUsageCount(stackId: string): Promise<number> {
 export async function getStacks() {
   const supabase = createClient();
   
+  // Fetch stacks with author information
   const { data: stacks, error } = await supabase
     .from('stacks')
-    .select('*')
+    .select(`
+      *,
+      users!author_id (
+        name,
+        email
+      )
+    `)
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 
@@ -309,10 +316,28 @@ export async function getStacks() {
   // Transform the data and add real usage counts
   const stacksWithDetails = await Promise.all(
     stacks.map(async (stack) => {
+      // Extract author name from the joined data
+      let authorName = 'Admin';
+      if (stack.users && typeof stack.users === 'object') {
+        const userData = stack.users as { email?: string; name?: string };
+        if (userData.email === 'julien.pessione83@gmail.com') {
+          authorName = 'Admin';
+        } else if (userData.name) {
+          authorName = userData.name;
+        } else if (userData.email) {
+          // Use email username as fallback
+          authorName = userData.email.split('@')[0];
+        }
+      } else if (!stack.author_id) {
+        // No author_id means it's an admin-created stack
+        authorName = 'Admin';
+      }
+      
       const stackWithDetails = extractStackInfoFromNodes(stack);
       const usageCount = await getStackUsageCount(stack.id);
       return {
         ...stackWithDetails,
+        author: authorName,
         usage_count: usageCount
       };
     })
@@ -325,9 +350,16 @@ export async function getStacks() {
 export async function getStackBySlug(slug: string) {
   const supabase = createClient();
   
+  // Fetch stack with author information
   const { data: stack, error } = await supabase
     .from('stacks')
-    .select('*')
+    .select(`
+      *,
+      users!author_id (
+        name,
+        email
+      )
+    `)
     .eq('id', slug)
     .single();
 
@@ -336,11 +368,29 @@ export async function getStackBySlug(slug: string) {
     return null;
   }
 
+  // Extract author name from the joined data
+  let authorName = 'Admin';
+  if (stack.users && typeof stack.users === 'object') {
+    const userData = stack.users as { email?: string; name?: string };
+    if (userData.email === 'julien.pessione83@gmail.com') {
+      authorName = 'Admin';
+    } else if (userData.name) {
+      authorName = userData.name;
+    } else if (userData.email) {
+      // Use email username as fallback
+      authorName = userData.email.split('@')[0];
+    }
+  } else if (!stack.author_id) {
+    // No author_id means it's an admin-created stack
+    authorName = 'Admin';
+  }
+
   const stackWithDetails = extractStackInfoFromNodes(stack);
   const usageCount = await getStackUsageCount(stack.id);
   
   return {
     ...stackWithDetails,
+    author: authorName,
     usage_count: usageCount
   };
 }
@@ -373,16 +423,52 @@ export async function trackStackUsage(stackId: string, userId?: string) {
 
 // Create a new stack (admin only)
 export async function createStack(
-  stack: Omit<DatabaseStack, 'id' | 'created_at' | 'updated_at'>,
+  stackData: any,
   technologies: Omit<StackTechnology, 'id' | 'stack_id'>[],
-  useCases: string[]
+  useCases: string[],
+  pros?: string[],
+  cons?: string[],
+  installationSteps?: string[],
+  alternatives?: string[]
 ) {
   const supabase = createClient();
   
-  // Start a transaction
+  // Convert the form data into nodes format
+  const nodes: StackNode[] = [];
+  const connections: StackConnection[] = [];
+  
+  technologies.forEach((tech, index) => {
+    const nodeId = `node-${index}`;
+    nodes.push({
+      id: nodeId,
+      type: 'component',
+      position: { x: 100 + (index % 3) * 250, y: 100 + Math.floor(index / 3) * 150 },
+      data: {
+        id: tech.technology_id,
+        name: tech.technology_name,
+        label: tech.technology_name,
+        category: tech.category,
+        optional: tech.role === 'optional'
+      }
+    });
+  });
+  
+  // Build the stack object in the format expected by the database
+  const newStackData: Omit<DatabaseStack, 'id' | 'created_at' | 'updated_at'> = {
+    name: stackData.name,
+    description: stackData.description,
+    use_cases: useCases,
+    author_id: null, // Admin created stacks don't have an author_id
+    is_official: true,
+    is_public: true,
+    nodes,
+    connections
+  };
+  
+  // Insert the new stack
   const { data: newStack, error: stackError } = await supabase
     .from('stacks')
-    .insert(stack)
+    .insert(newStackData)
     .select()
     .single();
 
@@ -391,24 +477,60 @@ export async function createStack(
     return null;
   }
 
-  // For now, we're working with the existing node-based structure
-  // Additional related tables can be added later if needed
   return newStack;
 }
 
 // Update a stack (admin only)
 export async function updateStack(
   stackId: string,
-  stack: Partial<DatabaseStack>,
+  stackData: any,
   technologies?: Omit<StackTechnology, 'id' | 'stack_id'>[],
-  useCases?: string[]
+  useCases?: string[],
+  pros?: string[],
+  cons?: string[],
+  installationSteps?: string[],
+  alternatives?: string[]
 ) {
   const supabase = createClient();
+  
+  // Convert the form data into nodes format
+  const nodes: StackNode[] = [];
+  const connections: StackConnection[] = [];
+  
+  if (technologies) {
+    technologies.forEach((tech, index) => {
+      const nodeId = `node-${index}`;
+      nodes.push({
+        id: nodeId,
+        type: 'component',
+        position: { x: 100 + (index % 3) * 250, y: 100 + Math.floor(index / 3) * 150 },
+        data: {
+          id: tech.technology_id,
+          name: tech.technology_name,
+          label: tech.technology_name,
+          category: tech.category,
+          optional: tech.role === 'optional'
+        }
+      });
+    });
+  }
+  
+  // Build the stack update object
+  const updateData: Partial<DatabaseStack> = {
+    name: stackData.name,
+    description: stackData.description,
+    use_cases: useCases || [],
+    is_official: stackData.is_official ?? true,
+    is_public: true,
+    nodes,
+    connections,
+    updated_at: new Date().toISOString()
+  };
   
   // Update main stack data
   const { error: stackError } = await supabase
     .from('stacks')
-    .update(stack)
+    .update(updateData)
     .eq('id', stackId);
 
   if (stackError) {
@@ -416,8 +538,6 @@ export async function updateStack(
     return false;
   }
 
-  // For now, we're working with the existing node-based structure
-  // Additional updates can be added later if needed
   return true;
 }
 

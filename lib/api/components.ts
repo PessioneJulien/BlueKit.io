@@ -331,7 +331,24 @@ export const componentsApi = {
       throw new Error('User must be authenticated to update components');
     }
 
-    const updateData: any = {};
+    type UpdateRow = {
+      name?: string;
+      description?: string;
+      category?: string;
+      type?: string;
+      setup_time_hours?: number;
+      difficulty?: string;
+      pricing?: string;
+      documentation?: string | null;
+      official_docs_url?: string | null;
+      github_url?: string | null;
+      npm_url?: string | null;
+      logo_url?: string | null;
+      tags?: string[];
+      compatible_with?: string[];
+    };
+
+    const updateData: UpdateRow = {};
     if (updates.name) updateData.name = updates.name;
     if (updates.description) updateData.description = updates.description;
     if (updates.category) updateData.category = updates.category;

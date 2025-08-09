@@ -246,7 +246,7 @@ export const ComponentModal: React.FC<ComponentModalProps> = ({
                   </label>
                   <Select
                     value={formData.type}
-                    onChange={(value) => setFormData({ ...formData, type: value as any })}
+                    onChange={(value) => setFormData({ ...formData, type: value as 'main' | 'sub' })}
                     options={[
                       { value: 'main', label: 'Main Component' },
                       { value: 'sub', label: 'Sub Component' }
@@ -260,7 +260,7 @@ export const ComponentModal: React.FC<ComponentModalProps> = ({
                   </label>
                   <Select
                     value={formData.difficulty}
-                    onChange={(value) => setFormData({ ...formData, difficulty: value as any })}
+                    onChange={(value) => setFormData({ ...formData, difficulty: value as 'beginner' | 'intermediate' | 'expert' })}
                     options={[
                       { value: 'beginner', label: 'Beginner' },
                       { value: 'intermediate', label: 'Intermediate' },
@@ -275,7 +275,7 @@ export const ComponentModal: React.FC<ComponentModalProps> = ({
                   </label>
                   <Select
                     value={formData.pricing}
-                    onChange={(value) => setFormData({ ...formData, pricing: value as any })}
+                    onChange={(value) => setFormData({ ...formData, pricing: value as 'free' | 'freemium' | 'paid' })}
                     options={[
                       { value: 'free', label: 'Free' },
                       { value: 'freemium', label: 'Freemium' },
