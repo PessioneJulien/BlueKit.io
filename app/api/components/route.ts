@@ -44,16 +44,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count first (without pagination)
-    const { count: totalCount, error: countError } = await supabase
+    let countQuery = supabase
       .from('components')
-      .select('*', { count: 'exact', head: true })
-      .modify((builder) => {
-        if (difficulty && difficulty !== 'all') builder.eq('difficulty', difficulty);
-        if (pricing && pricing !== 'all') builder.eq('pricing', pricing);
-        if (category && category !== 'all') builder.eq('category', category);
-        if (authorId) builder.eq('author_id', authorId);
-        if (search) builder.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-      });
+      .select('*', { count: 'exact', head: true });
+    
+    // Apply same filters for count
+    if (difficulty && difficulty !== 'all') {
+      countQuery = countQuery.eq('difficulty', difficulty);
+    }
+    
+    if (pricing && pricing !== 'all') {
+      countQuery = countQuery.eq('pricing', pricing);
+    }
+    
+    if (category && category !== 'all') {
+      countQuery = countQuery.eq('category', category);
+    }
+    
+    if (authorId) {
+      countQuery = countQuery.eq('author_id', authorId);
+    }
+    
+    if (search) {
+      countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    
+    const { count: totalCount, error: countError } = await countQuery;
     
     if (countError) {
       console.error('Error counting components:', countError);
