@@ -73,6 +73,19 @@ export interface StackWithDetails {
   rating: number;
 }
 
+export interface StackFormData {
+  name: string;
+  slug?: string;
+  description: string;
+  short_description?: string;
+  category?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'expert';
+  setup_time_hours?: number;
+  pricing?: 'free' | 'freemium' | 'paid' | 'mixed';
+  author?: string;
+  is_official?: boolean;
+}
+
 // Helper function to extract stack info from nodes
 function extractStackInfoFromNodes(stack: DatabaseStack): StackWithDetails {
   const technologies: StackTechnology[] = [];
@@ -320,7 +333,9 @@ export async function getStacks() {
       let authorName = 'Admin';
       if (stack.users && typeof stack.users === 'object') {
         const userData = stack.users as { email?: string; name?: string };
-        if (userData.email === 'julien.pessione83@gmail.com') {
+        // Get admin email from environment variable
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'julien.pessione83@gmail.com';
+        if (userData.email === adminEmail) {
           authorName = 'Admin';
         } else if (userData.name) {
           authorName = userData.name;
@@ -372,7 +387,9 @@ export async function getStackBySlug(slug: string) {
   let authorName = 'Admin';
   if (stack.users && typeof stack.users === 'object') {
     const userData = stack.users as { email?: string; name?: string };
-    if (userData.email === 'julien.pessione83@gmail.com') {
+    // Get admin email from environment variable
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'julien.pessione83@gmail.com';
+    if (userData.email === adminEmail) {
       authorName = 'Admin';
     } else if (userData.name) {
       authorName = userData.name;
@@ -423,7 +440,7 @@ export async function trackStackUsage(stackId: string, userId?: string) {
 
 // Create a new stack (admin only)
 export async function createStack(
-  stackData: any,
+  stackData: StackFormData,
   technologies: Omit<StackTechnology, 'id' | 'stack_id'>[],
   useCases: string[],
   pros?: string[],
@@ -483,7 +500,7 @@ export async function createStack(
 // Update a stack (admin only)
 export async function updateStack(
   stackId: string,
-  stackData: any,
+  stackData: StackFormData,
   technologies?: Omit<StackTechnology, 'id' | 'stack_id'>[],
   useCases?: string[],
   pros?: string[],
@@ -564,5 +581,8 @@ export async function isAdmin() {
   
   const { data: { user } } = await supabase.auth.getUser();
   
-  return user?.email === 'julien.pessione83@gmail.com';
+  // Get admin email from environment variable, fallback to default if not set
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'julien.pessione83@gmail.com';
+  
+  return user?.email === adminEmail;
 }
