@@ -11,7 +11,6 @@ import { Select } from '@/components/ui/Select';
 import { getStacks, StackWithDetails } from '@/lib/supabase/stacks';
 import { 
   Search, 
-  Star, 
   Clock, 
   Users,
   Grid3X3,
@@ -24,6 +23,9 @@ import {
   Zap,
   Award
 } from 'lucide-react';
+import { StarRating } from '@/components/ui/StarRating';
+import { RatingModal } from '@/components/ui/RatingModal';
+import { useUserStore } from '@/lib/stores/userStore';
 
 export default function StacksPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +37,10 @@ export default function StacksPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [allStacks, setAllStacks] = useState<StackWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedStackForRating, setSelectedStackForRating] = useState<StackWithDetails | null>(null);
+  
+  const { user } = useUserStore();
 
   // Load stacks from database
   useEffect(() => {
@@ -45,6 +51,11 @@ export default function StacksPage() {
     }
     loadStacks();
   }, []);
+
+  const handleOpenRatingModal = (stack: StackWithDetails) => {
+    setSelectedStackForRating(stack);
+    setRatingModalOpen(true);
+  };
   
   // Filter and sort stacks
   const filteredStacks = allStacks.filter(stack => {
@@ -385,10 +396,23 @@ export default function StacksPage() {
                           {/* Stats Row */}
                           <div className="flex items-center justify-between text-sm mb-4">
                             <div className="flex items-center gap-4 text-slate-400">
-                              <div className="flex items-center gap-1.5">
-                                <Star className="h-4 w-4 fill-current text-yellow-400" />
-                                <span className="font-medium text-slate-300">{stack.rating.toFixed(1)}</span>
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleOpenRatingModal(stack);
+                                }}
+                                className="hover:scale-105 transition-transform"
+                                title="Noter cette stack"
+                              >
+                                <StarRating 
+                                  rating={stack.rating} 
+                                  size="sm" 
+                                  readonly={true} 
+                                  showValue={true} 
+                                  className="text-slate-300 hover:text-white transition-colors"
+                                />
+                              </button>
                               <div className="flex items-center gap-1.5">
                                 <Users className="h-4 w-4 text-slate-500" />
                                 <span>{stack.usage_count.toLocaleString()}</span>
@@ -513,6 +537,20 @@ export default function StacksPage() {
           )}
         </div>
       </div>
+
+      {/* Rating Modal */}
+      {selectedStackForRating && (
+        <RatingModal
+          isOpen={ratingModalOpen}
+          onClose={() => {
+            setRatingModalOpen(false);
+            setSelectedStackForRating(null);
+          }}
+          stackId={selectedStackForRating.id}
+          stackName={selectedStackForRating.name}
+          currentUser={user}
+        />
+      )}
     </div>
   );
 }
