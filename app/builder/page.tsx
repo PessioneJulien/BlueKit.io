@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { useStoreHydration } from '@/lib/hooks/useStoreHydration';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { VisualStackBuilder } from '@/components/ui/VisualBuilder/VisualStackBuilder';
-import { useStackStore } from '@/lib/stores/stackStore';
 import { getStackById } from '@/lib/data/stacksData';
 import type { CanvasNode } from '@/lib/stores/stackStore';
 import type { Connection } from '@/components/ui/VisualBuilder/ConnectionLine';
@@ -14,7 +13,6 @@ function BuilderContent() {
   const searchParams = useSearchParams();
   const presetId = searchParams.get('preset');
   const isHydrated = useStoreHydration();
-  const { saveStack } = useStackStore();
   const [initialStack, setInitialStack] = useState<{
     name: string;
     description: string;
@@ -23,49 +21,6 @@ function BuilderContent() {
   } | undefined>(undefined);
   const [isLoadingPreset, setIsLoadingPreset] = useState(!!presetId);
   
-  // Handle save stack function (must be defined before conditional return)
-  const handleSaveStack = useCallback((stack: {
-    name: string;
-    description: string;
-    nodes: {
-      id: string;
-      name: string;
-      category: 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'ai' | 'other' | 'testing' | 'ui-ux' | 'state-management' | 'routing' | 'documentation' | 'build-tools' | 'linting';
-      description: string;
-      setupTimeHours: number;
-      difficulty: 'beginner' | 'intermediate' | 'expert';
-      pricing: 'free' | 'freemium' | 'paid' | 'enterprise';
-    }[];
-    connections: {
-      id: string;
-      sourceNodeId: string;
-      targetNodeId: string;
-      type: string;
-    }[];
-  }) => {
-    // Convert visual builder data to our stack format
-    const stackData = {
-      name: stack.name,
-      description: stack.description,
-      nodes: stack.nodes.map((node, index) => ({
-        ...node,
-        position: { x: index * 200, y: 100 }
-      })) as CanvasNode[],
-      connections: stack.connections.map(conn => ({
-        ...conn,
-        sourcePosition: { x: 0, y: 0 },
-        targetPosition: { x: 0, y: 0 },
-        type: conn.type as 'compatible' | 'incompatible' | 'neutral'
-      })),
-      is_public: false,
-    };
-
-    saveStack(stackData);
-    
-    // TODO: Show success message or redirect
-    console.log('Stack saved:', stackData);
-  }, [saveStack]);
-
   // Load preset data if provided
   useEffect(() => {
     if (presetId && isHydrated) {
@@ -121,7 +76,6 @@ function BuilderContent() {
     <div className="h-[calc(100vh-64px)] overflow-hidden">
       <VisualStackBuilder 
         initialStack={initialStack}
-        onSave={handleSaveStack} 
       />
     </div>
   );

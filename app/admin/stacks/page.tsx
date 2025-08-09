@@ -430,7 +430,7 @@ export default function AdminStacksPage() {
                   </label>
                   <Select
                     value={editingStack.difficulty}
-                    onChange={(value) => setEditingStack(prev => ({ ...prev, difficulty: value as any }))}
+                    onChange={(value) => setEditingStack(prev => ({ ...prev, difficulty: value as StackFormData['difficulty'] }))}
                     options={[
                       { value: 'beginner', label: 'Beginner' },
                       { value: 'intermediate', label: 'Intermediate' },
@@ -457,7 +457,7 @@ export default function AdminStacksPage() {
                   </label>
                   <Select
                     value={editingStack.pricing}
-                    onChange={(value) => setEditingStack(prev => ({ ...prev, pricing: value as any }))}
+                    onChange={(value) => setEditingStack(prev => ({ ...prev, pricing: value as StackFormData['pricing'] }))}
                     options={[
                       { value: 'free', label: 'Free' },
                       { value: 'freemium', label: 'Freemium' },
@@ -508,7 +508,7 @@ export default function AdminStacksPage() {
                       />
                       <Select
                         value={tech.role}
-                        onChange={(value) => handleUpdateTechnology(index, { role: value as any })}
+                        onChange={(value) => handleUpdateTechnology(index, { role: value as StackFormData['technologies'][number]['role'] })}
                         options={[
                           { value: 'primary', label: 'Primary' },
                           { value: 'secondary', label: 'Secondary' },

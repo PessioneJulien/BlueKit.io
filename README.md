@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BlueKit
 
-## Getting Started
+Constructeur visuel de stacks technologiques basé sur Next.js + Supabase, avec édition, sauvegarde et présentation interactive.
 
-First, run the development server:
+## Sommaire
+
+- Aperçu
+- Prérequis
+- Installation rapide
+- Variables d’environnement
+- Démarrage
+- Scripts utiles
+- Tests E2E (Cypress)
+- Storybook
+- Architecture du projet
+- Fonctionnalités clés
+- Supabase (Setup & Migrations)
+- Dépannage
+
+## Aperçu
+
+- Framework: Next.js (App Router)
+- Auth & DB: Supabase (auth, RLS, tables `stacks`, `users`, `components`…)
+- State: Zustand (stores persistés, hydratation gérée)
+- UI: composants custom (Tailwind classes), `framer-motion`, `lucide-react`
+- Builder: `components/ui/VisualBuilder/*` (noeuds, connexions, modals, export…)
+
+## Prérequis
+
+- Node 18+
+- Accès à un projet Supabase (URL + ANON KEY)
+
+## Installation rapide
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.local.example .env.local
+# Renseigner les clés Supabase dans .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variables d’environnement
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`lib/supabase/{client,server}.ts` s’attendent à:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-## Learn More
+## Démarrage
 
-To learn more about Next.js, take a look at the following resources:
+- Développement: `npm run dev` (http://localhost:3000)
+- Build: `npm run build` puis `npm start`
+- Lint: `npm run lint`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts utiles
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```json
+{
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "storybook": "storybook dev -p 6006",
+  "build-storybook": "storybook build",
+  "cypress:open": "cypress open",
+  "cypress:run": "cypress run",
+  "e2e": "cypress run",
+  "e2e:open": "cypress open"
+}
+```
 
-## Deploy on Vercel
+## Tests E2E (Cypress)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Dossiers: `cypress/e2e/*` (ex: `stack-builder.cy.ts`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Ouvrir l’UI: `npm run cypress:open`
+- Lancer en CLI: `npm run cypress:run`
+
+## Storybook
+
+- Démarrer: `npm run storybook`
+- Build statique: `npm run build-storybook`
+
+## Architecture du projet
+
+- `app/*`: routes App Router (pages publiques, auth, admin, builder)
+- `components/ui/*`: composants UI (cards, modals, builder visuel)
+- `lib/stores/*`: Zustand stores (`userStore`, `stackStore`)
+- `lib/hooks/*`: hooks (hydratation, autosave, undo/redo…)
+- `lib/supabase/*`: clients, middleware d’auth, helpers
+- `lib/data/*`: données/présélections (stacks officielles, templates)
+- `docs/*`: documentation Supabase et guides
+- `supabase/*`: migrations SQL et données seed
+
+## Fonctionnalités clés
+
+- Builder visuel: créer/relier des technologies, styliser les connexions, containers (Docker/K8s), export.
+- Sauvegarde: persistée côté Supabase (table `stacks`), avec auto-save local basique.
+- Auth: middleware qui protège les pages privées, redirige vers `/auth/login` si non connecté.
+- Présentation: mode présentation simplifié et partage.
+
+## Supabase (Setup & Migrations)
+
+Guide rapide: `SETUP_SUPABASE.md`
+
+- Migrations: `supabase/migrations/*.sql`
+- Seed: `supabase/seed.sql`
+- Checklist/Prod/Auth: voir `docs/SUPABASE_*.md` et `docs/AUTHENTICATION.md`
+
+## Dépannage
+
+- Auth KO: vérifier `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Accès protégé: le middleware autorise `/`, `/auth`, `/components`, `/stacks`, `/api/components`. Adapter si besoin.
+- Lint: `npm run lint` (warnings non bloquants sur certains composants – cleanup recommandé).
+
+---
+
+Pour un état de l’art complet (forces, améliorations, roadmap), lire `docs/AUDIT_PROJET.md`.
