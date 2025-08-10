@@ -174,8 +174,16 @@ export function useContainerLogic() {
           });
         }
         
-        // Combine existing and new contained nodes
-        const containedNodes = [...existingContainedNodes, ...newlyContainedNodes];
+        // Combine existing and new contained nodes, removing duplicates
+        const allContainedNodes = [...existingContainedNodes, ...newlyContainedNodes];
+        const containedNodes = Array.from(
+          new Map(allContainedNodes.map(n => [n.id, n])).values()
+        );
+        
+        if (allContainedNodes.length !== containedNodes.length) {
+          console.log(`🧹 Removed ${allContainedNodes.length - containedNodes.length} duplicate nodes from container ${container.name}`);
+        }
+        
         console.log('🔍 Final contained nodes:', containedNodes.map(n => n.name));
 
         console.log('✅ Container', container.name, 'will contain', containedNodes.length, 'nodes:', containedNodes.map(n => n.name));

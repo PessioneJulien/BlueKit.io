@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import ReactFlow, {
+import {
+  ReactFlow,
   Node,
   Edge,
   addEdge,
@@ -19,14 +20,15 @@ import ReactFlow, {
   EdgeChange,
   MarkerType,
   BackgroundVariant,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { TechNode } from './TechNode';
 import { NodeData, SubTechnology } from './CanvasNode';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { NodeCustomStyle } from './NodeColorPicker';
 import { CustomEdge } from './CustomEdge';
 import { ContainerNode } from './ContainerNode';
+import { ModernContainerAdapter } from './ModernContainerAdapter';
 import { ConnectionContextMenu } from './ConnectionContextMenu';
 import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 
@@ -34,6 +36,7 @@ import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 const nodeTypes: NodeTypes = {
   techNode: TechNode,
   containerNode: ContainerNode as React.ComponentType<unknown>,
+  modernContainer: ModernContainerAdapter as React.ComponentType<unknown>,
 };
 
 // Custom edge types
@@ -65,7 +68,6 @@ interface ReactFlowCanvasProps {
   onAddComponentToContainer?: (component: NodeData, containerId: string, isMoving?: boolean) => void;
   onMoveNodeToContainer?: (nodeId: string, containerId: string) => void;
   onRemoveFromContainer?: (containerId: string, nodeId: string) => void;
-  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   onNameChange?: (nodeId: string, newName: string) => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
@@ -94,7 +96,6 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   onAddComponentToContainer,
   onMoveNodeToContainer,
   onRemoveFromContainer,
-  onConvertToContainer,
   onNameChange,
   availableSubTechnologies,
   className,
@@ -121,7 +122,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     return nodeList.map(node => {
       // Check if it's a container node
       const isContainer = 'isContainer' in node && node.isContainer === true;
-      const nodeType = isContainer ? 'containerNode' : 'techNode';
+      const nodeType = isContainer ? 'modernContainer' : 'techNode';
 
       return {
         id: node.id,
@@ -233,7 +234,6 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onRemoveFromContainer,
         onDropComponent,
         onAddComponentToContainer,
-        onConvertToContainer,
         availableSubTechnologies,
         isReadOnly,
         draggingNodeId,
@@ -242,7 +242,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         }
       };
     });
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNameChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onAddComponentToContainer, onConvertToContainer, availableSubTechnologies, isReadOnly, draggingNodeId, mousePosition]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNameChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onAddComponentToContainer, availableSubTechnologies, isReadOnly, draggingNodeId, mousePosition]);
 
   // Handle connection context menu
   const handleConnectionContextMenu = useCallback((connectionId: string, event: React.MouseEvent) => {
@@ -271,14 +271,14 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
   // Handle when a node drag starts
   const handleNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
-    console.log('🎯 Node drag started:', node.id, 'setting draggingNodeId');
+    // console.log('🎯 Node drag started:', node.id, 'setting draggingNodeId');
     setDraggingNodeId(node.id);
     setMousePosition({ x: event.clientX, y: event.clientY });
   }, []);
   
   // Handle when a node drag ends - check if it's over a container
   const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-    console.log('🎯 Node drag stopped:', node.id, 'at position:', node.position, 'clearing draggingNodeId');
+    // console.log('🎯 Node drag stopped:', node.id, 'at position:', node.position, 'clearing draggingNodeId');
     setDraggingNodeId(null);
     setMousePosition(null);
     
@@ -316,6 +316,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           nodeCenterY <= containerBounds.y + containerBounds.height;
         
         if (isWithinContainer) {
+          // 🚫 EMPÊCHER containers dans containers (anti-pattern devops)
+          if (draggedNode.data.isContainer) {
+            console.log('🚫 Impossible de mettre un container dans un autre container');
+            return; // Empêcher l'action
+          }
+          
           console.log('🎯 Node dropped in container:', potentialContainer.id);
           
           // Move node to container - pass the node ID directly
@@ -378,13 +384,24 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       });
     }
     
-    // Handle position changes
+    // Handle position changes - preserve custom dimensions
     const positionChanges = changes.filter(change => change.type === 'position' && 'position' in change && change.position);
     if (positionChanges.length > 0 && onNodesChange) {
       const updatedNodes = externalNodes.map(node => {
         const change = positionChanges.find(c => 'id' in c && c.id === node.id);
         if (change && 'position' in change && change.position) {
-          return { ...node, position: change.position };
+          // Preserve custom dimensions from ReactFlow state
+          const reactFlowNode = nodes.find(n => n.id === node.id);
+          const preservedWidth = reactFlowNode?.data?.width || node.width;
+          const preservedHeight = reactFlowNode?.data?.height || node.height;
+          // console.log('🔄 Preserving dimensions on move:', node.id, 'w:', preservedWidth, 'h:', preservedHeight);
+          return { 
+            ...node, 
+            position: change.position,
+            // Keep custom dimensions if they exist in ReactFlow state
+            width: preservedWidth,
+            height: preservedHeight
+          };
         }
         return node;
       });
@@ -394,15 +411,28 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       
       if (isDrop) {
         console.log('🎯 Drop detected, checking for container integration');
-        const nodesWithContainerUpdates = detectContainerDrops(updatedNodes);
-        onNodesChange(nodesWithContainerUpdates);
+        
+        // Check if any moved node is a container - if so, skip container detection
+        const movedContainers = positionChanges.filter(change => {
+          const node = externalNodes.find(n => 'id' in change && n.id === change.id);
+          return node && 'isContainer' in node && node.isContainer;
+        });
+        
+        if (movedContainers.length > 0) {
+          console.log('🏗️ Container moved, skipping container detection to preserve dimensions');
+          onNodesChange(updatedNodes);
+        } else {
+          console.log('🎯 Non-container moved, checking for container integration');
+          const nodesWithContainerUpdates = detectContainerDrops(updatedNodes);
+          onNodesChange(nodesWithContainerUpdates);
+        }
       } else {
         // Just update positions without container detection during drag
         onNodesChange(updatedNodes);
       }
     }
     
-    console.log('ReactFlow nodes changed:', changes);
+    // console.log('ReactFlow nodes changed:', changes);
   }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, detectContainerDrops]);
 
   // Handle new connections
@@ -470,21 +500,26 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
   // Handle drag and drop from palette
   const onDragOver = useCallback((event: React.DragEvent) => {
+    // We need to check the drag type to decide whether to prevent default
+    // Unfortunately, we can't reliably access dataTransfer.getData during dragOver
+    // So we'll prevent default for all and let individual nodes handle their specific cases
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-
     const reactFlowBounds = (event.target as Element).getBoundingClientRect();
     
     try {
       const data = JSON.parse(event.dataTransfer.getData('application/json'));
-      console.log('🎯 Dropped data:', data);
+      console.log('🎯 ReactFlow Drop event - data:', data);
       
+      // Only handle main-component and community-component types
+      // Let tool drops pass through to individual nodes
       if ((data.type === 'main-component' || data.type === 'community-component') && onDropComponent) {
-        console.log('✅ Handling drop for type:', data.type);
+        console.log('✅ ReactFlow handling drop for type:', data.type);
+        event.preventDefault();
+        
         // Calculate position relative to ReactFlow canvas
         const position = {
           x: event.clientX - reactFlowBounds.left - 100, // Offset for centering
@@ -516,14 +551,23 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         }
         
         onDropComponent(componentToAdd, position);
+      } else if (data.type === 'tool') {
+        console.log('⚡ Tool drop - letting it pass through to nodes');
+        // Don't preventDefault for tools - let nodes handle them
+      } else {
+        console.log('❌ Unknown drop type:', data.type);
+        event.preventDefault();
       }
     } catch (error) {
       console.error('Error parsing dropped data:', error);
+      event.preventDefault();
     }
   }, [onDropComponent]);
 
   // Update nodes when external nodes change - preserve positions and dimensions
   useEffect(() => {
+    // console.log('🔄 ReactFlowCanvas: externalNodes changed, updating nodes. Containers:', 
+    //   externalNodes.filter(n => 'isContainer' in n).map(n => `${n.id}:${n.width}x${n.height}`));
     const reactFlowNodes = convertToReactFlowNodes(externalNodes);
     setNodes(prevNodes => {
       // Preserve positions and dimensions from current ReactFlow nodes
@@ -534,11 +578,11 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           return {
             ...newNode,
             position: existingNode.position,
-            // Preserve custom dimensions if they exist
+            // Use new dimensions from externalNodes, fallback to existing for position sync
             data: {
               ...newNode.data,
-              width: existingNode.data?.width || newNode.data.width,
-              height: existingNode.data?.height || newNode.data.height,
+              width: newNode.data.width || existingNode.data?.width,
+              height: newNode.data.height || existingNode.data?.height,
             }
           };
         }

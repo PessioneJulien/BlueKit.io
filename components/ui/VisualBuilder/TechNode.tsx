@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { X, MoreVertical, Settings, Info, FileText, Palette } from 'lucide-react';
@@ -25,7 +25,6 @@ interface TechNodeData extends NodeData {
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
   onNodeSelect?: (nodeId: string) => void;
   onConfigure?: (nodeId: string, resources: ResourceStats, envVars: Record<string, string>) => void;
-  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   onNameChange?: (nodeId: string, newName: string) => void;
   availableSubTechnologies?: SubTechnology[];
   // Presentation mode
@@ -106,29 +105,53 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation(); // Stop event from reaching ReactFlow
+    
+    // Show drop zone for main technologies during drag over
+    // We can't reliably check drag data during dragover in all browsers
+    console.log('🎯 DragOver on main tech:', data.name);
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
+    e.nativeEvent.stopImmediatePropagation(); // Stop event from reaching ReactFlow
+    
+    // Only hide drop zone if actually leaving the node (not just moving to child elements)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragOver(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation(); // Stop event from reaching ReactFlow
     setIsDragOver(false);
+
+    console.log('🎯 Drop event on', data.name);
 
     try {
       const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+      console.log('🎯 Drop data:', dragData);
       
       if (dragData.type === 'tool' && data.onAddSubTechnology && data.isMainTechnology) {
-        console.log('Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
-        data.onAddSubTechnology(dragData.component.id, data.id);
+        console.log('✅ Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
+        data.onAddSubTechnology(data.id, dragData.component.id);
+      } else {
+        console.log('❌ Drop conditions not met:', {
+          type: dragData.type,
+          hasCallback: !!data.onAddSubTechnology,
+          isMainTech: data.isMainTechnology
+        });
       }
     } catch (error) {
-      console.error('Error handling tool drop:', error);
+      console.error('❌ Error handling tool drop:', error);
     }
   };
 
@@ -192,7 +215,8 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           width: nodeWidth,
           height: 'auto',
           minHeight: nodeHeight,
-          position: 'relative'
+          position: 'relative',
+          pointerEvents: 'all' // Ensure the node can receive pointer events
         }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -569,47 +593,6 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   <Info className="w-4 h-4" />
                   Details
                 </button>
-                {!data.isContainer && data.onConvertToContainer && (
-                  <>
-                    <div className="h-px bg-slate-700 my-1" />
-                    <div className="px-2 py-1 text-xs text-slate-500 font-medium">
-                      Convertir en conteneur
-                    </div>
-                    <button 
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        data.onConvertToContainer!(data.id, 'docker');
-                        setShowMenu(false);
-                      }}
-                    >
-                      <div className="w-4 h-4 bg-blue-400 rounded flex items-center justify-center text-xs text-white">🐳</div>
-                      Docker Container
-                    </button>
-                    <button 
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        data.onConvertToContainer!(data.id, 'kubernetes');
-                        setShowMenu(false);
-                      }}
-                    >
-                      <div className="w-4 h-4 bg-green-400 rounded flex items-center justify-center text-xs text-white">☸️</div>
-                      Kubernetes Pod
-                    </button>
-                    <button 
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        data.onConvertToContainer!(data.id, 'custom');
-                        setShowMenu(false);
-                      }}
-                    >
-                      <div className="w-4 h-4 bg-purple-400 rounded flex items-center justify-center text-xs text-white">🛠️</div>
-                      Conteneur personnalisé
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           </>

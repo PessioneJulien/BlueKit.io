@@ -1,6 +1,6 @@
 'use client';
 
-import { EdgeProps, getSmoothStepPath } from 'reactflow';
+import { EdgeProps, getSmoothStepPath } from '@xyflow/react';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 
 interface CustomEdgeData {

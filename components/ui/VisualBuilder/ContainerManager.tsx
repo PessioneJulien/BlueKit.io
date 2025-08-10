@@ -43,13 +43,13 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    // Nested view
+    // Nested view with adjusted default size (using old max as new default)
     return {
       ...baseContainer,
       containedNodes,
       ports: ['3000', '5000'],
-      width: 400,
-      height: 300
+      width: 550, // Ancien max devient nouveau défaut
+      height: 450
     };
   }
 
@@ -86,13 +86,13 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    // Nested view
+    // Nested view with adjusted default size (using old max as new default)
     return {
       ...baseCluster,
       containedNodes,
       ports: ['80', '443', '8080'],
-      width: 600,
-      height: 400
+      width: 600, // Ancien max devient nouveau défaut
+      height: 500
     };
   }
 
@@ -176,22 +176,21 @@ export class ContainerManager {
       this.canContain(container, node)
     );
 
-    // Calculate new size based on content
-    const minWidth = 400;
-    const minHeight = 300;
-    const contentPadding = 100; // Extra space for content
+    // Calculate new size based on content (using adjusted larger base sizes)
+    const minWidth = container.containerType === 'kubernetes' ? 600 : 550;
+    const minHeight = container.containerType === 'kubernetes' ? 500 : 450;
     
     let newWidth = minWidth;
     let newHeight = minHeight;
 
     if (validNodes.length > 0) {
       // Add height for each contained node
-      newHeight = Math.max(minHeight, 200 + (validNodes.length * 80));
+      newHeight = Math.max(minHeight, minHeight + (validNodes.length * 80)); // Plus d'espace par service
       
       // Adjust width if needed for Kubernetes clusters
       if (container.containerType === 'kubernetes') {
-        newWidth = Math.max(600, minWidth + contentPadding);
-        newHeight = Math.max(400, newHeight);
+        newWidth = Math.max(600, minWidth + 40);
+        newHeight = Math.max(500, newHeight);
       }
     }
 
@@ -210,11 +209,26 @@ export class ContainerManager {
     // Calculate aggregated resources
     const aggregatedResources = this.calculateAggregatedResources(validNodes);
 
+    // ALWAYS preserve existing dimensions if they exist - never recalculate for existing containers
+    const finalWidth = container.width || newWidth;
+    const finalHeight = container.height || newHeight;
+    
+    console.log('📦 ContainerManager.updateContainer:', container.id, {
+      existingWidth: container.width,
+      existingHeight: container.height,
+      calculatedWidth: newWidth,
+      calculatedHeight: newHeight,
+      finalWidth,
+      finalHeight,
+      preservingExisting: !!container.width || !!container.height
+    });
+
     return {
       ...container,
       containedNodes: validNodes,
-      width: newWidth,
-      height: newHeight,
+      // ALWAYS preserve existing dimensions - they are user-defined
+      width: finalWidth,
+      height: finalHeight,
       ports,
       resources: aggregatedResources
     };

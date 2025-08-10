@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useContext } from 'react';
-import { NodeProps } from 'reactflow';
+import { NodeProps } from '@xyflow/react';
 import { NodeData, SubTechnology, ResourceStats } from './CanvasNode';
 import { NestedContainerNode, NestedContainerNodeData } from './NestedContainerNode';
 

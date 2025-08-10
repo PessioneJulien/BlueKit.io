@@ -418,6 +418,20 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                               onAddComponent(component);
                             }
                           }}
+                          draggable={!isUsed}
+                          onDragStart={(e) => {
+                            if (!isUsed) {
+                              e.dataTransfer.effectAllowed = 'copy';
+                              e.dataTransfer.setData('application/json', JSON.stringify({
+                                type: 'community-component',
+                                component: component
+                              }));
+                              e.currentTarget.style.opacity = '0.5';
+                            }
+                          }}
+                          onDragEnd={(e) => {
+                            e.currentTarget.style.opacity = '';
+                          }}
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="text-blue-400 text-sm">🌐</div>
@@ -589,9 +603,12 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                             draggable={!isUsed}
                             onDragStart={(e) => {
                               if (!isUsed) {
+                                const dragType = component.isMainTechnology === false ? 'tool' : 'main-component';
+                                console.log('🎯 Starting drag for:', component.name, 'type:', dragType);
+                                
                                 e.dataTransfer.effectAllowed = 'copy';
                                 e.dataTransfer.setData('application/json', JSON.stringify({
-                                  type: 'main-component',
+                                  type: dragType,
                                   component: component
                                 }));
                                 e.currentTarget.style.opacity = '0.5';

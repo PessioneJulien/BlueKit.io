@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { FloatingToolbar } from './FloatingToolbar';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { 
   Minus, 
   MoreHorizontal, 
   Zap, 
-  X,
   Palette,
   Settings,
   Circle
@@ -103,12 +103,12 @@ export const ConnectionToolbar: React.FC<ConnectionToolbarProps> = ({
   };
 
   return (
-    <div className="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 px-3 py-2 flex items-center gap-3 text-sm overflow-x-auto">
-      {/* Title */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Settings className="w-4 h-4 text-blue-400" />
-        <span className="font-medium text-slate-200 text-xs">Connection</span>
-      </div>
+    <FloatingToolbar
+      title="Connection"
+      icon={<Settings className="w-4 h-4" />}
+      iconColor="text-blue-400"
+      onClose={onClose}
+    >
 
       {/* Presets - Compact */}
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -223,15 +223,6 @@ export const ConnectionToolbar: React.FC<ConnectionToolbarProps> = ({
         <span className="text-slate-300 text-xs w-6">{Math.round(style.opacity * 100)}%</span>
       </div>
 
-      {/* Close */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onClose}
-        className="ml-auto p-1 h-6 w-6 flex-shrink-0"
-      >
-        <X className="w-3 h-3" />
-      </Button>
-    </div>
+    </FloatingToolbar>
   );
 };
