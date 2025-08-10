@@ -179,15 +179,18 @@ export const ModernContainer = memo<ModernContainerProps>(({
 
   const statusInfo = getStatusInfo();
 
-  // Configuration des tailles min/max selon le type de container (tailles raisonnables)
+  // Configuration des tailles min/max selon le type de container (tailles ajustées)
   const getMinMaxSize = useCallback(() => {
     switch (containerType) {
       case 'kubernetes':
-        return { minWidth: 300, minHeight: 200, maxWidth: 600, maxHeight: 500 };
+        // Anciennes max (600×500) deviennent nouvelles min, nouvelles max plus grandes
+        return { minWidth: 600, minHeight: 500, maxWidth: 800, maxHeight: 700 };
       case 'docker':
-        return { minWidth: 280, minHeight: 180, maxWidth: 550, maxHeight: 450 };
+        // Anciennes max (550×450) deviennent nouvelles min, nouvelles max plus grandes  
+        return { minWidth: 550, minHeight: 450, maxWidth: 750, maxHeight: 650 };
       default:
-        return { minWidth: 290, minHeight: 190, maxWidth: 580, maxHeight: 480 };
+        // Anciennes max (580×480) deviennent nouvelles min, nouvelles max plus grandes
+        return { minWidth: 580, minHeight: 480, maxWidth: 780, maxHeight: 680 };
     }
   }, [containerType]);
 

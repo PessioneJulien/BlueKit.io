@@ -467,15 +467,19 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [lastSavedState, setLastSavedState] = useState<string>('');
   const [showSavedNotification, setShowSavedNotification] = useState(false);
 
-  // Get used component IDs
-  // Extract base component IDs from node IDs (handle unique IDs)
+  // Get used component IDs - DISABLED to allow multiple instances
+  // Allow unlimited instances of the same component
   const usedComponentIds = useMemo(() => {
-    return nodes.map(node => {
-      // If ID contains timestamp pattern, extract base ID
-      const baseId = node.id.split('-')[0];
-      return baseId;
-    });
-  }, [nodes]);
+    // Return empty array to allow multiple instances of same component
+    return [];
+    
+    // OLD LOGIC (commented out) - was preventing multiple instances
+    // return nodes.map(node => {
+    //   // If ID contains timestamp pattern, extract base ID
+    //   const baseId = node.id.split('-')[0];
+    //   return baseId;
+    // });
+  }, []);
 
   // Save current state to history
   const saveToHistory = useCallback(() => {
@@ -1057,7 +1061,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     } else {
       setNodes(prev => [...prev, newNode]);
     }
-  }, [usedComponentIds, handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop]);
+  }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop]);
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
@@ -1140,7 +1144,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
 
     setNodes(prev => [...prev, newNode]);
-  }, [handleAddSubTechnology, nodes, usedComponentIds, convertToContainer]);
+  }, [handleAddSubTechnology, nodes, convertToContainer]);
 
 
   // Handle custom container creation

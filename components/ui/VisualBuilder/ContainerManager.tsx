@@ -43,13 +43,13 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    // Nested view with smaller default size
+    // Nested view with adjusted default size (using old max as new default)
     return {
       ...baseContainer,
       containedNodes,
       ports: ['3000', '5000'],
-      width: 280,
-      height: 200
+      width: 550, // Ancien max devient nouveau défaut
+      height: 450
     };
   }
 
@@ -86,13 +86,13 @@ export class ContainerManager {
       onToggleCompact: () => {}
     } as const;
 
-    // Nested view with smaller default size
+    // Nested view with adjusted default size (using old max as new default)
     return {
       ...baseCluster,
       containedNodes,
       ports: ['80', '443', '8080'],
-      width: 300,
-      height: 220
+      width: 600, // Ancien max devient nouveau défaut
+      height: 500
     };
   }
 
@@ -176,21 +176,21 @@ export class ContainerManager {
       this.canContain(container, node)
     );
 
-    // Calculate new size based on content (smaller sizes)
-    const minWidth = 280;
-    const minHeight = 180;
+    // Calculate new size based on content (using adjusted larger base sizes)
+    const minWidth = container.containerType === 'kubernetes' ? 600 : 550;
+    const minHeight = container.containerType === 'kubernetes' ? 500 : 450;
     
     let newWidth = minWidth;
     let newHeight = minHeight;
 
     if (validNodes.length > 0) {
-      // Add height for each contained node (smaller increments)
-      newHeight = Math.max(minHeight, 160 + (validNodes.length * 50));
+      // Add height for each contained node
+      newHeight = Math.max(minHeight, minHeight + (validNodes.length * 80)); // Plus d'espace par service
       
       // Adjust width if needed for Kubernetes clusters
       if (container.containerType === 'kubernetes') {
-        newWidth = Math.max(300, minWidth + 20);
-        newHeight = Math.max(200, newHeight);
+        newWidth = Math.max(600, minWidth + 40);
+        newHeight = Math.max(500, newHeight);
       }
     }
 
