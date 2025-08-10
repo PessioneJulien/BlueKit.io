@@ -109,19 +109,37 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
   return (
     <div
       className={cn(
-        'absolute bottom-0 right-0 w-6 h-6 cursor-nw-resize group nodrag resize-handle z-50',
-        'hover:bg-blue-500/30 transition-colors duration-200',
-        'border-2 border-slate-500 hover:border-blue-400 bg-slate-700',
-        isResizing && 'bg-blue-500/50 border-blue-300',
+        'absolute bottom-0 right-0 w-8 h-8 cursor-nw-resize group nodrag resize-handle z-50',
+        'hover:bg-blue-500/40 transition-all duration-200 rounded-tl-lg',
+        'border-2 border-slate-400 hover:border-blue-300 bg-slate-600/80 hover:bg-slate-500',
+        'shadow-lg hover:shadow-blue-500/20',
+        isResizing && 'bg-blue-500/70 border-blue-200 scale-110',
         className
       )}
       onMouseDown={handleMouseDown}
       title="Redimensionner le container"
     >
-      {/* Resize indicator */}
-      <div className="absolute bottom-1 right-1 w-2 h-2">
-        <div className="w-full h-full border-b-2 border-r-2 border-slate-400 group-hover:border-blue-400 transition-colors" />
-        <div className="absolute -top-1 -left-1 w-1 h-1 border-b border-r border-slate-400 group-hover:border-blue-400 transition-colors" />
+      {/* Resize indicator - make it more visible */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative">
+          {/* Main resize lines */}
+          <div className="w-3 h-0.5 bg-slate-300 group-hover:bg-blue-300 transition-colors mb-1" />
+          <div className="w-0.5 h-3 bg-slate-300 group-hover:bg-blue-300 transition-colors absolute top-0 right-0" />
+          
+          {/* Corner grip dots */}
+          <div className="absolute -bottom-1 -right-1">
+            <div className="w-1 h-1 bg-slate-300 group-hover:bg-blue-300 rounded-full" />
+          </div>
+        </div>
+      </div>
+      
+      {/* Hover tooltip */}
+      <div className={cn(
+        'absolute -top-8 -left-16 bg-slate-800 text-slate-200 text-xs px-2 py-1 rounded shadow-lg',
+        'opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none',
+        'whitespace-nowrap'
+      )}>
+        Drag to resize
       </div>
     </div>
   );

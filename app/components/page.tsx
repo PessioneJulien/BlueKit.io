@@ -26,8 +26,7 @@ import {
   Edit,
   Trash,
   Eye,
-  X,
-  Grip
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { ComponentModal } from '@/components/ui/ComponentModal';
@@ -636,36 +635,12 @@ export default function ComponentsPage() {
             const CategoryIcon = categoryConfig[component.category].icon;
             const isOwner = user?.id === component.author.id;
             
-            // Handle drag & drop for adding to visual builder
-            const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-              if (!e.dataTransfer) return; // Handle test environments
-              e.dataTransfer.effectAllowed = 'copy';
-              e.dataTransfer.setData('application/json', JSON.stringify({
-                type: 'community-component',
-                component: {
-                  id: component.id,
-                  name: component.name,
-                  category: component.category,
-                  description: component.description,
-                  setupTimeHours: component.setupTimeHours,
-                  difficulty: component.difficulty,
-                  pricing: component.pricing,
-                  documentation: component.documentation,
-                  officialDocsUrl: component.officialDocsUrl,
-                  githubUrl: component.githubUrl,
-                  npmUrl: component.npmUrl,
-                  tags: component.tags
-                }
-              }));
-            };
             
             return (
               <Card 
                 key={component.id} 
                 variant="glass" 
-                className="hover:border-slate-600 transition-all cursor-move relative group" 
-                draggable
-                onDragStart={handleDragStart}
+                className="hover:border-slate-600 transition-all relative group" 
                 data-testid="component-card"
               >
                 <CardHeader>
@@ -702,10 +677,6 @@ export default function ComponentsPage() {
                     </div>
                     
                     <div className="flex gap-1 items-center">
-                      {/* Drag handle always visible */}
-                      <div className="opacity-60 group-hover:opacity-100 transition-opacity mr-2" data-testid="drag-handle">
-                        <Grip className="w-4 h-4 text-slate-400" />
-                      </div>
                       
                       {isOwner && (
                         <>

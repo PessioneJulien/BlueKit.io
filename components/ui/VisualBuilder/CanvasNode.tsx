@@ -4,11 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { ConnectionHandle } from './ConnectionHandle';
 import { NodeColorPicker, NodeCustomStyle, StyledNodeData } from './NodeColorPicker';
 import { nodeVariants, buttonVariants } from '@/lib/animations/variants';
-import { X, MoreVertical, Settings, Info, Palette, Box } from 'lucide-react';
+import { X, MoreVertical, Settings, Info, Palette } from 'lucide-react';
 
 export interface NodePosition {
   x: number;
@@ -70,7 +69,6 @@ interface CanvasNodeProps {
   onEndConnection: (nodeId: string, position: 'left' | 'right') => void;
   onToggleMode?: (id: string) => void;
   onStyleChange?: (nodeId: string, style: NodeCustomStyle) => void;
-  onConvertToContainer?: (nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => void;
   onNameChange?: (nodeId: string, newName: string) => void;
   className?: string;
 }
@@ -104,7 +102,6 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   onEndConnection,
   onToggleMode,
   onStyleChange,
-  onConvertToContainer,
   onNameChange,
   className
 }) => {
@@ -504,47 +501,6 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
                 <Info className="w-4 h-4" />
                 Details
               </button>
-              {!data.isContainer && onConvertToContainer && (
-                <>
-                  <div className="h-px bg-slate-700 my-1" />
-                  <div className="px-2 py-1 text-xs text-slate-500 font-medium">
-                    Convertir en conteneur
-                  </div>
-                  <button 
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onConvertToContainer(data.id, 'docker');
-                      setShowMenu(false);
-                    }}
-                  >
-                    <Box className="w-4 h-4 text-blue-400" />
-                    Docker Container
-                  </button>
-                  <button 
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onConvertToContainer(data.id, 'kubernetes');
-                      setShowMenu(false);
-                    }}
-                  >
-                    <Box className="w-4 h-4 text-green-400" />
-                    Kubernetes Pod
-                  </button>
-                  <button 
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onConvertToContainer(data.id, 'custom');
-                      setShowMenu(false);
-                    }}
-                  >
-                    <Box className="w-4 h-4 text-purple-400" />
-                    Conteneur personnalisé
-                  </button>
-                </>
-              )}
             </div>
             </motion.div>
           </>

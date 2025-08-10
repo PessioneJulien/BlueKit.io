@@ -39,6 +39,8 @@ import { ExportModal } from './ExportModal';
 import { TemplatesModal } from './TemplatesModal';
 import { ConnectionToolbar } from './ConnectionToolbar';
 import { NodeToolbar } from './NodeToolbar';
+import { ContainerConfigBar } from './ContainerConfigBar';
+import { ResourceConfigModal } from './ResourceConfigModal';
 import { VisibilityModal } from './VisibilityModal';
 import { StackTemplate } from '@/lib/data/stackTemplates';
 import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
@@ -433,18 +435,22 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [showPresentationMode, setShowPresentationMode] = useState(false);
   const [showCustomContainerModal, setShowCustomContainerModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showResourceConfigModal, setShowResourceConfigModal] = useState(false);
+  const [resourceConfigNodeId, setResourceConfigNodeId] = useState<string | null>(null);
   const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
 
   // Container logic
   const { 
     convertToContainer, 
     processContainerRelationships,
-    handleNodeDrop 
+    handleNodeDrop,
+    updateContainerNodes
   } = useContainerLogic();
 
   // Undo/Redo state
@@ -643,12 +649,118 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     if (connectionId) setSelectedNodeId(null);
   }, []);
 
+  // Check if a node is contained within any container
+  const isNodeInContainer = useCallback((nodeId: string): boolean => {
+    return nodes.some(node => {
+      if ('isContainer' in node && node.isContainer) {
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        return container.containedNodes?.some(contained => contained.id === nodeId) || false;
+      }
+      return false;
+    });
+  }, [nodes]);
+
+  // Find a node in the main nodes list or in container containedNodes
+  const findNode = useCallback((nodeId: string): CanvasNode | undefined => {
+    return findNodeInList(nodeId, nodes);
+  }, [nodes]);
+
+  // Helper function to find node in any node list
+  const findNodeInList = useCallback((nodeId: string, nodesList: CanvasNode[]): CanvasNode | undefined => {
+    // First check main nodes
+    const mainNode = nodesList.find(n => n.id === nodeId);
+    if (mainNode) return mainNode;
+
+    // Then check inside containers
+    for (const node of nodesList) {
+      if ('isContainer' in node && node.isContainer) {
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        const containedNode = container.containedNodes?.find(contained => contained.id === nodeId);
+        if (containedNode) return containedNode;
+      }
+    }
+    return undefined;
+  }, []);
+
+  // Helper function to remove duplicates - ensure node is only in main list OR in a container, not both
+  const removeDuplicateNodes = useCallback((nodesList: CanvasNode[]): CanvasNode[] => {
+    const containedNodeIds = new Set<string>();
+    
+    // First, clean up duplicates within each container's containedNodes
+    const nodesWithCleanContainers = nodesList.map(node => {
+      if ('isContainer' in node && node.isContainer) {
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        if (container.containedNodes && container.containedNodes.length > 0) {
+          // Remove duplicates within this container using Map to preserve first occurrence
+          const uniqueContainedNodes = Array.from(
+            new Map(container.containedNodes.map(n => [n.id, n])).values()
+          );
+          
+          if (uniqueContainedNodes.length !== container.containedNodes.length) {
+            console.log(`Removed ${container.containedNodes.length - uniqueContainedNodes.length} duplicate nodes from container ${container.name}`);
+          }
+          
+          // Add to contained IDs set
+          uniqueContainedNodes.forEach(contained => {
+            containedNodeIds.add(contained.id);
+          });
+          
+          return {
+            ...container,
+            containedNodes: uniqueContainedNodes
+          };
+        }
+      }
+      return node;
+    });
+    
+    // Then filter out main nodes that are also contained in containers
+    const cleanedNodes = nodesWithCleanContainers.filter(node => {
+      if ('isContainer' in node && node.isContainer) {
+        return true; // Keep all containers
+      }
+      return !containedNodeIds.has(node.id); // Remove main nodes that are also contained
+    });
+    
+    console.log('Removed duplicate nodes. Before:', nodesList.length, 'After:', cleanedNodes.length);
+    if (nodesList.length !== cleanedNodes.length) {
+      console.log('Contained node IDs:', Array.from(containedNodeIds));
+    }
+    
+    return cleanedNodes;
+  }, []);
+
+  // Clean nodes for rendering (memoized to avoid recalculation)
+  const cleanNodes = useMemo(() => {
+    const cleaned = removeDuplicateNodes(nodes);
+    
+    // Check for duplicate IDs in final list
+    const nodeIds = cleaned.map(n => n.id);
+    const duplicateIds = nodeIds.filter((id, index) => nodeIds.indexOf(id) !== index);
+    
+    if (duplicateIds.length > 0) {
+      console.error('🚨 STILL HAVE DUPLICATE NODE IDs:', duplicateIds);
+      console.log('All node IDs:', nodeIds);
+    }
+    
+    return cleaned;
+  }, [nodes, removeDuplicateNodes]);
+
   // Handle node selection
   const handleNodeSelect = useCallback((nodeId: string) => {
-    setSelectedNodeId(nodeId);
+    const node = nodes.find(n => n.id === nodeId);
+    if (node && 'isContainer' in node && node.isContainer) {
+      // Si c'est un container, on le sélectionne différemment
+      setSelectedContainerId(nodeId);
+      setSelectedNodeId(null);
+    } else {
+      // Si c'est un node normal
+      setSelectedNodeId(nodeId);
+      setSelectedContainerId(null);
+    }
     // Close connection selection when node is selected
     setSelectedConnectionId(null);
-  }, []);
+  }, [nodes]);
 
   // Handle visibility change confirmation
   const handleVisibilityChange = useCallback((newVisibility: boolean) => {
@@ -673,6 +785,52 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         : node
     ));
   }, []);
+
+  // Handle node resources change - works for both main nodes and contained nodes
+  const handleNodeResourcesChange = useCallback((nodeId: string, resources: { cpu: string; memory: string; storage?: string; network?: string }) => {
+    console.log('handleNodeResourcesChange called with:', nodeId, resources);
+    
+    setNodes(prevNodes => {
+      let wasContainedNode = false;
+      
+      const updatedNodes = prevNodes.map(node => {
+        // Update main node if it matches
+        if (node.id === nodeId) {
+          return { ...node, resources };
+        }
+        
+        // Update contained node if it's in a container
+        if ('isContainer' in node && node.isContainer) {
+          const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+          if (container.containedNodes?.some(contained => contained.id === nodeId)) {
+            wasContainedNode = true;
+            return {
+              ...container,
+              containedNodes: container.containedNodes.map(contained => 
+                contained.id === nodeId ? { ...contained, resources } : contained
+              )
+            };
+          }
+        }
+        
+        return node;
+      });
+      
+      console.log('Updated nodes after resource change:', updatedNodes);
+      
+      // Clean up any duplicates first
+      let cleanedNodes = removeDuplicateNodes(updatedNodes);
+      
+      // Only call updateContainerNodes if we're updating a main node (not a contained node)
+      // This prevents duplication when updating resources of already contained nodes
+      if (!wasContainedNode) {
+        cleanedNodes = updateContainerNodes(cleanedNodes);
+      }
+      
+      // Final cleanup to ensure no duplicates
+      return removeDuplicateNodes(cleanedNodes);
+    });
+  }, [updateContainerNodes]);
 
   // Handle opening custom container modal
   const handleOpenCustomContainerModal = useCallback(() => {
@@ -748,8 +906,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     console.log('🎯 Moving node to container:', nodeId, '→', containerId);
     
     setNodes(prevNodes => {
-      // Find the node to move
-      const nodeToMove = prevNodes.find(n => n.id === nodeId);
+      // Find the node to move using our helper function
+      const nodeToMove = findNodeInList(nodeId, prevNodes);
       if (!nodeToMove) {
         console.error('Node not found:', nodeId);
         return prevNodes;
@@ -984,34 +1142,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setNodes(prev => [...prev, newNode]);
   }, [handleAddSubTechnology, nodes, usedComponentIds, convertToContainer]);
 
-  // Convert node to container
-  const handleConvertToContainer = useCallback((nodeId: string, containerType: 'docker' | 'kubernetes' | 'custom') => {
-    const nodeToConvert = nodes.find(n => n.id === nodeId);
-    if (!nodeToConvert) return;
-
-    if (containerType === 'custom') {
-      setNodeToConvert(nodeToConvert);
-      setShowCustomContainerModal(true);
-    } else {
-      // Direct conversion for Docker/Kubernetes
-      setNodes(prev => prev.map(node => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            isContainer: true,
-            containerType,
-            containedNodes: [],
-                ports: containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
-            status: 'running' as const,
-            width: containerType === 'docker' ? 400 : 500,
-            height: containerType === 'docker' ? 300 : 350,
-            isCompact: false
-          };
-        }
-        return node;
-      }));
-    }
-  }, [nodes]);
 
   // Handle custom container creation
   const handleCreateCustomContainer = useCallback((template: ContainerTemplate, customName?: string) => {
@@ -1431,21 +1561,91 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           />
         )}
 
-        {/* Node Toolbar */}
-        {selectedNodeId && (
-          <NodeToolbar
-            nodeId={selectedNodeId}
-            nodeName={nodes.find(n => n.id === selectedNodeId)?.name || 'Unknown'}
-            currentStyle={nodes.find(n => n.id === selectedNodeId)?.customStyle}
-            onStyleChange={handleNodeStyleChange}
-            onClose={() => setSelectedNodeId(null)}
-          />
-        )}
+        {/* Node Toolbar - Different toolbar based on whether node is in container */}
+        {selectedNodeId && (() => {
+          const selectedNode = nodes.find(n => n.id === selectedNodeId);
+          const nodeInContainer = isNodeInContainer(selectedNodeId);
+          
+          if (nodeInContainer) {
+            // Open resource configuration modal for nodes inside containers
+            if (!showResourceConfigModal) {
+              setResourceConfigNodeId(selectedNodeId);
+              setShowResourceConfigModal(true);
+              setSelectedNodeId(null);
+            }
+            return null;
+          } else {
+            // Show visual customization for standalone nodes
+            return (
+              <NodeToolbar
+                nodeId={selectedNodeId}
+                nodeName={selectedNode?.name || 'Unknown'}
+                currentStyle={selectedNode?.customStyle}
+                onStyleChange={handleNodeStyleChange}
+                onClose={() => setSelectedNodeId(null)}
+              />
+            );
+          }
+        })()}
+
+        {/* Container Config Bar */}
+        {selectedContainerId && (() => {
+          const container = nodes.find(n => n.id === selectedContainerId);
+          if (!container || !('isContainer' in container) || !container.isContainer) return null;
+          
+          const suggestedSize = (() => {
+            const baseHeight = 140;
+            const serviceHeight = 50;
+            const containedNodes = (container as CanvasNode & { containedNodes?: CanvasNode[] }).containedNodes || [];
+            const servicesHeight = containedNodes.length * serviceHeight;
+            const adaptiveHeight = baseHeight + servicesHeight + 20;
+            const adaptiveWidth = Math.max(280, containedNodes.length > 0 ? 320 : 300);
+            return { width: adaptiveWidth, height: Math.min(400, adaptiveHeight) };
+          })();
+          
+          const containerType = (container as CanvasNode & { containerType?: string }).containerType || 'docker';
+          const minMaxSize = (() => {
+            switch (containerType) {
+              case 'kubernetes':
+                return { minWidth: 250, minHeight: 180, maxWidth: 600, maxHeight: 450 };
+              case 'docker':
+                return { minWidth: 220, minHeight: 160, maxWidth: 550, maxHeight: 400 };
+              default:
+                return { minWidth: 240, minHeight: 170, maxWidth: 580, maxHeight: 420 };
+            }
+          })();
+          
+          return (
+            <ContainerConfigBar
+              containerId={selectedContainerId}
+              containerName={container.name}
+              containerType={containerType}
+              currentWidth={container.width || suggestedSize.width}
+              currentHeight={container.height || suggestedSize.height}
+              minWidth={minMaxSize.minWidth}
+              maxWidth={minMaxSize.maxWidth}
+              minHeight={minMaxSize.minHeight}
+              maxHeight={minMaxSize.maxHeight}
+              suggestedWidth={suggestedSize.width}
+              suggestedHeight={suggestedSize.height}
+              onResize={(id, width, height) => {
+                console.log('🎯 VisualStackBuilder: onResize called for', id, 'new dimensions:', width, 'x', height);
+                const updatedNodes = nodes.map(n => 
+                  n.id === id ? { ...n, width, height } : n
+                );
+                console.log('🎯 VisualStackBuilder: setting updated nodes', updatedNodes.find(n => n.id === id));
+                setNodes(updatedNodes);
+              }}
+              onClose={() => setSelectedContainerId(null)}
+              onNameChange={handleNameChange}
+            />
+          );
+        })()}
 
         {/* Canvas */}
         <ContainerViewContext.Provider value={containerViewMode}>
           <ReactFlowCanvas
-            nodes={nodes}
+            nodes={cleanNodes}
             connections={connections}
           onNodesChange={setNodes}
           onConnectionsChange={(newConnections) => {
@@ -1469,7 +1669,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           onAddComponentToContainer={handleAddComponentToContainer}
           onMoveNodeToContainer={handleMoveNodeToContainer}
           onRemoveFromContainer={handleRemoveFromContainer}
-          onConvertToContainer={handleConvertToContainer}
           availableSubTechnologies={subTechnologies}
           className="flex-1"
         />
@@ -1520,6 +1719,30 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         stackId={savedStackId || ''}
         stackName={stackName || 'Untitled Stack'}
       />
+
+      {/* Resource Configuration Modal */}
+      {resourceConfigNodeId && (() => {
+        const configNode = findNode(resourceConfigNodeId);
+        console.log('Modal config node:', configNode); // Debug
+        
+        return (
+          <ResourceConfigModal
+            isOpen={showResourceConfigModal}
+            onClose={() => {
+              setShowResourceConfigModal(false);
+              setResourceConfigNodeId(null);
+            }}
+            onSave={(resources, envVars) => {
+              console.log('Saving resources for node:', resourceConfigNodeId, resources); // Debug
+              handleNodeResourcesChange(resourceConfigNodeId, resources);
+              // TODO: Handle envVars if needed in the future
+              console.log('Environment variables:', envVars);
+            }}
+            initialResources={configNode?.resources}
+            componentName={configNode?.name || 'Service'}
+          />
+        );
+      })()}
 
       {/* Presentation Mode */}
       <SimplePresentationMode

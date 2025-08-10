@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { FloatingToolbar } from './FloatingToolbar';
 import { NodeCustomStyle } from './NodeColorPicker';
 import { 
-  X,
   Palette,
   Settings,
   Layers
@@ -143,14 +143,12 @@ export const NodeToolbar: React.FC<NodeToolbarProps> = ({
   };
 
   return (
-    <div className="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 px-3 py-2 flex items-center gap-3 text-sm overflow-x-auto">
-      {/* Title */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Layers className="w-4 h-4 text-purple-400" />
-        <span className="font-medium text-slate-200 text-xs">
-          {nodeName.length > 10 ? nodeName.substring(0, 10) + '...' : nodeName}
-        </span>
-      </div>
+    <FloatingToolbar
+      title={nodeName.length > 10 ? nodeName.substring(0, 10) + '...' : nodeName}
+      icon={<Layers className="w-4 h-4" />}
+      iconColor="text-purple-400"
+      onClose={onClose}
+    >
 
       {/* Category Presets */}
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -243,15 +241,6 @@ export const NodeToolbar: React.FC<NodeToolbarProps> = ({
         Reset
       </Button>
 
-      {/* Close */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onClose}
-        className="ml-auto p-1 h-6 w-6 flex-shrink-0"
-      >
-        <X className="w-3 h-3" />
-      </Button>
-    </div>
+    </FloatingToolbar>
   );
 };

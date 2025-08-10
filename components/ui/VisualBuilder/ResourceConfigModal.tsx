@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Server, Database, HardDrive, Wifi, Save, Plus, Trash2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Server, Database, HardDrive, Wifi, Save, Plus, Trash2, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ResourceStats } from './CanvasNode';
@@ -24,6 +24,8 @@ export const ResourceConfigModal: React.FC<ResourceConfigModalProps> = ({
   initialEnvVars = {},
   componentName
 }) => {
+  console.log('ResourceConfigModal props:', { isOpen, initialResources, componentName }); // Debug
+  
   const [resources, setResources] = useState<ResourceStats>(
     initialResources || {
       cpu: '1 core',
@@ -37,12 +39,79 @@ export const ResourceConfigModal: React.FC<ResourceConfigModalProps> = ({
   const [newEnvKey, setNewEnvKey] = useState('');
   const [newEnvValue, setNewEnvValue] = useState('');
 
+  // Editable CPU/Memory values with units
+  const [cpuValue, setCpuValue] = useState<string>('1');
+  const [cpuUnit, setCpuUnit] = useState<'cores' | 'm'>('cores');
+  const [memoryValue, setMemoryValue] = useState<string>('512');
+  const [memoryUnit, setMemoryUnit] = useState<'MB' | 'GB'>('MB');
+
+  // Initialize values from initial resources when modal opens
+  useEffect(() => {
+    if (isOpen && initialResources) {
+      console.log('Initializing modal with resources:', initialResources); // Debug
+      setResources(initialResources);
+      
+      if (initialResources.cpu) {
+        const cpuMatch = initialResources.cpu.match(/(\d+(?:\.\d+)?)\s*(m|core|cores|CPU)/i);
+        if (cpuMatch) {
+          setCpuValue(cpuMatch[1]);
+          setCpuUnit(cpuMatch[2].toLowerCase().includes('m') ? 'm' : 'cores');
+        }
+      }
+      
+      if (initialResources.memory) {
+        const memMatch = initialResources.memory.match(/(\d+(?:\.\d+)?)\s*(MB|GB)/i);
+        if (memMatch) {
+          setMemoryValue(memMatch[1]);
+          setMemoryUnit(memMatch[2].toUpperCase() as 'MB' | 'GB');
+        }
+      }
+    }
+  }, [isOpen, initialResources]);
+
   const handleResourceChange = useCallback((field: keyof ResourceStats, value: string) => {
     setResources(prev => ({
       ...prev,
       [field]: value
     }));
   }, []);
+
+  const handleCpuChange = useCallback(() => {
+    const value = parseFloat(cpuValue) || 1;
+    let formattedCpu: string;
+    
+    if (cpuUnit === 'm') {
+      formattedCpu = `${Math.round(value)}m CPU`;
+    } else {
+      formattedCpu = `${value} ${value === 1 ? 'core' : 'cores'}`;
+    }
+    
+    console.log('CPU changed:', formattedCpu); // Debug
+    setResources(prev => ({ ...prev, cpu: formattedCpu }));
+  }, [cpuValue, cpuUnit]);
+
+  const handleMemoryChange = useCallback(() => {
+    const value = parseFloat(memoryValue) || 512;
+    const formattedMemory = `${value}${memoryUnit}`;
+    console.log('Memory changed:', formattedMemory); // Debug
+    setResources(prev => ({ ...prev, memory: formattedMemory }));
+  }, [memoryValue, memoryUnit]);
+
+  // Auto-update CPU when values change
+  useEffect(() => {
+    if (cpuValue && cpuUnit) {
+      console.log('Auto-updating CPU:', cpuValue, cpuUnit); // Debug
+      handleCpuChange();
+    }
+  }, [cpuValue, cpuUnit, handleCpuChange]);
+
+  // Auto-update Memory when values change
+  useEffect(() => {
+    if (memoryValue && memoryUnit) {
+      console.log('Auto-updating Memory:', memoryValue, memoryUnit); // Debug
+      handleMemoryChange();
+    }
+  }, [memoryValue, memoryUnit, handleMemoryChange]);
 
   const handleAddEnvVar = useCallback(() => {
     if (newEnvKey.trim() && newEnvValue.trim()) {
@@ -64,9 +133,11 @@ export const ResourceConfigModal: React.FC<ResourceConfigModalProps> = ({
   }, []);
 
   const handleSave = useCallback(() => {
+    console.log('ResourceConfigModal: Saving resources:', resources); // Debug
+    console.log('ResourceConfigModal: Component name:', componentName); // Debug
     onSave(resources, envVars);
     onClose();
-  }, [resources, envVars, onSave, onClose]);
+  }, [resources, envVars, onSave, onClose, componentName]);
 
   const footerActions = (
     <div className="flex justify-end gap-3">
@@ -94,27 +165,96 @@ export const ResourceConfigModal: React.FC<ResourceConfigModalProps> = ({
         <div>
           <h4 className="text-sm font-medium text-slate-300 mb-4">Ressources système</h4>
           <div className="grid grid-cols-2 gap-4">
+            {/* CPU with editable units */}
             <div>
               <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
                 <Server className="h-4 w-4" />
                 CPU
               </label>
-              <Input
-                value={resources.cpu}
-                onChange={(e) => handleResourceChange('cpu', e.target.value)}
-                placeholder="2 cores"
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 flex-1">
+                  <Cpu className="w-4 h-4 text-blue-400" />
+                  <input
+                    type="number"
+                    value={cpuValue}
+                    onChange={(e) => setCpuValue(e.target.value)}
+                    className="bg-transparent text-slate-200 text-sm flex-1 focus:outline-none"
+                    min="0.1"
+                    max="16"
+                    step="0.1"
+                    placeholder="1"
+                  />
+                </div>
+                <select
+                  value={cpuUnit}
+                  onChange={(e) => {
+                    const newUnit = e.target.value as 'cores' | 'm';
+                    setCpuUnit(newUnit);
+                    // Trigger change immediately with new unit
+                    const value = parseFloat(cpuValue) || 1;
+                    let formattedCpu: string;
+                    if (newUnit === 'm') {
+                      formattedCpu = `${Math.round(value)}m CPU`;
+                    } else {
+                      formattedCpu = `${value} ${value === 1 ? 'core' : 'cores'}`;
+                    }
+                    setResources(prev => ({ ...prev, cpu: formattedCpu }));
+                  }}
+                  className="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-200 text-sm min-w-[70px]"
+                >
+                  <option value="cores">cores</option>
+                  <option value="m">m</option>
+                </select>
+              </div>
             </div>
+            
+            {/* Memory with editable units */}
             <div>
               <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
                 <Database className="h-4 w-4" />
                 Mémoire
               </label>
-              <Input
-                value={resources.memory}
-                onChange={(e) => handleResourceChange('memory', e.target.value)}
-                placeholder="1GB"
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 flex-1">
+                  <HardDrive className="w-4 h-4 text-green-400" />
+                  <input
+                    type="number"
+                    value={memoryValue}
+                    onChange={(e) => setMemoryValue(e.target.value)}
+                    className="bg-transparent text-slate-200 text-sm flex-1 focus:outline-none"
+                    min={memoryUnit === 'GB' ? '0.1' : '64'}
+                    max={memoryUnit === 'GB' ? '32' : '32768'}
+                    step={memoryUnit === 'GB' ? '0.1' : '64'}
+                    placeholder="512"
+                  />
+                </div>
+                <select
+                  value={memoryUnit}
+                  onChange={(e) => {
+                    const newUnit = e.target.value as 'MB' | 'GB';
+                    const currentValue = parseFloat(memoryValue) || 1;
+                    let newValue = currentValue;
+                    
+                    // Convert value when switching units
+                    if (memoryUnit === 'MB' && newUnit === 'GB') {
+                      newValue = currentValue / 1024;
+                      setMemoryValue(newValue.toFixed(1));
+                    } else if (memoryUnit === 'GB' && newUnit === 'MB') {
+                      newValue = currentValue * 1024;
+                      setMemoryValue(newValue.toString());
+                    }
+                    
+                    setMemoryUnit(newUnit);
+                    // Apply change immediately
+                    const formattedMemory = `${newValue}${newUnit}`;
+                    setResources(prev => ({ ...prev, memory: formattedMemory }));
+                  }}
+                  className="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-200 text-sm min-w-[70px]"
+                >
+                  <option value="MB">MB</option>
+                  <option value="GB">GB</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">

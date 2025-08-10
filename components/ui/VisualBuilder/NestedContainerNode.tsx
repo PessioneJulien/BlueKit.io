@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { 
@@ -532,15 +532,20 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
         )}
 
         {/* Contained Nodes Area - drag handling now done at container level */}
-        <div className="relative h-full border-2 border-dashed border-slate-600 rounded-lg p-2 transition-colors duration-200 hover:border-slate-500">
+        <div 
+          className="relative border-2 border-dashed border-slate-600 rounded-lg p-2 transition-colors duration-200 hover:border-slate-500 overflow-hidden"
+          style={{ 
+            height: height - headerHeight - (showDetails ? 120 : 40) // Ajuster selon les autres éléments
+          }}
+        >
           {containedNodes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 group">
-              <div className="relative mb-4">
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 group min-h-[120px]">
+              <div className="relative mb-2">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <Plus className="h-12 w-12 relative z-10 text-slate-500 group-hover:text-slate-300 transition-colors duration-300" />
+                <Plus className="h-8 w-8 relative z-10 text-slate-500 group-hover:text-slate-300 transition-colors duration-300" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">Glissez des composants ici</p>
+                <p className="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors">Glissez des composants ici</p>
                 <p className="text-xs text-slate-500 mt-1">pour les containeriser</p>
               </div>
             </div>
@@ -584,6 +589,17 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
                       >
                         {node.category}
                       </Badge>
+                      
+                      {/* Affichage des tools intégrés */}
+                      {node.subTechnologies && node.subTechnologies.length > 0 && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs py-1 px-2 bg-green-600/20 text-green-300 border-green-500/30 rounded-md"
+                        >
+                          ⚡ {node.subTechnologies.length} tool{node.subTechnologies.length > 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                      
                       {node.resources && (
                         <div className="flex items-center gap-3 flex-wrap">
                           <span className="text-blue-300 flex items-center gap-1">📊 <span className="font-medium">{node.resources.cpu}</span></span>
@@ -597,6 +613,39 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
                         </div>
                       )}
                     </div>
+
+                    {/* Liste des tools si présents */}
+                    {node.subTechnologies && node.subTechnologies.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-600/30">
+                        <div className="flex flex-wrap gap-1">
+                          {node.subTechnologies.slice(0, 4).map((tool) => (
+                            <Badge
+                              key={tool.id}
+                              variant="outline"
+                              className="text-xs px-2 py-1 bg-gradient-to-r from-green-600/10 to-emerald-600/10 text-green-300 border-green-500/20"
+                              title={`${tool.name} - ${tool.description}`}
+                            >
+                              <span className="mr-1">
+                                {tool.type === 'styling' && '🎨'}
+                                {tool.type === 'testing' && '🧪'}
+                                {tool.type === 'documentation' && '📚'}
+                                {tool.type === 'state-management' && '📊'}
+                                {tool.type === 'routing' && '🗺️'}
+                                {tool.type === 'build-tool' && '🔨'}
+                                {tool.type === 'linting' && '✅'}
+                                {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(tool.type) && '🔧'}
+                              </span>
+                              {tool.name.length > 8 ? tool.name.substring(0, 8) + '...' : tool.name}
+                            </Badge>
+                          ))}
+                          {node.subTechnologies.length > 4 && (
+                            <Badge variant="outline" className="text-xs px-2 py-1 text-slate-400 border-slate-600/30">
+                              +{node.subTechnologies.length - 4}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions du composant */}
