@@ -2,17 +2,75 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Sparkles, Building2, Rocket } from 'lucide-react';
+import { Check, Sparkles, Building2, Rocket, Crown, CheckCircle, Settings } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/client';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { loadStripe } from '@stripe/stripe-js';
 import { useUserStore } from '@/lib/stores/userStore';
+import { useSubscription } from '@/lib/hooks/useSubscription';
 
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useUserStore();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const [loading, setLoading] = useState<string | null>(null);
+
+  const handleManageSubscription = async () => {
+    try {
+      const response = await fetch('/api/stripe/customer-portal', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      alert('Erreur lors de l\'ouverture du portail de gestion');
+    }
+  };
+
+  const isPlanCurrent = (planKey: string) => {
+    return subscription.plan === planKey;
+  };
+
+  const canUpgrade = (planKey: string) => {
+    if (subscription.plan === 'free') return planKey !== 'free';
+    if (subscription.plan === 'starter') return planKey === 'professional' || planKey === 'enterprise';
+    if (subscription.plan === 'professional') return planKey === 'enterprise';
+    return false;
+  };
+
+  const canDowngrade = (planKey: string) => {
+    if (subscription.plan === 'professional') return planKey === 'starter' || planKey === 'free';
+    if (subscription.plan === 'starter') return planKey === 'free';
+    return false;
+  };
+
+  const getButtonState = (planKey: string) => {
+    if (isPlanCurrent(planKey)) {
+      return { text: 'Plan actuel', variant: 'ghost' as const, disabled: true, current: true };
+    }
+    
+    if (canUpgrade(planKey)) {
+      return { text: 'Upgrader', variant: 'primary' as const, disabled: false, current: false };
+    }
+    
+    if (canDowngrade(planKey)) {
+      return { text: 'Changer', variant: 'secondary' as const, disabled: false, current: false };
+    }
+    
+    // Plan par défaut
+    const texts: { [key: string]: string } = {
+      free: 'Commencer gratuitement',
+      starter: 'S\'abonner',
+      professional: 'S\'abonner',
+      enterprise: 'Nous contacter'
+    };
+    
+    return { text: texts[planKey], variant: 'primary' as const, disabled: false, current: false };
+  };
 
   const handleSubscribe = async (planKey: string) => {
     if (planKey === 'free') {
@@ -110,16 +168,63 @@ export default function PricingPage() {
           <h1 className="text-5xl font-bold text-white mb-6">
             Choisissez votre plan
           </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
             Des solutions adaptées à chaque étape de votre croissance, 
             du développeur solo à l&apos;entreprise
           </p>
+          
+          {/* Current Subscription Status */}
+          {user && !subscriptionLoading && subscription.plan !== 'free' && (
+            <div className="max-w-md mx-auto">
+              <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 backdrop-blur-md rounded-xl border border-green-500/20 p-4">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {subscription.plan === 'starter' ? (
+                      <Sparkles className="w-5 h-5 text-blue-400" />
+                    ) : subscription.plan === 'professional' ? (
+                      <Rocket className="w-5 h-5 text-purple-400" />
+                    ) : (
+                      <Crown className="w-5 h-5 text-amber-400" />
+                    )}
+                    <span className="text-white font-semibold">
+                      Plan actuel : {subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'professional' ? 'Professional' : 'Enterprise'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleManageSubscription}
+                    className="text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                  >
+                    <Settings className="w-4 h-4 mr-1" />
+                    Gérer
+                  </Button>
+                </div>
+                {subscription.status === 'active' && subscription.currentPeriodEnd && (
+                  <p className="text-sm text-slate-400 mt-2">
+                    Renouvellement le {new Date(subscription.currentPeriodEnd).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
           {/* Free Plan */}
-          <div className="relative bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 hover:border-slate-600 transition-all">
+          <div className={`relative bg-slate-800/50 backdrop-blur-md rounded-2xl border p-8 transition-all ${
+            isPlanCurrent('free') 
+              ? 'border-green-500/50 bg-green-500/5 hover:border-green-500/60' 
+              : 'border-slate-700 hover:border-slate-600'
+          }`}>
+            {isPlanCurrent('free') && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge variant="primary" className="bg-green-500/30 text-green-300 border-green-400/50 font-semibold px-3 py-1">
+                  Votre plan actuel
+                </Badge>
+              </div>
+            )}
             <div className="mb-8">
               <h3 className="text-2xl font-bold text-white mb-2">Free</h3>
               <p className="text-slate-400 mb-4">Pour découvrir BlueKit</p>
@@ -138,17 +243,35 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => handleSubscribe('free')}
-            >
-              Commencer gratuitement
-            </Button>
+            {(() => {
+              const buttonState = getButtonState('free');
+              return (
+                <Button
+                  variant={buttonState.variant}
+                  className={`w-full ${buttonState.current ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}`}
+                  onClick={() => buttonState.current ? handleManageSubscription() : handleSubscribe('free')}
+                  disabled={buttonState.disabled}
+                >
+                  {buttonState.current && <CheckCircle className="w-4 h-4 mr-2" />}
+                  {buttonState.text}
+                </Button>
+              );
+            })()}
           </div>
 
           {/* Starter Plan */}
-          <div className="relative bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 hover:border-slate-600 transition-all">
+          <div className={`relative bg-slate-800/50 backdrop-blur-md rounded-2xl border p-8 transition-all ${
+            isPlanCurrent('starter') 
+              ? 'border-green-500/50 bg-green-500/5 hover:border-green-500/60' 
+              : 'border-slate-700 hover:border-slate-600'
+          }`}>
+            {isPlanCurrent('starter') && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge variant="primary" className="bg-green-500/30 text-green-300 border-green-400/50 font-semibold px-3 py-1">
+                  Votre plan actuel
+                </Badge>
+              </div>
+            )}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-5 h-5 text-blue-400" />
@@ -170,23 +293,41 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => handleSubscribe('starter')}
-              disabled={loading === 'starter'}
-            >
-              {loading === 'starter' ? 'Chargement...' : 'S\'abonner'}
-            </Button>
+            {(() => {
+              const buttonState = getButtonState('starter');
+              return (
+                <Button
+                  variant={buttonState.variant}
+                  className={`w-full ${buttonState.current ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}`}
+                  onClick={() => buttonState.current ? handleManageSubscription() : handleSubscribe('starter')}
+                  disabled={buttonState.disabled || loading === 'starter'}
+                >
+                  {buttonState.current && <CheckCircle className="w-4 h-4 mr-2" />}
+                  {loading === 'starter' ? 'Chargement...' : buttonState.text}
+                </Button>
+              );
+            })()}
           </div>
 
           {/* Professional Plan - Most Popular */}
-          <div className="relative bg-gradient-to-b from-blue-900/20 to-slate-800/50 backdrop-blur-md rounded-2xl border-2 border-blue-500/50 p-8 hover:border-blue-400/60 transition-all">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <Badge variant="primary" size="lg">
-                Plus populaire
-              </Badge>
-            </div>
+          <div className={`relative bg-gradient-to-b from-blue-900/20 to-slate-800/50 backdrop-blur-md rounded-2xl border-2 p-8 transition-all ${
+            isPlanCurrent('professional') 
+              ? 'border-green-500/50 bg-green-500/5 hover:border-green-500/60' 
+              : 'border-blue-500/50 hover:border-blue-400/60'
+          }`}>
+            {isPlanCurrent('professional') ? (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <Badge variant="primary" size="lg" className="bg-green-500/30 text-green-300 border-green-400/50 font-semibold px-4 py-2">
+                  Votre plan actuel
+                </Badge>
+              </div>
+            ) : (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <Badge variant="primary" size="lg" className="bg-blue-500/30 text-blue-300 border-blue-400/50 font-semibold px-4 py-2">
+                  Recommandé
+                </Badge>
+              </div>
+            )}
             
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-2">
@@ -209,18 +350,39 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Button
-              variant="primary"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400"
-              onClick={() => handleSubscribe('professional')}
-              disabled={loading === 'professional'}
-            >
-              {loading === 'professional' ? 'Chargement...' : 'S\'abonner'}
-            </Button>
+            {(() => {
+              const buttonState = getButtonState('professional');
+              return (
+                <Button
+                  variant={buttonState.variant}
+                  className={`w-full ${
+                    buttonState.current 
+                      ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                      : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400'
+                  }`}
+                  onClick={() => buttonState.current ? handleManageSubscription() : handleSubscribe('professional')}
+                  disabled={buttonState.disabled || loading === 'professional'}
+                >
+                  {buttonState.current && <CheckCircle className="w-4 h-4 mr-2" />}
+                  {loading === 'professional' ? 'Chargement...' : buttonState.text}
+                </Button>
+              );
+            })()}
           </div>
 
           {/* Enterprise Plan */}
-          <div className="relative bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 hover:border-slate-600 transition-all">
+          <div className={`relative bg-slate-800/50 backdrop-blur-md rounded-2xl border p-8 transition-all ${
+            isPlanCurrent('enterprise') 
+              ? 'border-green-500/50 bg-green-500/5 hover:border-green-500/60' 
+              : 'border-slate-700 hover:border-slate-600'
+          }`}>
+            {isPlanCurrent('enterprise') && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge variant="primary" className="bg-green-500/30 text-green-300 border-green-400/50 font-semibold px-3 py-1">
+                  Votre plan actuel
+                </Badge>
+              </div>
+            )}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-5 h-5 text-purple-400" />
@@ -241,13 +403,20 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => handleSubscribe('enterprise')}
-            >
-              Nous contacter
-            </Button>
+            {(() => {
+              const buttonState = getButtonState('enterprise');
+              return (
+                <Button
+                  variant={buttonState.variant}
+                  className={`w-full ${buttonState.current ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}`}
+                  onClick={() => buttonState.current ? handleManageSubscription() : handleSubscribe('enterprise')}
+                  disabled={buttonState.disabled}
+                >
+                  {buttonState.current && <CheckCircle className="w-4 h-4 mr-2" />}
+                  {buttonState.text}
+                </Button>
+              );
+            })()}
           </div>
         </div>
 

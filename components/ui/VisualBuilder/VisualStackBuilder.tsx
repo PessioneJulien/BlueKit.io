@@ -45,6 +45,7 @@ import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 import { CustomContainerModal, ContainerTemplate } from './CustomContainerModal';
 import { ShareModal } from './ShareModal';
 import { useStackLimits } from '@/lib/hooks/useStackLimits';
+import { UpgradeModal } from '@/components/ui/UpgradeModal';
 import { useSearchParams } from 'next/navigation';
 
 interface CanvasNode extends NodeData {
@@ -421,9 +422,37 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   className
 }) => {
   const { user, isLoading: userLoading } = useUserStore();
-  const { checkComponentLimit, checkFeatureAccess, checkExportLimit, limits, subscription } = useStackLimits();
   const searchParams = useSearchParams();
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
+  
+  // Modal state for upgrade prompts
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    reason: string;
+    currentCount?: number;
+    limit?: number;
+  }>({
+    isOpen: false,
+    reason: '',
+  });
+
+  const handleShowUpgradeModal = useCallback((reason: string, currentCount?: number, limit?: number) => {
+    setUpgradeModal({
+      isOpen: true,
+      reason,
+      currentCount,
+      limit,
+    });
+  }, []);
+
+  const handleCloseUpgradeModal = useCallback(() => {
+    setUpgradeModal({
+      isOpen: false,
+      reason: '',
+    });
+  }, []);
+
+  const { checkComponentLimit, checkFeatureAccess, checkExportLimit, limits, subscription } = useStackLimits(handleShowUpgradeModal);
   const [stackName, setStackName] = useState(initialStack?.name || '');
   const [stackDescription, setStackDescription] = useState(initialStack?.description || '');
   const [nodes, setNodes] = useState<CanvasNode[]>(initialStack?.nodes || []);
@@ -1829,6 +1858,15 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           </div>
         </motion.div>
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={handleCloseUpgradeModal}
+        reason={upgradeModal.reason as any}
+        currentCount={upgradeModal.currentCount}
+        limit={upgradeModal.limit}
+      />
     </div>
   );
 };

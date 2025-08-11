@@ -2,8 +2,6 @@
 
 import { useCallback } from 'react';
 import { useSubscription } from './useSubscription';
-import { toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
 
 interface StackLimits {
   maxStacks: number;
@@ -14,9 +12,8 @@ interface StackLimits {
   canShareStacks: boolean;
 }
 
-export function useStackLimits() {
+export function useStackLimits(onShowUpgradeModal?: (reason: string, currentCount?: number, limit?: number) => void) {
   const { subscription, canUseFeature } = useSubscription();
-  const router = useRouter();
 
   const getLimits = useCallback((): StackLimits => {
     switch (subscription.plan) {
@@ -73,25 +70,13 @@ export function useStackLimits() {
     // Vérifier si on DÉPASSERAIT la limite après ajout (pas seulement si on l'a atteinte)
     if (currentCount >= limits.maxComponentsPerStack) {
       console.log('❌ Component limit reached!');
-      toast.error(`Limite de ${limits.maxComponentsPerStack} composants atteinte! Passez à un plan supérieur pour continuer.`, {
-        duration: 6000,
-        style: {
-          background: '#dc2626',
-          color: '#fff',
-        },
-      });
-      // Optionally navigate to pricing after a delay
-      setTimeout(() => {
-        if (window.confirm('Voulez-vous voir les plans premium ?')) {
-          router.push('/pricing');
-        }
-      }, 1000);
+      onShowUpgradeModal?.('components', currentCount, limits.maxComponentsPerStack);
       return false;
     }
     
     console.log('✅ Under limit, allowing addition');
     return true;
-  }, [getLimits, subscription.plan, router]);
+  }, [getLimits, subscription.plan, onShowUpgradeModal]);
 
   const checkStackLimit = useCallback((currentCount: number): boolean => {
     const limits = getLimits();
@@ -99,12 +84,12 @@ export function useStackLimits() {
     if (limits.maxStacks === -1) return true; // Unlimited
     
     if (currentCount >= limits.maxStacks) {
-      toast.error(`Limite de stacks atteinte (${limits.maxStacks}). Passez à un plan supérieur.`);
+      onShowUpgradeModal?.('stacks', currentCount, limits.maxStacks);
       return false;
     }
     
     return true;
-  }, [getLimits, router]);
+  }, [getLimits, onShowUpgradeModal]);
 
   const checkExportLimit = useCallback((currentCount: number): boolean => {
     const limits = getLimits();
@@ -112,12 +97,12 @@ export function useStackLimits() {
     if (limits.maxExportsPerMonth === -1) return true; // Unlimited
     
     if (currentCount >= limits.maxExportsPerMonth) {
-      toast.error(`Limite d'exports atteinte (${limits.maxExportsPerMonth}). Passez à un plan supérieur.`);
+      onShowUpgradeModal?.('exports', currentCount, limits.maxExportsPerMonth);
       return false;
     }
     
     return true;
-  }, [getLimits, router]);
+  }, [getLimits, onShowUpgradeModal]);
 
   const checkFeatureAccess = useCallback((feature: keyof StackLimits): boolean => {
     const limits = getLimits();
@@ -125,32 +110,26 @@ export function useStackLimits() {
     switch (feature) {
       case 'canUseContainers':
         if (!limits.canUseContainers) {
-          toast.error('🔒 Les conteneurs sont réservés aux plans payants. Passez au plan Starter pour les débloquer.', {
-            duration: 6000,
-            style: {
-              background: '#ea580c',
-              color: '#fff',
-            },
-          });
+          onShowUpgradeModal?.('containers');
           return false;
         }
         return true;
       case 'canUseCustomStyling':
         if (!limits.canUseCustomStyling) {
-          toast.error('La personnalisation du style est réservée aux plans payants.');
+          onShowUpgradeModal?.('styling');
           return false;
         }
         return true;
       case 'canShareStacks':
         if (!limits.canShareStacks) {
-          toast.error('Le partage de stacks est réservé aux plans payants.');
+          onShowUpgradeModal?.('sharing');
           return false;
         }
         return true;
       default:
         return true;
     }
-  }, [getLimits, router]);
+  }, [getLimits, onShowUpgradeModal]);
 
   return {
     limits: getLimits(),
