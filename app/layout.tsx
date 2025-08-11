@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/ui/Header";
 import { StoreProvider } from "@/components/providers/StoreProvider";
 import { AuthProvider } from "@/lib/supabase/auth-context";
+import { SubscriptionSyncProvider } from "@/components/providers/SubscriptionSyncProvider";
 import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ 
@@ -31,17 +32,19 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-900">
         <AuthProvider>
           <StoreProvider>
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                className: 'bg-slate-800 text-white border border-slate-700',
-                duration: 4000,
-              }}
-            />
+            <SubscriptionSyncProvider>
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  className: 'bg-slate-800 text-white border border-slate-700',
+                  duration: 4000,
+                }}
+              />
+            </SubscriptionSyncProvider>
           </StoreProvider>
         </AuthProvider>
       </body>

@@ -38,26 +38,70 @@ export async function GET(request: NextRequest) {
     const customer = customers.data[0];
     console.log('🎯 Found customer:', customer.id);
 
-    // Get active subscriptions for this customer
+    // Get ALL subscriptions for this customer (including canceled)
     const subscriptions = await stripe.subscriptions.list({
       customer: customer.id,
-      status: 'active',
       limit: 1,
     });
 
     if (subscriptions.data.length === 0) {
-      console.log('❌ No active subscription found');
+      console.log('❌ No subscription found, resetting to free');
+      
+      // Reset to free plan in database
+      await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          email: user.email,
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: null,
+          subscription_plan: null,
+          subscription_status: null,
+          subscription_current_period_end: null,
+        }, {
+          onConflict: 'user_id'
+        });
+      
       return NextResponse.json({ 
-        message: 'No active subscription',
+        message: 'No subscription found',
         plan: 'free',
         status: null 
       });
     }
 
     const subscription = subscriptions.data[0];
+    
+    // Si l'abonnement est annulé ou expiré, reset to free
+    if (subscription.status === 'canceled' || 
+        subscription.status === 'incomplete_expired' ||
+        subscription.status === 'unpaid') {
+      console.log('⚠️ Subscription is', subscription.status, '- resetting to free');
+      
+      await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          email: user.email,
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: null,
+          subscription_plan: null,
+          subscription_status: 'canceled',
+          subscription_current_period_end: null,
+        }, {
+          onConflict: 'user_id'
+        });
+      
+      return NextResponse.json({ 
+        message: 'Subscription canceled',
+        plan: 'free',
+        status: 'canceled',
+        previousStatus: subscription.status
+      });
+    }
+    
     const priceId = subscription.items.data[0]?.price.id;
     
-    console.log('💳 Found subscription:', {
+    console.log('💳 Found active subscription:', {
       id: subscription.id,
       status: subscription.status,
       priceId: priceId,
