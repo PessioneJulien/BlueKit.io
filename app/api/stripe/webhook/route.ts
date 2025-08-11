@@ -6,16 +6,32 @@ import Stripe from 'stripe';
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
+  console.log('🔔 Webhook POST received');
+  
   try {
     const body = await request.text();
-    const signature = request.headers.get('stripe-signature')!;
+    const signature = request.headers.get('stripe-signature');
+    
+    console.log('📦 Body length:', body.length);
+    console.log('🔑 Signature exists:', !!signature);
+    console.log('🔐 Webhook secret exists:', !!webhookSecret);
+    console.log('🔐 Webhook secret starts with:', webhookSecret?.substring(0, 7));
+
+    if (!signature) {
+      console.error('❌ No signature header');
+      return NextResponse.json(
+        { error: 'No signature header' },
+        { status: 400 }
+      );
+    }
 
     let event: Stripe.Event;
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      console.log('✅ Signature verified for event:', event.type);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      console.error('❌ Webhook signature verification failed:', err);
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
@@ -118,9 +134,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Disable body parsing, as Stripe requires raw body
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Note: Next.js App Router handles raw body automatically for webhooks

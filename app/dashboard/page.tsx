@@ -27,6 +27,23 @@ function DashboardContent() {
       const plan = searchParams.get('plan');
       if (plan) {
         localStorage.setItem('pending_upgrade', plan);
+        
+        // Tenter une synchronisation automatique avec Stripe
+        fetch('/api/stripe/sync-subscription')
+          .then(res => res.json())
+          .then(data => {
+            console.log('🔄 Auto-sync result:', data);
+            if (data.success && data.plan !== 'free') {
+              // Si la synchronisation a réussi et trouvé un plan payant
+              localStorage.removeItem('pending_upgrade');
+              setTimeout(() => {
+                window.location.href = '/builder?upgraded=true';
+              }, 2000);
+            }
+          })
+          .catch(err => {
+            console.error('Auto-sync error:', err);
+          });
       }
       
       // Masquer le message après 10 secondes (plus de temps)
@@ -106,34 +123,63 @@ function DashboardContent() {
                 {planFromUrl && planFromUrl !== subscription.plan && (
                   <div className="space-y-2">
                     <p className="text-sm text-slate-400">
-                      Le webhook n'est pas encore configuré. Activez manuellement votre plan :
+                      Synchronisation avec Stripe nécessaire :
                     </p>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/test-subscription', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ plan: planFromUrl }),
-                          });
-                          if (response.ok) {
-                            // Supprimer le pending upgrade
-                            localStorage.removeItem('pending_upgrade');
-                            // Rediriger vers le builder pour voir les changements
-                            window.location.href = '/builder?upgraded=true';
-                          } else {
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            // Synchroniser avec Stripe directement
+                            const response = await fetch('/api/stripe/sync-subscription');
+                            if (response.ok) {
+                              const data = await response.json();
+                              console.log('✅ Sync result:', data);
+                              // Supprimer le pending upgrade
+                              localStorage.removeItem('pending_upgrade');
+                              // Rediriger vers le builder pour voir les changements
+                              window.location.href = '/builder?upgraded=true';
+                            } else {
+                              const error = await response.json();
+                              console.error('Sync error:', error);
+                              alert('Erreur lors de la synchronisation avec Stripe');
+                            }
+                          } catch (error) {
+                            console.error('Error:', error);
+                            alert('Erreur lors de la synchronisation');
+                          }
+                        }}
+                      >
+                        Synchroniser avec Stripe
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/test-subscription', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ plan: planFromUrl }),
+                            });
+                            if (response.ok) {
+                              // Supprimer le pending upgrade
+                              localStorage.removeItem('pending_upgrade');
+                              // Rediriger vers le builder pour voir les changements
+                              window.location.href = '/builder?upgraded=true';
+                            } else {
+                              alert('Erreur lors de l\'activation du plan');
+                            }
+                          } catch (error) {
+                            console.error('Error:', error);
                             alert('Erreur lors de l\'activation du plan');
                           }
-                        } catch (error) {
-                          console.error('Error:', error);
-                          alert('Erreur lors de l\'activation du plan');
-                        }
-                      }}
-                    >
-                      Activer le plan {planFromUrl}
-                    </Button>
+                        }}
+                      >
+                        Activer manuellement {planFromUrl}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
