@@ -41,7 +41,18 @@ export function useSubscription() {
           .eq('user_id', user.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          // Si la table n'existe pas ou si l'utilisateur n'a pas de profil, utiliser le plan gratuit
+          console.warn('Subscription fetch warning:', error.message);
+          setSubscription({
+            plan: 'free',
+            status: null,
+            currentPeriodEnd: null,
+            limits: SUBSCRIPTION_PLANS.free.limits,
+          });
+          setLoading(false);
+          return;
+        }
 
         if (data && data.subscription_plan && data.subscription_status === 'active') {
           // Map price ID to plan

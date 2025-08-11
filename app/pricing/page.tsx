@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, X, Sparkles, Building2, Rocket } from 'lucide-react';
+import { Check, Sparkles, Building2, Rocket } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '@/lib/stripe/client';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { cn } from '@/lib/utils';
+import { loadStripe } from '@stripe/stripe-js';
+import { useUserStore } from '@/lib/stores/userStore';
 
 export default function PricingPage() {
   const router = useRouter();
+  const { user } = useUserStore();
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleSubscribe = async (planKey: string) => {
@@ -25,24 +27,72 @@ export default function PricingPage() {
 
     setLoading(planKey);
     try {
-      const plan = SUBSCRIPTION_PLANS[planKey as keyof typeof SUBSCRIPTION_PLANS];
-      
+      // Vérifier si l'utilisateur est connecté
+      if (!user) {
+        // Sauvegarder le plan choisi pour après la connexion
+        localStorage.setItem('pending_plan', planKey);
+        router.push('/auth/login?redirect=/pricing');
+        return;
+      }
+
+      // Charger Stripe
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+      if (!stripe) {
+        throw new Error('Stripe failed to load');
+      }
+
+      // Obtenir le priceId correspondant
+      let priceId: string;
+      switch (planKey) {
+        case 'starter':
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER || 'price_1RupVsIEoBYk9xtj4VQZv9pD';
+          break;
+        case 'professional':
+          priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PROFESSIONAL || 'price_1RupVsIEoBYk9xtjZqHidfqe';
+          break;
+        default:
+          throw new Error('Invalid plan');
+      }
+
+      // Créer la session de checkout via l'API
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId: plan.priceId,
+          priceId,
           planName: planKey,
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
+      }
+
       const data = await response.json();
-      
+      console.log('Checkout response:', data);
+
+      // Utiliser directement l'URL si disponible (plus simple)
       if (data.url) {
         window.location.href = data.url;
+        return;
+      }
+
+      // Fallback avec redirectToCheckout si seulement sessionId
+      if (data.sessionId) {
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+
+        if (error) {
+          console.error('Stripe redirect error:', error);
+          alert(error.message);
+        }
+      } else {
+        throw new Error('No session ID or URL received from server');
       }
     } catch (error) {
-      console.error('Subscription error:', error);
+      console.error('Checkout error:', error);
       alert('Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setLoading(null);
@@ -62,7 +112,7 @@ export default function PricingPage() {
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
             Des solutions adaptées à chaque étape de votre croissance, 
-            du développeur solo à l'entreprise
+            du développeur solo à l&apos;entreprise
           </p>
         </div>
 
@@ -220,7 +270,7 @@ export default function PricingPage() {
 
             <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700">
               <h3 className="text-lg font-semibold text-white mb-3">
-                Y a-t-il une période d'essai ?
+                Y a-t-il une période d&apos;essai ?
               </h3>
               <p className="text-slate-400">
                 Le plan Free vous permet de tester les fonctionnalités de base sans limite de temps. 
