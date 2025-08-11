@@ -28,7 +28,7 @@ export const SUBSCRIPTION_PLANS = {
     name: 'Starter',
     description: 'Pour les développeurs individuels',
     price: 19,
-    priceId: process.env.STRIPE_PRICE_ID_STARTER,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER,
     features: [
       '10 stacks maximum',
       'Tous les composants',
@@ -47,7 +47,7 @@ export const SUBSCRIPTION_PLANS = {
     name: 'Professional',
     description: 'Pour les équipes',
     price: 49,
-    priceId: process.env.STRIPE_PRICE_ID_PROFESSIONAL,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PROFESSIONAL,
     features: [
       'Stacks illimitées',
       'Tous les composants',
@@ -69,7 +69,7 @@ export const SUBSCRIPTION_PLANS = {
     name: 'Enterprise',
     description: 'Solutions sur mesure',
     price: 'custom',
-    priceId: process.env.STRIPE_PRICE_ID_ENTERPRISE,
+    priceId: null, // Custom pricing, no fixed Price ID
     features: [
       'Tout de Professional',
       'Membres d\'équipe illimités',
