@@ -309,7 +309,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
           <button
             onClick={() => setShowCommunity(false)}
             className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+              "px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px",
               !showCommunity 
                 ? "text-white border-blue-500" 
                 : "text-slate-400 border-transparent hover:text-slate-200"
@@ -320,27 +320,19 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
           <button
             onClick={() => setShowCommunity(true)}
             className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2",
+              "px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5",
               showCommunity 
                 ? "text-white border-blue-500" 
                 : "text-slate-400 border-transparent hover:text-slate-200"
             )}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3 h-3" />
             Community
-            <Badge variant="primary" size="sm">New</Badge>
+            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" title="New"></div>
           </button>
         </div>
         
         
-        {/* Search */}
-        <Input
-          placeholder="Search components..."
-          icon={<Search className="h-4 w-4" />}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="mb-3"
-        />
 
         {hasActiveFilters && (
           <Button
@@ -490,195 +482,139 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
         ) : (
           /* Official Components */
           <>
-            {/* Simple Category Cards */}
-            {!searchQuery && !selectedCategory && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">
-                  Catégories
-                </h3>
-                
-                <div className="space-y-1">
-                  {categories.map(({ category, count }) => (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 border border-transparent hover:border-slate-600 transition-all duration-200 text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded bg-slate-700 flex items-center justify-center">
-                          <span className="text-lg">
-                            {categoryIcons[category as keyof typeof categoryIcons]}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-200 capitalize text-sm">
-                            {category === 'imported' ? 'Importés récemment' : category}
-                          </div>
-                          <div className="text-xs text-slate-400">
-                            {count} composant{count > 1 ? 's' : ''}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded">
-                        {count}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                
-                {/* Special Actions */}
-                {onOpenCustomContainerModal && (
-                  <div className="mt-4 pt-3 border-t border-slate-700">
-                    <h4 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">
-                      Actions
-                    </h4>
-                    
-                    <button
-                      onClick={onOpenCustomContainerModal}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-dashed border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-400/50 text-purple-300 hover:text-purple-200 transition-all duration-200"
-                    >
-                      <div className="w-8 h-8 rounded bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                        <span className="text-lg">🛠️</span>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-medium text-sm">
-                          Créer un conteneur personnalisé
-                        </div>
-                        <div className="text-xs text-purple-400/70">
-                          Définir votre propre template
-                        </div>
-                      </div>
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Components View */}
-            {(searchQuery || selectedCategory) && (
-              <>
-                {selectedCategory && (
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                      <span>{categoryIcons[selectedCategory as keyof typeof categoryIcons]}</span>
-                      {selectedCategory === 'imported' ? 'Recently Imported' : selectedCategory}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedCategory('')}
-                      className="text-slate-400 hover:text-slate-200"
-                    >
-                      <X className="h-4 w-4" />
+            {/* Components Grid - Always visible */}
+            <div className="space-y-4">
+              {/* Components Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(groupedComponents).length === 0 || Object.values(groupedComponents).flat().length === 0 ? (
+                  <div className="col-span-2 text-center py-8 text-slate-400">
+                    <div className="text-4xl mb-2">📦</div>
+                    <p className="text-sm">Aucun composant trouvé</p>
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="mt-2">
+                      Réinitialiser les filtres
                     </Button>
                   </div>
-                )}
-                
-                <div className="space-y-2">
-                  {Object.entries(groupedComponents).map(([category, components]) => (
-                    <div key={category}>
-                      {searchQuery && !selectedCategory && (
-                        <h4 className="text-xs font-medium text-slate-400 mb-2 flex items-center gap-2">
-                          <span>{categoryIcons[category as keyof typeof categoryIcons]}</span>
-                          {category === 'imported' ? 'Recently Imported' : category}
-                        </h4>
-                      )}
-                      
-                      {components.map(component => {
-                        const isUsed = usedComponentIds.includes(component.id);
-                        const isImported = importedComponents.some(ic => ic.id === component.id);
-                        const communityComp = component as CommunityNodeData;
-                        
-                        return (
-                          <div
-                            key={component.id}
-                            className={cn(
-                              'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-600',
-                              isUsed && 'opacity-50 cursor-not-allowed',
-                              component.isMainTechnology === false && 'border-l-4 border-l-orange-500/50 bg-orange-900/10',
-                              isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/30'
-                            )}
-                            onClick={() => !isUsed && onAddComponent(component)}
-                            draggable={!isUsed}
-                            onDragStart={(e) => {
-                              if (!isUsed) {
-                                const dragType = component.isMainTechnology === false ? 'tool' : 'main-component';
-                                console.log('🎯 Starting drag for:', component.name, 'type:', dragType);
-                                
-                                e.dataTransfer.effectAllowed = 'copy';
-                                e.dataTransfer.setData('application/json', JSON.stringify({
-                                  type: dragType,
-                                  component: component
-                                }));
-                                e.currentTarget.style.opacity = '0.5';
-                              }
-                            }}
-                            onDragEnd={(e) => {
-                              e.currentTarget.style.opacity = '';
-                            }}
+                ) : (
+                  Object.entries(groupedComponents).map(([category, components]) => (
+                    components.map(component => {
+                    const isUsed = usedComponentIds.includes(component.id);
+                    const isImported = importedComponents.some(ic => ic.id === component.id);
+                    const communityComp = component as CommunityNodeData;
+                    
+                    return (
+                      <div
+                        key={component.id}
+                        className={`relative bg-slate-800/30 rounded-lg border border-slate-700/50 p-3 transition-all duration-200 cursor-pointer group ${
+                          isUsed 
+                            ? 'opacity-60 cursor-not-allowed' 
+                            : 'hover:bg-slate-800/50 hover:border-slate-600 hover:scale-105'
+                        } ${
+                          component.isMainTechnology === false && 'border-l-4 border-l-orange-500/50'
+                        } ${
+                          isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/50'
+                        }`}
+                        onClick={() => !isUsed && onAddComponent(component)}
+                        draggable={!isUsed}
+                        onDragStart={(e) => {
+                          if (!isUsed) {
+                            const dragType = component.isMainTechnology === false ? 'tool' : 'main-component';
+                            e.dataTransfer.effectAllowed = 'copy';
+                            e.dataTransfer.setData('application/json', JSON.stringify({
+                              type: dragType,
+                              component: component
+                            }));
+                            e.currentTarget.style.opacity = '0.5';
+                          }
+                        }}
+                        onDragEnd={(e) => {
+                          e.currentTarget.style.opacity = '';
+                        }}
+                      >
+                        {/* Icône */}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg mb-2 ${
+                          component.isMainTechnology === false ? 'bg-gradient-to-br from-orange-500 to-red-600' :
+                          isImported ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                          component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
+                          component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                          component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
+                          'bg-gradient-to-br from-purple-500 to-violet-600'
+                        }`}>
+                          {component.isMainTechnology === false ? '🛠️' :
+                           isImported ? '🌐' :
+                           component.category === 'frontend' ? '🎨' :
+                           component.category === 'backend' ? '⚙️' :
+                           component.category === 'database' ? '💾' : '🚀'}
+                        </div>
+
+                        {/* Nom */}
+                        <div className="font-medium text-slate-200 text-sm mb-2 truncate">
+                          {component.name}
+                        </div>
+
+                        {/* Badges essentiels */}
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {component.isMainTechnology === false && (
+                            <Badge variant="warning" size="sm" className="text-xs">TOOL</Badge>
+                          )}
+                          {isImported && component.isMainTechnology !== false && (
+                            <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Community</Badge>
+                          )}
+                          <Badge 
+                            variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
+                            size="sm"
+                            className="text-xs"
                           >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              {component.isMainTechnology === false ? (
-                                <div className="text-orange-400 text-sm">🛠️</div>
-                              ) : isImported ? (
-                                <div className="text-blue-400 text-sm">🌐</div>
-                              ) : (
-                                <div className="text-slate-400 text-sm">📦</div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-slate-200 text-sm flex items-center gap-1">
-                                  {component.isMainTechnology === false && (
-                                    <span className="text-xs text-orange-400">TOOL</span>
-                                  )}
-                                  <span className="truncate">{component.name}</span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge 
-                                    variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
-                                    size="sm"
-                                    outline
-                                  >
-                                    {component.pricing}
-                                  </Badge>
-                                  <div className="text-xs text-slate-400">
-                                    {component.setupTimeHours}h setup
-                                  </div>
-                                  {isImported && communityComp.rating && (
-                                    <div className="flex items-center gap-1">
-                                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                      <span className="text-xs text-white">{communityComp.rating.toFixed(1)}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                            {component.pricing}
+                          </Badge>
+                        </div>
+
+                        {/* Setup time simple */}
+                        <div className="text-xs text-slate-400 flex items-center justify-between">
+                          <span>{component.setupTimeHours}h setup</span>
+                          {isImported && communityComp.rating && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-400">⭐</span>
+                              <span className="text-slate-300">{communityComp.rating.toFixed(1)}</span>
                             </div>
-                            
-                            {isUsed ? (
-                              <span className="text-xs text-blue-400">Added</span>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Grip className="h-4 w-4 text-slate-500" />
-                                <Plus className="h-4 w-4 text-slate-400" />
-                              </div>
-                            )}
+                          )}
+                        </div>
+
+                        {/* Status indicator */}
+                        {isUsed && (
+                          <div className="absolute top-2 right-2">
+                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            
-            {(searchQuery || selectedCategory) && filteredComponents.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-slate-400 mb-2">No components found</div>
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  Clear filters
-                </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                  ))
+                )}
               </div>
-            )}
+
+              {/* Special Actions */}
+              {onOpenCustomContainerModal && (
+                <div className="mt-4 pt-3 border-t border-slate-700">
+                  <button
+                    onClick={onOpenCustomContainerModal}
+                    className="w-full p-3 rounded-xl border-2 border-dashed border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-400/50 text-purple-300 hover:text-purple-200 transition-all duration-200 text-center"
+                  >
+                    <div className="w-8 h-8 rounded bg-purple-600/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-2">
+                      <span className="text-lg">🛠️</span>
+                    </div>
+                    <div className="font-medium text-sm">
+                      Créer un conteneur personnalisé
+                    </div>
+                    <div className="text-xs text-purple-400/70 mt-1">
+                      Définir votre propre template
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
           </>
         )}
       </div>

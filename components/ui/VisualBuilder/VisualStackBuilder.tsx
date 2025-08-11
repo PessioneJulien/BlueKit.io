@@ -47,6 +47,7 @@ import { ShareModal } from './ShareModal';
 import { useStackLimits } from '@/lib/hooks/useStackLimits';
 import { UpgradeModal } from '@/components/ui/UpgradeModal';
 import { useSearchParams } from 'next/navigation';
+import { componentsApi, type Component as CommunityComponent } from '@/lib/api/components';
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
@@ -237,51 +238,228 @@ const mainTechnologies: NodeData[] = [
       'KUBECTL_VERSION': 'v1.28.0'
     }
   },
+  // Bases de données additionnelles
   {
-    id: 'docker-container',
-    name: 'Docker Container',
-    category: 'devops',
-    description: '🐳 Ready-to-use Docker container for hosting applications',
+    id: 'redis',
+    name: 'Redis',
+    category: 'database',
+    description: 'In-memory data structure store, cache and message broker',
     setupTimeHours: 1,
     difficulty: 'beginner',
     pricing: 'free',
     isMainTechnology: true,
-    isContainer: true,
-    containerType: 'docker',
-    compatibleWith: ['nodejs', 'react', 'postgresql', 'mongodb'],
+    compatibleWith: ['nodejs', 'react', 'postgresql'],
     resources: {
-      cpu: '1 core',
-      memory: '512MB',
-      storage: '2GB',
-      network: '50Mbps'
+      cpu: '0.5 cores',
+      memory: '256MB',
+      storage: '1GB',
+      network: '20Mbps'
     },
     environmentVariables: {
-      'DOCKER_HOST': 'unix:///var/run/docker.sock',
-      'COMPOSE_PROJECT_NAME': 'myapp'
+      'REDIS_HOST': 'localhost',
+      'REDIS_PORT': '6379',
+      'REDIS_PASSWORD': 'password'
     }
   },
   {
-    id: 'kubernetes-cluster',
-    name: 'Kubernetes Cluster',
-    category: 'devops',
-    description: '☸️ Ready-to-use Kubernetes cluster for orchestrating containers',
+    id: 'supabase',
+    name: 'Supabase',
+    category: 'database',
+    description: 'Open source Firebase alternative with PostgreSQL',
+    setupTimeHours: 2,
+    difficulty: 'beginner',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['react', 'nextjs', 'nodejs'],
+    resources: {
+      cpu: '1 core',
+      memory: '1GB',
+      storage: '500MB',
+      network: '50Mbps'
+    },
+    environmentVariables: {
+      'SUPABASE_URL': 'https://your-project.supabase.co',
+      'SUPABASE_ANON_KEY': 'your-anon-key',
+      'SUPABASE_SERVICE_ROLE_KEY': 'your-service-role-key'
+    }
+  },
+  {
+    id: 'firebase',
+    name: 'Firebase',
+    category: 'database',
+    description: 'Google\'s mobile and web app development platform',
+    setupTimeHours: 2,
+    difficulty: 'beginner',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['react', 'nodejs'],
+    resources: {
+      cpu: '0.5 cores',
+      memory: '512MB',
+      storage: '1GB',
+      network: '30Mbps'
+    },
+    environmentVariables: {
+      'FIREBASE_API_KEY': 'your-api-key',
+      'FIREBASE_PROJECT_ID': 'your-project-id',
+      'FIREBASE_AUTH_DOMAIN': 'your-project.firebaseapp.com'
+    }
+  },
+  // Outils d'authentification
+  {
+    id: 'auth0',
+    name: 'Auth0',
+    category: 'backend',
+    description: 'Identity platform for secure authentication',
+    setupTimeHours: 3,
+    difficulty: 'intermediate',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['react', 'nodejs', 'nextjs'],
+    resources: {
+      cpu: '0.2 cores',
+      memory: '256MB',
+      storage: '100MB',
+      network: '10Mbps'
+    },
+    environmentVariables: {
+      'AUTH0_DOMAIN': 'your-domain.auth0.com',
+      'AUTH0_CLIENT_ID': 'your-client-id',
+      'AUTH0_CLIENT_SECRET': 'your-client-secret'
+    }
+  },
+  {
+    id: 'clerk',
+    name: 'Clerk',
+    category: 'backend',
+    description: 'Complete user authentication and management',
+    setupTimeHours: 2,
+    difficulty: 'beginner',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['react', 'nextjs'],
+    resources: {
+      cpu: '0.2 cores',
+      memory: '256MB',
+      storage: '100MB',
+      network: '10Mbps'
+    },
+    environmentVariables: {
+      'CLERK_PUBLISHABLE_KEY': 'pk_test_your-key',
+      'CLERK_SECRET_KEY': 'sk_test_your-key'
+    }
+  },
+  // Outils de paiement
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    category: 'backend',
+    description: 'Payment processing platform',
+    setupTimeHours: 4,
+    difficulty: 'intermediate',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['nodejs', 'react', 'nextjs'],
+    resources: {
+      cpu: '0.3 cores',
+      memory: '256MB',
+      storage: '100MB',
+      network: '15Mbps'
+    },
+    environmentVariables: {
+      'STRIPE_PUBLISHABLE_KEY': 'pk_test_your-key',
+      'STRIPE_SECRET_KEY': 'sk_test_your-key',
+      'STRIPE_WEBHOOK_SECRET': 'whsec_your-webhook-secret'
+    }
+  },
+  // Framework frontend additionnels
+  {
+    id: 'vue',
+    name: 'Vue.js',
+    category: 'frontend',
+    description: 'Progressive JavaScript framework',
     setupTimeHours: 3,
     difficulty: 'intermediate',
     pricing: 'free',
     isMainTechnology: true,
-    isContainer: true,
-    containerType: 'kubernetes',
-    compatibleWith: ['docker'],
+    canAcceptSubTech: ['styling', 'state-management', 'routing', 'testing'],
+    compatibleWith: ['nodejs'],
+    incompatibleWith: ['react', 'angular'],
     resources: {
-      cpu: '4 cores',
-      memory: '8GB',
-      storage: '20GB',
-      network: '1Gbps'
+      cpu: '0.5 cores',
+      memory: '512MB',
+      storage: '200MB',
+      network: '15Mbps'
     },
     environmentVariables: {
-      'KUBECONFIG': '/etc/kubernetes/admin.conf',
-      'KUBE_NAMESPACE': 'default',
-      'CLUSTER_NAME': 'production'
+      'NODE_ENV': 'development',
+      'VUE_APP_API_URL': 'http://localhost:3001'
+    }
+  },
+  {
+    id: 'angular',
+    name: 'Angular',
+    category: 'frontend',
+    description: 'Platform for building mobile and desktop web applications',
+    setupTimeHours: 4,
+    difficulty: 'intermediate',
+    pricing: 'free',
+    isMainTechnology: true,
+    canAcceptSubTech: ['styling', 'testing', 'documentation'],
+    compatibleWith: ['nodejs', 'typescript'],
+    incompatibleWith: ['react', 'vue'],
+    resources: {
+      cpu: '1 core',
+      memory: '1GB',
+      storage: '300MB',
+      network: '20Mbps'
+    },
+    environmentVariables: {
+      'NODE_ENV': 'development',
+      'NG_APP_API_URL': 'http://localhost:3001'
+    }
+  },
+  // Outils DevOps additionnels
+  {
+    id: 'vercel',
+    name: 'Vercel',
+    category: 'devops',
+    description: 'Platform for frontend deployment and hosting',
+    setupTimeHours: 1,
+    difficulty: 'beginner',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['nextjs', 'react', 'vue'],
+    resources: {
+      cpu: '0.1 cores',
+      memory: '128MB',
+      storage: '100GB',
+      network: '100Mbps'
+    },
+    environmentVariables: {
+      'VERCEL_TOKEN': 'your-token',
+      'VERCEL_PROJECT_ID': 'your-project-id'
+    }
+  },
+  {
+    id: 'netlify',
+    name: 'Netlify',
+    category: 'devops',
+    description: 'Platform for web development and deployment',
+    setupTimeHours: 1,
+    difficulty: 'beginner',
+    pricing: 'freemium',
+    isMainTechnology: true,
+    compatibleWith: ['react', 'vue', 'angular'],
+    resources: {
+      cpu: '0.1 cores',
+      memory: '128MB',
+      storage: '100GB',
+      network: '100Mbps'
+    },
+    environmentVariables: {
+      'NETLIFY_AUTH_TOKEN': 'your-token',
+      'NETLIFY_SITE_ID': 'your-site-id'
     }
   }
 ];
@@ -474,6 +652,10 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [showResourceConfigModal, setShowResourceConfigModal] = useState(false);
   const [resourceConfigNodeId, setResourceConfigNodeId] = useState<string | null>(null);
   const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
+  const [showQuickSearch, setShowQuickSearch] = useState(false);
+  const [quickSearchQuery, setQuickSearchQuery] = useState('');
+  const [communityComponents, setCommunityComponents] = useState<CommunityComponent[]>([]);
+  const [loadingCommunity, setLoadingCommunity] = useState(false);
 
   // Check for upgrade success
   useEffect(() => {
@@ -486,10 +668,27 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
   }, [searchParams]);
 
+  // Load community components for quick search
+  const loadCommunityComponents = useCallback(async () => {
+    try {
+      setLoadingCommunity(true);
+      const components = await componentsApi.getComponents();
+      setCommunityComponents(components);
+    } catch (error) {
+      console.error('Failed to load community components:', error);
+    } finally {
+      setLoadingCommunity(false);
+    }
+  }, []);
+
+  // Load community components on mount
+  useEffect(() => {
+    loadCommunityComponents();
+  }, [loadCommunityComponents]);
+
   // Container logic
   const { 
     convertToContainer, 
-    processContainerRelationships,
     handleNodeDrop,
     updateContainerNodes
   } = useContainerLogic();
@@ -642,7 +841,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
   }, [initialStack]);
 
-  // Keyboard shortcuts for undo/redo and save
+  // Keyboard shortcuts for undo/redo, save and quick search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
@@ -654,12 +853,19 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         saveWork();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowQuickSearch(true);
+      } else if (e.key === 'Escape' && showQuickSearch) {
+        e.preventDefault();
+        setShowQuickSearch(false);
+        setQuickSearchQuery('');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, saveWork]);
+  }, [undo, redo, saveWork, showQuickSearch]);
 
   // Handle template selection
   const handleTemplateSelect = (template: StackTemplate) => {
@@ -902,7 +1108,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     const updatedNodes = nodes.map(node => {
       if (node.id === mainTechId) {
         const newSubTechnologies = [...(node.subTechnologies || []), subTech];
-        const isCompact = node.isCompact ?? true;
+        const isCompact = node.isCompact ?? false;
         
         // Adjust height to accommodate new sub-technology
         const newHeight = isCompact ? 
@@ -930,9 +1136,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         if (node.id === containerId && 'isContainer' in node && node.isContainer) {
           const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
           const updatedContainedNodes = (container.containedNodes || []).filter(n => n.id !== nodeId);
-          
-          // Find the removed node to restore it to canvas
-          const removedNode = container.containedNodes?.find(n => n.id === nodeId);
           
           console.log('🔄 Updated container contained nodes:', updatedContainedNodes.length);
           
@@ -970,9 +1173,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           const nodeForContainer: NodeData = {
             ...nodeToMove,
             position: { x: 20 + (container.containedNodes?.length || 0) * 10, y: 20 + (container.containedNodes?.length || 0) * 10 },
-            width: 180,
-            height: 60,
-            isCompact: true
+            width: 220,
+            height: 120,
+            isCompact: false
           };
           
           const updatedContainedNodes = [...(container.containedNodes || []), nodeForContainer];
@@ -1040,7 +1243,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     console.log('🚀 handleDropComponent called with:', component.name, 'at position:', position);
     
     // Check component limit before adding
-    if (!checkComponentLimit(nodes.length)) {
+    if (!checkComponentLimit(getTotalComponentCount())) {
       return;
     }
     
@@ -1075,9 +1278,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       ...component,
       id: uniqueId,
       position,
-      isCompact: true,
-      width: 200,
-      height: 80
+      isCompact: false,
+      width: 240,
+      height: 140
     };
 
     // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
@@ -1111,7 +1314,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
     // Check component limit before adding
-    if (!checkComponentLimit(nodes.length)) {
+    if (!checkComponentLimit(getTotalComponentCount())) {
       return;
     }
     
@@ -1172,9 +1375,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       ...component,
       id: uniqueId,
       position,
-      isCompact: true, // Start in compact mode
-      width: 200,
-      height: 80
+      isCompact: false, // Start in expanded mode
+      width: 240,
+      height: 140
     };
 
     // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
@@ -1255,21 +1458,54 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setNodeToConvert(null);
   }, [nodeToConvert]);
 
-  // Calculate stack statistics
+  // Calculate total component count including those inside containers
+  const getTotalComponentCount = useCallback((): number => {
+    let totalCount = 0;
+    
+    nodes.forEach(node => {
+      if ('isContainer' in node && node.isContainer) {
+        // Count the container itself as 1 component
+        totalCount += 1;
+        // Count each component inside the container
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        if (container.containedNodes) {
+          totalCount += container.containedNodes.length;
+        }
+      } else {
+        // Count regular nodes
+        totalCount += 1;
+      }
+    });
+    
+    return totalCount;
+  }, [nodes]);
+
+  // Calculate stack statistics (for future use - currently unused but keeping for analytics)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const stackStats = useMemo(() => {
-    const totalSetupTime = nodes.reduce((sum, node) => sum + node.setupTimeHours, 0);
-    const difficulties = nodes.map(node => node.difficulty);
+    const totalComponentCount = getTotalComponentCount();
+    
+    const allNodes = nodes.flatMap(node => {
+      if ('isContainer' in node && node.isContainer) {
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        return [node, ...(container.containedNodes || [])];
+      }
+      return [node];
+    });
+    
+    const totalSetupTime = allNodes.reduce((sum, node) => sum + node.setupTimeHours, 0);
+    const difficulties = allNodes.map(node => node.difficulty);
     const expertCount = difficulties.filter(d => d === 'expert').length;
     const beginnerCount = difficulties.filter(d => d === 'beginner').length;
     
     let averageDifficulty: 'beginner' | 'intermediate' | 'expert' = 'intermediate';
-    if (expertCount > nodes.length / 2) {
+    if (expertCount > allNodes.length / 2) {
       averageDifficulty = 'expert';
-    } else if (beginnerCount > nodes.length / 2) {
+    } else if (beginnerCount > allNodes.length / 2) {
       averageDifficulty = 'beginner';
     }
 
-    const categories = Array.from(new Set(nodes.map(node => node.category)));
+    const categories = Array.from(new Set(allNodes.map(node => node.category)));
     const hasIncompatible = connections.some(conn => conn.type === 'incompatible');
 
     return {
@@ -1277,10 +1513,10 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       averageDifficulty,
       categories,
       hasIncompatible,
-      nodeCount: nodes.length,
+      nodeCount: totalComponentCount,
       connectionCount: connections.length
     };
-  }, [nodes, connections]);
+  }, [nodes, connections, getTotalComponentCount]);
 
   const { saveStack } = useStackStore();
   const [savedStackId, setSavedStackId] = useState<string | null>(null);
@@ -1297,7 +1533,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       return;
     }
 
-    if (nodes.length === 0) {
+    if (getTotalComponentCount() === 0) {
       alert('Please add at least one component to your stack before saving.');
       return;
     }
@@ -1331,14 +1567,15 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
   };
 
-  // Handle present (requires auth for saving stack first)
+  // Handle present (requires auth for saving stack first) - Currently unused but keeping for future features
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePresent = async () => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
 
-    if (nodes.length === 0) {
+    if (getTotalComponentCount() === 0) {
       alert('Please add at least one component before presenting.');
       return;
     }
@@ -1386,60 +1623,82 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   return (
     <div className={cn('flex h-full bg-slate-950', className)}>
-      {/* Subtle Sidebar */}
+      {/* 🚀 Nouvelle Sidebar UX/UI 2025 */}
       {showSidebar && (
-        <div className="w-80 flex flex-col border-r border-slate-700 bg-slate-900/50">
-          {/* Simple Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-700">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded bg-slate-800 border border-slate-600 flex items-center justify-center">
-                <Layers className="h-6 w-6 text-slate-400" />
-              </div>
-              <div>
-                <h2 className="font-medium text-sm text-slate-200">
-                  Composants
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Glissez pour ajouter
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSidebar(false)}
-              className="h-10 w-10 p-0 text-slate-400 hover:text-slate-200"
-            >
-              <X className="h-10 w-10" />
-            </Button>
-          </div>
-
-          {/* Limits Display */}
-          <div className="p-4 border-b border-slate-700">
-            <div className="text-xs text-slate-400 mb-2">Plan actuel</div>
-            <div className="text-sm font-medium text-slate-200 mb-2">
-              {subscription?.plan === 'free' ? 'Gratuit' : 
-               subscription?.plan === 'starter' ? 'Starter' :
-               subscription?.plan === 'professional' ? 'Professional' :
-               subscription?.plan === 'enterprise' ? 'Enterprise' : 'Non connecté'}
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Composants:</span>
-                <span>
-                  {nodes.length}/{limits.maxComponentsPerStack === -1 ? '∞' : limits.maxComponentsPerStack}
-                </span>
-              </div>
-              {!limits.canUseContainers && (
-                <div className="text-amber-400 text-xs">
-                  🔒 Conteneurs (Plan payant)
+        <div className="w-80 flex flex-col border-r border-slate-700/50 bg-gradient-to-b from-slate-900/80 to-slate-950/90 backdrop-blur-xl">
+          {/* Header Moderne avec Intelligence */}
+          <div className="p-4 border-b border-slate-700/30">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg">
+                  <div className="text-white text-sm font-bold">🎯</div>
                 </div>
-              )}
+                <div>
+                  <h2 className="text-base font-semibold text-white">Stack Builder</h2>
+                  <p className="text-xs text-slate-400">Glissez pour construire</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSidebar(false)}
+                className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-all"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
+
+            {/* Quick Start pour nouveaux utilisateurs */}
+            {getTotalComponentCount() === 0 && (
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-3 mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span className="text-white text-xs">✨</span>
+                  </div>
+                  <span className="text-sm font-medium text-blue-200">Première visite ?</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">Commencez par choisir le type d&apos;app que vous voulez créer :</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
+                    🌐 Site Web
+                  </button>
+                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
+                    📱 App Mobile
+                  </button>
+                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
+                    🚀 API Backend
+                  </button>
+                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
+                    🤖 AI/ML App
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* IA Suggestions intelligentes */}
+            {getTotalComponentCount() > 0 && getTotalComponentCount() < 3 && (
+              <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-3 mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <span className="text-white text-xs">🧠</span>
+                  </div>
+                  <span className="text-sm font-medium text-emerald-200">Suggestions IA</span>
+                </div>
+                <p className="text-xs text-slate-300 mb-2">Basé sur votre stack, nous recommandons :</p>
+                <div className="space-y-1">
+                  <button className="w-full p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-left text-slate-200 transition-all hover:translate-x-1">
+                    + Database pour stocker vos données
+                  </button>
+                  <button className="w-full p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-left text-slate-200 transition-all hover:translate-x-1">
+                    + Authentication pour sécuriser
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Component Palette */}
-          <div className="flex-1 p-4 overflow-y-auto">
+          {/* Navigation par Use Cases avec ComponentPalette */}
+          <div className="flex-1 overflow-hidden">
             <ComponentPalette
               availableComponents={availableComponents}
               subTechnologies={subTechnologies}
@@ -1449,12 +1708,30 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               className="h-full"
             />
           </div>
-          
-          {/* Simple Footer */}
-          <div className="border-t border-slate-700 p-3">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>{availableComponents.length} disponibles</span>
-              <span>{nodes.length} ajoutés</span>
+
+          {/* Footer avec shortcuts et tips */}
+          <div className="border-t border-slate-700/30 p-3 bg-slate-900/50">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <div className="flex items-center gap-2 text-slate-400">
+                <span>💡</span>
+                <span>Glissez ou cliquez pour ajouter</span>
+              </div>
+              <button 
+                onClick={() => setShowTemplatesModal(true)}
+                className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+              >
+                Voir templates →
+              </button>
+            </div>
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => setShowQuickSearch(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-slate-300 hover:text-slate-200 transition-all hover:scale-105"
+              >
+                <span>🔍</span>
+                <span className="text-xs">Recherche rapide</span>
+                <div className="px-1.5 py-0.5 bg-slate-700 rounded text-xs">⌘K</div>
+              </button>
             </div>
           </div>
         </div>
@@ -1472,10 +1749,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowSidebar(true)}
-                  className="text-slate-400 hover:text-slate-200"
+                  className="text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-all"
                 >
-                  <Layers className="h-4 w-4 mr-2" />
-                  Composants
+                  <div className="w-4 h-4 mr-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
+                    <span className="text-white text-xs">🎯</span>
+                  </div>
+                  Stack Builder
                 </Button>
               )}
               
@@ -1581,7 +1860,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                       setShowExportModal(true);
                     }
                   }}
-                  disabled={nodes.length === 0}
+                  disabled={getTotalComponentCount() === 0}
                   className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
                   title="Exporter le stack"
                 >
@@ -1601,7 +1880,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPresentationMode(true)}
-                  disabled={nodes.length === 0}
+                  disabled={getTotalComponentCount() === 0}
                   className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
                 >
                   <Monitor className="h-4 w-4 mr-1" />
@@ -1614,9 +1893,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               {/* Primary Save Action */}
               <Button
                 onClick={handleSave}
-                disabled={!user || !stackName?.trim() || nodes.length === 0}
+                disabled={!user || !stackName?.trim() || getTotalComponentCount() === 0}
                 className={`bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1.5 ${
-                  (!user || !stackName?.trim() || nodes.length === 0) 
+                  (!user || !stackName?.trim() || getTotalComponentCount() === 0) 
                     ? 'opacity-50 cursor-not-allowed' 
                     : ''
                 }`}
@@ -1757,6 +2036,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           onMoveNodeToContainer={handleMoveNodeToContainer}
           onRemoveFromContainer={handleRemoveFromContainer}
           availableSubTechnologies={subTechnologies}
+          totalComponentCount={getTotalComponentCount()}
+          componentLimit={limits.maxComponentsPerStack}
+          planName={subscription?.plan}
           className="flex-1"
         />
         </ContainerViewContext.Provider>
@@ -1863,10 +2145,203 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       <UpgradeModal
         isOpen={upgradeModal.isOpen}
         onClose={handleCloseUpgradeModal}
-        reason={upgradeModal.reason as any}
+        reason={upgradeModal.reason as 'components' | 'containers' | 'stacks' | 'exports' | 'styling' | 'sharing'}
         currentCount={upgradeModal.currentCount}
         limit={upgradeModal.limit}
       />
+
+      {/* Quick Search Modal */}
+      {showQuickSearch && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 pt-[10vh]"
+             onClick={() => {
+               setShowQuickSearch(false);
+               setQuickSearchQuery('');
+             }}>
+          <div className="w-full max-w-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden">
+              {/* Header avec search */}
+              <div className="flex items-center gap-3 p-4 border-b border-slate-700/50">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white text-sm">🔍</span>
+                </div>
+                <input
+                  type="text"
+                  value={quickSearchQuery}
+                  onChange={(e) => setQuickSearchQuery(e.target.value)}
+                  placeholder="Rechercher un composant..."
+                  className="flex-1 bg-transparent text-white placeholder-slate-400 text-lg outline-none"
+                  autoFocus
+                />
+                <div className="text-slate-500 text-sm">Échap pour fermer</div>
+              </div>
+
+              {/* Catégories rapides */}
+              <div className="p-4 border-b border-slate-700/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-slate-400 text-sm">Catégories populaires</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button 
+                    onClick={() => setQuickSearchQuery('frontend')}
+                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-4 h-4 bg-pink-500 rounded"></div>
+                      <span className="text-sm font-medium text-slate-200">Frontend</span>
+                    </div>
+                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'frontend').length} outils</span>
+                  </button>
+                  <button 
+                    onClick={() => setQuickSearchQuery('backend')}
+                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                      <span className="text-sm font-medium text-slate-200">Backend</span>
+                    </div>
+                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'backend').length} outils</span>
+                  </button>
+                  <button 
+                    onClick={() => setQuickSearchQuery('database')}
+                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-4 h-4 bg-emerald-500 rounded"></div>
+                      <span className="text-sm font-medium text-slate-200">Database</span>
+                    </div>
+                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'database').length} outils</span>
+                  </button>
+                  <button 
+                    onClick={() => setQuickSearchQuery('devops')}
+                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                      <span className="text-sm font-medium text-slate-200">DevOps</span>
+                    </div>
+                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'devops').length} outils</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Résultats de recherche */}
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-slate-400 text-sm">
+                    {quickSearchQuery ? 'Résultats de recherche' : 'Composants populaires'}
+                  </span>
+                  {loadingCommunity && (
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {(() => {
+                    // Filtrer les composants selon la recherche (officiels + communautaires)
+                    const allComponents = [
+                      ...availableComponents.map(comp => ({ ...comp, isCommunity: false })),
+                      ...communityComponents.map(comp => ({
+                        id: comp.id,
+                        name: comp.name,
+                        category: comp.category,
+                        description: comp.description,
+                        setupTimeHours: comp.setupTimeHours,
+                        pricing: comp.pricing,
+                        difficulty: comp.difficulty,
+                        author: comp.author?.name || 'Anonyme',
+                        rating: comp.rating,
+                        usageCount: comp.usageCount,
+                        isCommunity: true
+                      }))
+                    ];
+
+                    const filtered = quickSearchQuery 
+                      ? allComponents.filter(component => 
+                          component.name.toLowerCase().includes(quickSearchQuery.toLowerCase()) ||
+                          component.description?.toLowerCase().includes(quickSearchQuery.toLowerCase()) ||
+                          component.category.toLowerCase().includes(quickSearchQuery.toLowerCase()) ||
+                          (component.author && component.author.toLowerCase().includes(quickSearchQuery.toLowerCase()))
+                        )
+                      : allComponents.slice(0, 6);
+                    
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-slate-400">
+                          <div className="text-4xl mb-2">🔍</div>
+                          <p>Aucun composant trouvé pour &quot;{quickSearchQuery}&quot;</p>
+                          <p className="text-sm mt-2">Essayez avec d&apos;autres mots-clés</p>
+                        </div>
+                      );
+                    }
+                    
+                    return filtered.map(component => (
+                    <button
+                      key={component.id}
+                      onClick={() => {
+                        handleAddComponent(component);
+                        setShowQuickSearch(false);
+                        setQuickSearchQuery('');
+                      }}
+                      className="w-full p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl text-left transition-all hover:scale-[1.02] group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm ${
+                          component.isCommunity ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                          component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
+                          component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                          component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
+                          'bg-gradient-to-br from-purple-500 to-violet-600'
+                        }`}>
+                          {component.isCommunity ? '🌐' :
+                           component.category === 'frontend' ? '🎨' :
+                           component.category === 'backend' ? '⚙️' :
+                           component.category === 'database' ? '💾' : '🚀'}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-slate-200 group-hover:text-white">{component.name}</span>
+                            {component.isCommunity && (
+                              <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                Community
+                              </Badge>
+                            )}
+                            <span className="text-xs text-slate-500 capitalize">{component.category}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-slate-400 truncate flex-1">{component.description}</p>
+                            {component.isCommunity && component.rating && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-yellow-400">⭐</span>
+                                <span className="text-xs text-slate-300">{component.rating.toFixed(1)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {component.isCommunity && component.author && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              Par {component.author}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {component.setupTimeHours}h
+                        </div>
+                      </div>
+                    </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-4 py-3 bg-slate-900/50 border-t border-slate-700/50">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>💡 Tip: Utilisez les flèches ↑↓ pour naviguer</span>
+                  <span>⌘K pour ouvrir</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

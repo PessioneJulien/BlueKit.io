@@ -71,6 +71,10 @@ interface ReactFlowCanvasProps {
   onNameChange?: (nodeId: string, newName: string) => void;
   availableSubTechnologies?: SubTechnology[];
   className?: string;
+  // Plan info for display
+  totalComponentCount?: number;
+  componentLimit?: number;
+  planName?: string;
   // Presentation mode props
   nodesDraggable?: boolean;
   nodesConnectable?: boolean;
@@ -98,6 +102,9 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   onRemoveFromContainer,
   onNameChange,
   availableSubTechnologies,
+  totalComponentCount,
+  componentLimit,
+  planName,
   className,
   // Presentation mode props with defaults
   nodesDraggable = true,
@@ -680,12 +687,35 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
           }}
         />
 
-        {/* Status panel */}
+        {/* Enhanced Status panel with plan info */}
         <Panel position="top-left">
           <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2">
             <div className="flex items-center gap-4 text-sm text-slate-300">
               <span>{nodes.length} nodes</span>
               <span>{edges.length} connections</span>
+              {totalComponentCount !== undefined && componentLimit !== undefined && (
+                <>
+                  <span className="text-slate-500">•</span>
+                  <span className={`${
+                    totalComponentCount >= componentLimit && componentLimit !== -1 
+                      ? 'text-orange-400' 
+                      : 'text-slate-300'
+                  }`}>
+                    {totalComponentCount}/{componentLimit === -1 ? '∞' : componentLimit} composants
+                  </span>
+                </>
+              )}
+              {planName && (
+                <>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-blue-400 capitalize">
+                    {planName === 'free' ? 'Gratuit' : 
+                     planName === 'starter' ? 'Starter' :
+                     planName === 'professional' ? 'Pro' :
+                     planName === 'enterprise' ? 'Enterprise' : planName}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </Panel>
