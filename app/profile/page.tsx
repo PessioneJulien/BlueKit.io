@@ -10,7 +10,10 @@ import { TextArea } from '@/components/ui/Input';
 import { useStackStore } from '@/lib/stores/stackStore';
 import { useUserStore } from '@/lib/stores/userStore';
 import { useStoreHydration } from '@/lib/hooks/useStoreHydration';
+import { useSubscription } from '@/lib/hooks/useSubscription';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { 
   User, 
   Globe, 
@@ -22,17 +25,27 @@ import {
   Clock,
   Award,
   TrendingUp,
-  LayoutGrid
+  LayoutGrid,
+  CreditCard,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Sparkles,
+  Rocket,
+  Crown
 } from 'lucide-react';
 
 
 export default function ProfilePage() {
   const isHydrated = useStoreHydration();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+  const router = useRouter();
   
   // Use Zustand stores
   const { user, stats, updateProfile } = useUserStore();
   const { userStacks } = useStackStore();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   
   // Mock user data for demo - in real app this would come from the store
   const profile = user || {
@@ -81,6 +94,54 @@ export default function ProfilePage() {
   const handleCancelEdit = () => {
     setEditedProfile(profile);
     setIsEditing(false);
+  };
+
+  const handleManageSubscription = async () => {
+    setIsLoadingPortal(true);
+    try {
+      const response = await fetch('/api/stripe/customer-portal', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.url;
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to open customer portal');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Failed to open customer portal');
+    } finally {
+      setIsLoadingPortal(false);
+    }
+  };
+
+  const getPlanIcon = (plan: string) => {
+    switch (plan) {
+      case 'starter':
+        return <Sparkles className="w-5 h-5 text-blue-400" />;
+      case 'professional':
+        return <Rocket className="w-5 h-5 text-purple-400" />;
+      case 'enterprise':
+        return <Crown className="w-5 h-5 text-amber-400" />;
+      default:
+        return <CreditCard className="w-5 h-5 text-gray-400" />;
+    }
+  };
+
+  const getPlanColor = (plan: string) => {
+    switch (plan) {
+      case 'starter':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'professional':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      case 'enterprise':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      default:
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    }
   };
 
   return (
@@ -213,6 +274,124 @@ export default function ProfilePage() {
                       </div>
                     </>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Subscription Card */}
+            <Card variant="glass" className="mt-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Subscription</CardTitle>
+                  {getPlanIcon(subscription.plan)}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Current Plan */}
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Current Plan</p>
+                    <Badge 
+                      variant="primary" 
+                      size="lg"
+                      className={getPlanColor(subscription.plan)}
+                    >
+                      {subscription.plan === 'free' ? 'Free' :
+                       subscription.plan === 'starter' ? 'Starter' :
+                       subscription.plan === 'professional' ? 'Professional' :
+                       'Enterprise'}
+                    </Badge>
+                  </div>
+
+                  {/* Status */}
+                  {subscription.status && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Status</p>
+                      <div className="flex items-center gap-2">
+                        {subscription.status === 'active' ? (
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                        ) : subscription.status === 'past_due' ? (
+                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        )}
+                        <span className="text-sm text-slate-200">
+                          {subscription.status === 'active' ? 'Active' :
+                           subscription.status === 'canceled' ? 'Cancelled' :
+                           subscription.status === 'past_due' ? 'Payment Due' :
+                           subscription.status}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Renewal Date */}
+                  {subscription.currentPeriodEnd && subscription.status === 'active' && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Next Renewal</p>
+                      <p className="text-sm text-slate-200">
+                        {new Date(subscription.currentPeriodEnd).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Limits */}
+                  <div className="border-t border-slate-700 pt-4">
+                    <p className="text-xs text-slate-400 mb-2">Plan Limits</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Stacks</span>
+                        <span className="text-slate-200">
+                          {subscription.limits.stacks === -1 ? 'Unlimited' : subscription.limits.stacks}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Components/stack</span>
+                        <span className="text-slate-200">
+                          {subscription.limits.components === -1 ? 'Unlimited' : subscription.limits.components}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Exports/month</span>
+                        <span className="text-slate-200">
+                          {subscription.limits.exports === -1 ? 'Unlimited' : subscription.limits.exports}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    {subscription.plan === 'free' ? (
+                      <Button
+                        variant="primary"
+                        onClick={() => router.push('/pricing')}
+                        className="w-full"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Upgrade Plan
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="secondary"
+                          onClick={handleManageSubscription}
+                          disabled={isLoadingPortal}
+                          className="w-full"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          {isLoadingPortal ? 'Loading...' : 'Manage Subscription'}
+                        </Button>
+                        <p className="text-xs text-slate-500 text-center">
+                          Cancel, change plan, or update payment method
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

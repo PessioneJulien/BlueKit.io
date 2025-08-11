@@ -18,7 +18,8 @@ import {
   Settings,
   LogOut,
   LogIn,
-  Package
+  Package,
+  CreditCard
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -38,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
     { name: 'Stacks', href: '/stacks', icon: LayoutGrid },
     { name: 'Builder', href: '/builder', icon: Plus },
     { name: 'Components', href: '/components', icon: Package },
+    { name: 'Pricing', href: '/pricing', icon: CreditCard },
   ];
 
   const userNavigation = [
