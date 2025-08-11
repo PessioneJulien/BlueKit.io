@@ -27,10 +27,7 @@ import {
   Code,
   Lock,
   LogIn,
-  Eye,
-  EyeOff,
   Globe,
-  Users,
   Monitor,
   Undo,
   Redo
@@ -47,7 +44,8 @@ import { SimplePresentationMode } from '@/components/ui/SimplePresentationMode';
 import { useContainerLogic } from '@/lib/hooks/useContainerLogic';
 import { CustomContainerModal, ContainerTemplate } from './CustomContainerModal';
 import { ShareModal } from './ShareModal';
-import Link from 'next/link';
+import { useStackLimits } from '@/lib/hooks/useStackLimits';
+import { useSearchParams } from 'next/navigation';
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
@@ -423,6 +421,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   className
 }) => {
   const { user, isLoading: userLoading } = useUserStore();
+  const { checkComponentLimit, checkFeatureAccess, checkExportLimit, limits, subscription } = useStackLimits();
+  const searchParams = useSearchParams();
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
   const [stackName, setStackName] = useState(initialStack?.name || '');
   const [stackDescription, setStackDescription] = useState(initialStack?.description || '');
   const [nodes, setNodes] = useState<CanvasNode[]>(initialStack?.nodes || []);
@@ -444,6 +445,17 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [showResourceConfigModal, setShowResourceConfigModal] = useState(false);
   const [resourceConfigNodeId, setResourceConfigNodeId] = useState<string | null>(null);
   const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
+
+  // Check for upgrade success
+  useEffect(() => {
+    if (searchParams?.get('upgraded') === 'true') {
+      setShowUpgradeSuccess(true);
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', '/builder');
+      // Masquer le message après 5 secondes
+      setTimeout(() => setShowUpgradeSuccess(false), 5000);
+    }
+  }, [searchParams]);
 
   // Container logic
   const { 
@@ -998,11 +1010,15 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
     console.log('🚀 handleDropComponent called with:', component.name, 'at position:', position);
     
-    // Remove the restriction - allow multiple instances
-    // if (usedComponentIds.includes(component.id)) {
-    //   console.log('❌ Component already used:', component.id);
-    //   return;
-    // }
+    // Check component limit before adding
+    if (!checkComponentLimit(nodes.length)) {
+      return;
+    }
+    
+    // Check if containers are allowed (for container components)
+    if (component.category === 'containers' && !checkFeatureAccess('canUseContainers')) {
+      return;
+    }
 
     // If it's a sub-technology, try to add it to a compatible main technology
     if (!component.isMainTechnology) {
@@ -1061,12 +1077,19 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     } else {
       setNodes(prev => [...prev, newNode]);
     }
-  }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop]);
+  }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop, checkComponentLimit, checkFeatureAccess]);
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData) => {
-    // Remove the restriction on adding the same component multiple times
-    // if (usedComponentIds.includes(component.id)) return;
+    // Check component limit before adding
+    if (!checkComponentLimit(nodes.length)) {
+      return;
+    }
+    
+    // Check if containers are allowed (for container components)
+    if (component.category === 'containers' && !checkFeatureAccess('canUseContainers')) {
+      return;
+    }
 
     // If it's a sub-technology, try to add it to a compatible main technology
     if (!component.isMainTechnology) {
@@ -1144,7 +1167,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
 
     setNodes(prev => [...prev, newNode]);
-  }, [handleAddSubTechnology, nodes, convertToContainer]);
+  }, [handleAddSubTechnology, nodes, convertToContainer, checkComponentLimit, checkFeatureAccess]);
 
 
   // Handle custom container creation
@@ -1263,7 +1286,10 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       const stackId = await saveStack(stackData);
       if (stackId) {
         setSavedStackId(stackId);
-        setShowShareModal(true);
+        // Only show share modal if user can share stacks
+        if (checkFeatureAccess('canShareStacks')) {
+          setShowShareModal(true);
+        }
       } else {
         throw new Error('Failed to save stack');
       }
@@ -1357,6 +1383,30 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             >
               <X className="h-10 w-10" />
             </Button>
+          </div>
+
+          {/* Limits Display */}
+          <div className="p-4 border-b border-slate-700">
+            <div className="text-xs text-slate-400 mb-2">Plan actuel</div>
+            <div className="text-sm font-medium text-slate-200 mb-2">
+              {subscription?.plan === 'free' ? 'Gratuit' : 
+               subscription?.plan === 'starter' ? 'Starter' :
+               subscription?.plan === 'professional' ? 'Professional' :
+               subscription?.plan === 'enterprise' ? 'Enterprise' : 'Non connecté'}
+            </div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Composants:</span>
+                <span>
+                  {nodes.length}/{limits.maxComponentsPerStack === -1 ? '∞' : limits.maxComponentsPerStack}
+                </span>
+              </div>
+              {!limits.canUseContainers && (
+                <div className="text-amber-400 text-xs">
+                  🔒 Conteneurs (Plan payant)
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Component Palette */}
@@ -1497,7 +1547,11 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowExportModal(true)}
+                  onClick={() => {
+                    if (checkExportLimit(0)) { // TODO: track actual export count
+                      setShowExportModal(true);
+                    }
+                  }}
                   disabled={nodes.length === 0}
                   className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
                   title="Exporter le stack"
