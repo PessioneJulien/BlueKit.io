@@ -3,9 +3,9 @@ import { dataMigrationService } from '@/lib/services/data-migration';
 import { createServerClient } from '@/lib/supabase/server';
 
 // Admin check middleware
-async function isAdmin(_request: NextRequest): Promise<boolean> {
+async function isAdmin(): Promise<boolean> {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user || user.email !== 'julien.pessione83@gmail.com') {
@@ -20,9 +20,9 @@ async function isAdmin(_request: NextRequest): Promise<boolean> {
 }
 
 // GET /api/admin/migrate - Get migration status
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json(
         { error: 'Unauthorized - Admin access required' },
         { status: 401 }
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/migrate - Run migration
 export async function POST(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json(
         { error: 'Unauthorized - Admin access required' },
         { status: 401 }

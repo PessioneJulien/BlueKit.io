@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import type { RateLimitRule } from '@/lib/security/validation';
 
+// Re-export rate limit rules for convenience
+export { rateLimitRules } from '@/lib/security/validation';
+
 // Types
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -30,12 +33,12 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 // Authentication middleware
 export class AuthMiddleware {
-  static async authenticate(request: NextRequest): Promise<{
+  static async authenticate(): Promise<{
     user: { id: string; email?: string; role?: string } | null;
     error: ApiError | null;
   }> {
     try {
-      const supabase = createServerClient();
+      const supabase = await createServerClient();
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error || !user) {

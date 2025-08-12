@@ -10,10 +10,14 @@ import type {
 } from '@/lib/types/database-models';
 
 export class StacksApiService {
-  private supabase: ReturnType<typeof createClient>;
+  private isServer: boolean;
   
   constructor(isServer = false) {
-    this.supabase = isServer ? createServerClient() : createClient();
+    this.isServer = isServer;
+  }
+
+  private async getSupabaseClient() {
+    return this.isServer ? await createServerClient() : createClient();
   }
 
   /**
@@ -21,7 +25,8 @@ export class StacksApiService {
    */
   async getStacks(filters?: StackFilters): Promise<PaginatedResponse<StackApiResponse>> {
     try {
-      let query = this.supabase
+      const supabase = await this.getSupabaseClient();
+      let query = supabase
         .from('stacks')
         .select(`
           *,
@@ -118,7 +123,8 @@ export class StacksApiService {
    */
   async getStack(id: string): Promise<StackApiResponse | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabaseClient();
+      const { data, error } = await supabase
         .from('stacks')
         .select(`
           *,
@@ -152,7 +158,8 @@ export class StacksApiService {
    */
   async getStackBySlug(slug: string): Promise<StackApiResponse | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabaseClient();
+      const { data, error } = await supabase
         .from('stacks')
         .select(`
           *,
@@ -186,7 +193,8 @@ export class StacksApiService {
    */
   async createStack(stackData: CreateStackRequest): Promise<StackApiResponse> {
     try {
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const supabase = await this.getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User must be authenticated to create stacks');
       }
@@ -195,7 +203,7 @@ export class StacksApiService {
       const slug = this.createSlug(stackData.name);
 
       // Start a transaction by creating the main stack record first
-      const { data: stack, error: stackError } = await this.supabase
+      const { data: stack, error: stackError } = await supabase
         .from('stacks')
         .insert({
           name: stackData.name,
@@ -220,12 +228,12 @@ export class StacksApiService {
 
       // Insert related data
       await Promise.all([
-        this.insertStackTechnologies(stackId, stackData.technologies),
-        this.insertStackUseCases(stackId, stackData.use_cases),
-        this.insertStackPros(stackId, stackData.pros),
-        this.insertStackCons(stackId, stackData.cons),
-        this.insertStackInstallationSteps(stackId, stackData.installation_steps),
-        this.insertStackAlternatives(stackId, stackData.alternatives)
+        this.insertStackTechnologies(supabase, stackId, stackData.technologies),
+        this.insertStackUseCases(supabase, stackId, stackData.use_cases),
+        this.insertStackPros(supabase, stackId, stackData.pros),
+        this.insertStackCons(supabase, stackId, stackData.cons),
+        this.insertStackInstallationSteps(supabase, stackId, stackData.installation_steps),
+        this.insertStackAlternatives(supabase, stackId, stackData.alternatives)
       ]);
 
       // Fetch the complete stack with all relations
@@ -246,7 +254,8 @@ export class StacksApiService {
    */
   async updateStack(id: string, updates: UpdateStackRequest): Promise<StackApiResponse> {
     try {
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const supabase = await this.getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User must be authenticated to update stacks');
       }
@@ -272,7 +281,7 @@ export class StacksApiService {
       if (updates.pricing) updateData.pricing = updates.pricing;
 
       if (Object.keys(updateData).length > 0) {
-        const { error } = await this.supabase
+        const { error } = await supabase
           .from('stacks')
           .update(updateData)
           .eq('id', id);
@@ -284,22 +293,22 @@ export class StacksApiService {
 
       // Update related data if provided
       if (updates.technologies) {
-        await this.updateStackTechnologies(id, updates.technologies);
+        await this.updateStackTechnologies(supabase, id, updates.technologies);
       }
       if (updates.use_cases) {
-        await this.updateStackUseCases(id, updates.use_cases);
+        await this.updateStackUseCases(supabase, id, updates.use_cases);
       }
       if (updates.pros) {
-        await this.updateStackPros(id, updates.pros);
+        await this.updateStackPros(supabase, id, updates.pros);
       }
       if (updates.cons) {
-        await this.updateStackCons(id, updates.cons);
+        await this.updateStackCons(supabase, id, updates.cons);
       }
       if (updates.installation_steps) {
-        await this.updateStackInstallationSteps(id, updates.installation_steps);
+        await this.updateStackInstallationSteps(supabase, id, updates.installation_steps);
       }
       if (updates.alternatives) {
-        await this.updateStackAlternatives(id, updates.alternatives);
+        await this.updateStackAlternatives(supabase, id, updates.alternatives);
       }
 
       // Return updated stack
@@ -320,7 +329,8 @@ export class StacksApiService {
    */
   async deleteStack(id: string): Promise<void> {
     try {
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const supabase = await this.getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User must be authenticated to delete stacks');
       }
@@ -331,7 +341,7 @@ export class StacksApiService {
         throw new Error('Stack not found');
       }
 
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('stacks')
         .delete()
         .eq('id', id);
@@ -350,9 +360,10 @@ export class StacksApiService {
    */
   async trackUsage(stackId: string): Promise<void> {
     try {
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const supabase = await this.getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('stack_usage_stats')
         .insert({
           stack_id: stackId,
@@ -466,7 +477,7 @@ export class StacksApiService {
       .replace(/-+/g, '-');
   }
 
-  private async insertStackTechnologies(stackId: string, technologies: CreateStackRequest['technologies']) {
+  private async insertStackTechnologies(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, technologies: CreateStackRequest['technologies']) {
     if (technologies.length === 0) return;
 
     const records = technologies.map(tech => ({
@@ -477,7 +488,7 @@ export class StacksApiService {
       role: tech.role
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_technologies')
       .insert(records);
 
@@ -486,7 +497,7 @@ export class StacksApiService {
     }
   }
 
-  private async insertStackUseCases(stackId: string, useCases: string[]) {
+  private async insertStackUseCases(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, useCases: string[]) {
     if (useCases.length === 0) return;
 
     const records = useCases.map(useCase => ({
@@ -494,7 +505,7 @@ export class StacksApiService {
       use_case: useCase
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_use_cases')
       .insert(records);
 
@@ -503,7 +514,7 @@ export class StacksApiService {
     }
   }
 
-  private async insertStackPros(stackId: string, pros: string[]) {
+  private async insertStackPros(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, pros: string[]) {
     if (pros.length === 0) return;
 
     const records = pros.map(pro => ({
@@ -511,7 +522,7 @@ export class StacksApiService {
       pro
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_pros')
       .insert(records);
 
@@ -520,7 +531,7 @@ export class StacksApiService {
     }
   }
 
-  private async insertStackCons(stackId: string, cons: string[]) {
+  private async insertStackCons(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, cons: string[]) {
     if (cons.length === 0) return;
 
     const records = cons.map(con => ({
@@ -528,7 +539,7 @@ export class StacksApiService {
       con
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_cons')
       .insert(records);
 
@@ -537,7 +548,7 @@ export class StacksApiService {
     }
   }
 
-  private async insertStackInstallationSteps(stackId: string, steps: string[]) {
+  private async insertStackInstallationSteps(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, steps: string[]) {
     if (steps.length === 0) return;
 
     const records = steps.map((step, index) => ({
@@ -546,7 +557,7 @@ export class StacksApiService {
       step_description: step
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_installation_steps')
       .insert(records);
 
@@ -555,7 +566,7 @@ export class StacksApiService {
     }
   }
 
-  private async insertStackAlternatives(stackId: string, alternatives: string[]) {
+  private async insertStackAlternatives(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, alternatives: string[]) {
     if (alternatives.length === 0) return;
 
     const records = alternatives.map(alternative => ({
@@ -563,7 +574,7 @@ export class StacksApiService {
       alternative
     }));
 
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('stack_alternatives')
       .insert(records);
 
@@ -573,36 +584,36 @@ export class StacksApiService {
   }
 
   // Update methods for related data (delete existing and re-insert)
-  private async updateStackTechnologies(stackId: string, technologies: CreateStackRequest['technologies']) {
+  private async updateStackTechnologies(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, technologies: CreateStackRequest['technologies']) {
     // Delete existing
-    await this.supabase.from('stack_technologies').delete().eq('stack_id', stackId);
+    await supabase.from('stack_technologies').delete().eq('stack_id', stackId);
     // Insert new
-    await this.insertStackTechnologies(stackId, technologies);
+    await this.insertStackTechnologies(supabase, stackId, technologies);
   }
 
-  private async updateStackUseCases(stackId: string, useCases: string[]) {
-    await this.supabase.from('stack_use_cases').delete().eq('stack_id', stackId);
-    await this.insertStackUseCases(stackId, useCases);
+  private async updateStackUseCases(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, useCases: string[]) {
+    await supabase.from('stack_use_cases').delete().eq('stack_id', stackId);
+    await this.insertStackUseCases(supabase, stackId, useCases);
   }
 
-  private async updateStackPros(stackId: string, pros: string[]) {
-    await this.supabase.from('stack_pros').delete().eq('stack_id', stackId);
-    await this.insertStackPros(stackId, pros);
+  private async updateStackPros(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, pros: string[]) {
+    await supabase.from('stack_pros').delete().eq('stack_id', stackId);
+    await this.insertStackPros(supabase, stackId, pros);
   }
 
-  private async updateStackCons(stackId: string, cons: string[]) {
-    await this.supabase.from('stack_cons').delete().eq('stack_id', stackId);
-    await this.insertStackCons(stackId, cons);
+  private async updateStackCons(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, cons: string[]) {
+    await supabase.from('stack_cons').delete().eq('stack_id', stackId);
+    await this.insertStackCons(supabase, stackId, cons);
   }
 
-  private async updateStackInstallationSteps(stackId: string, steps: string[]) {
-    await this.supabase.from('stack_installation_steps').delete().eq('stack_id', stackId);
-    await this.insertStackInstallationSteps(stackId, steps);
+  private async updateStackInstallationSteps(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, steps: string[]) {
+    await supabase.from('stack_installation_steps').delete().eq('stack_id', stackId);
+    await this.insertStackInstallationSteps(supabase, stackId, steps);
   }
 
-  private async updateStackAlternatives(stackId: string, alternatives: string[]) {
-    await this.supabase.from('stack_alternatives').delete().eq('stack_id', stackId);
-    await this.insertStackAlternatives(stackId, alternatives);
+  private async updateStackAlternatives(supabase: Awaited<ReturnType<typeof this.getSupabaseClient>>, stackId: string, alternatives: string[]) {
+    await supabase.from('stack_alternatives').delete().eq('stack_id', stackId);
+    await this.insertStackAlternatives(supabase, stackId, alternatives);
   }
 }
 

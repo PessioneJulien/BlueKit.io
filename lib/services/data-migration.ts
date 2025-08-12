@@ -4,10 +4,8 @@ import type { CreateStackRequest, TechnologyCategory } from '@/lib/types/databas
 import { createServerClient } from '@/lib/supabase/server';
 
 export class DataMigrationService {
-  private supabase: ReturnType<typeof createServerClient>;
-  
-  constructor() {
-    this.supabase = createServerClient();
+  private async createClient() {
+    return await createServerClient();
   }
 
   /**
@@ -74,7 +72,8 @@ export class DataMigrationService {
   async clearAllStacks(): Promise<number> {
     console.log('WARNING: Clearing all stacks from database...');
     
-    const { data, error } = await this.supabase
+    const supabase = await this.createClient();
+    const { data, error } = await supabase
       .from('stacks')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all except impossible ID
@@ -111,7 +110,8 @@ export class DataMigrationService {
     
     for (const table of requiredTables) {
       try {
-        const { error } = await this.supabase
+        const supabase = await this.createClient();
+        const { error } = await supabase
           .from(table)
           .select('*')
           .limit(1);

@@ -105,40 +105,40 @@ export async function GET(request: NextRequest) {
     console.log(`[Community Components API] Found ${data?.length || 0} components`);
     
     // Transformer les données Supabase au format attendu
-    const transformedComponents: CommunityComponent[] = (data || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      category: item.category,
-      type: item.type,
-      containerType: item.container_type,
-      setupTimeHours: item.setup_time_hours || 1,
-      difficulty: item.difficulty,
-      pricing: item.pricing,
-      documentation: item.documentation,
-      officialDocsUrl: item.official_docs_url,
-      githubUrl: item.github_url,
-      logoUrl: item.logo_url,
-      tags: item.tags || [],
+    const transformedComponents: CommunityComponent[] = (data || []).map((item: Record<string, unknown>) => ({
+      id: item.id as string,
+      name: item.name as string,
+      description: item.description as string,
+      category: item.category as CommunityComponent['category'],
+      type: item.type as CommunityComponent['type'],
+      containerType: item.container_type as CommunityComponent['containerType'],
+      setupTimeHours: (item.setup_time_hours as number) || 1,
+      difficulty: item.difficulty as CommunityComponent['difficulty'],
+      pricing: item.pricing as CommunityComponent['pricing'],
+      documentation: item.documentation as string | undefined,
+      officialDocsUrl: item.official_docs_url as string | undefined,
+      githubUrl: item.github_url as string | undefined,
+      logoUrl: item.logo_url as string | undefined,
+      tags: (item.tags as string[]) || [],
       author: {
-        id: item.author_id || 'anonymous',
+        id: (item.author_id as string) || 'anonymous',
         name: 'Community User', // Temporaire jusqu'à la relation users
         avatar: undefined
       },
-      rating: calculateAverageRating(item.component_reviews || []),
-      reviewCount: item.component_reviews?.length || 0,
-      likesCount: item.component_likes?.length || 0,
-      usageCount: item.usage_count || 0,
-      isOfficial: item.is_official || false,
-      compatibleWith: item.compatible_with || [],
-      containedTechnologies: item.contained_technologies || [],
-      resourceRequirements: item.resource_requirements ? {
-        cpu: item.resource_requirements.cpu,
-        memory: item.resource_requirements.memory,
-        storage: item.resource_requirements.storage
+      rating: calculateAverageRating((item.component_reviews as { rating: number }[]) || []),
+      reviewCount: (item.component_reviews as unknown[])?.length || 0,
+      likesCount: (item.component_likes as unknown[])?.length || 0,
+      usageCount: (item.usage_count as number) || 0,
+      isOfficial: (item.is_official as boolean) || false,
+      compatibleWith: (item.compatible_with as string[]) || [],
+      containedTechnologies: (item.contained_technologies as string[]) || [],
+      resourceRequirements: (item.resource_requirements as Record<string, string>) ? {
+        cpu: (item.resource_requirements as Record<string, string>).cpu,
+        memory: (item.resource_requirements as Record<string, string>).memory,
+        storage: (item.resource_requirements as Record<string, string>).storage
       } : undefined,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at
+      createdAt: item.created_at as string,
+      updatedAt: item.updated_at as string
     }));
     
     // Trier les résultats
