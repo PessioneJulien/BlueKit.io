@@ -12,6 +12,7 @@ import type { Connection } from '@/components/ui/VisualBuilder/ConnectionLine';
 function BuilderContent() {
   const searchParams = useSearchParams();
   const presetId = searchParams.get('preset');
+  const stackId = searchParams.get('stackId'); // Pour charger depuis la présentation
   const isHydrated = useStoreHydration();
   const [initialStack, setInitialStack] = useState<{
     name: string;
@@ -19,57 +20,93 @@ function BuilderContent() {
     nodes: CanvasNode[];
     connections: Connection[];
   } | undefined>(undefined);
-  const [isLoadingPreset, setIsLoadingPreset] = useState(!!presetId);
+  const [isLoadingPreset, setIsLoadingPreset] = useState(!!(presetId || stackId));
   
-  // Load preset data if provided
+  // Load preset or stack data if provided
   useEffect(() => {
-    if (presetId && isHydrated) {
-      const presetStack = getStackById(presetId);
-      if (presetStack) {
-        // Convert StackData to VisualStackBuilder format
-        const nodes: CanvasNode[] = presetStack.technologies.map((tech, index) => ({
-          id: tech.id,
-          name: tech.name,
-          category: tech.category,
-          description: `${tech.name} - ${tech.category}`,
-          setupTimeHours: 2,
-          difficulty: 'intermediate' as const,
-          pricing: 'free' as const,
-          isMainTechnology: tech.role === 'primary',
-          position: {
-            x: 100 + (index % 3) * 300,
-            y: 100 + Math.floor(index / 3) * 200
-          },
-          isCompact: false,
-          width: 250,
-          height: 120
-        }));
+    if ((presetId || stackId) && isHydrated) {
+      // Si stackId est présent, charger depuis la présentation
+      if (stackId) {
+        // Charger les données de la stack depuis l'API
+        const loadStackFromPresentation = async () => {
+          try {
+            console.log('Loading stack with ID:', stackId);
+            const response = await fetch(`/api/stacks/${stackId}`);
+            console.log('API Response status:', response.status);
+            
+            const data = await response.json();
+            console.log('API Response data:', data);
+            
+            if (response.ok) {
+              console.log('Stack loaded successfully from API');
+              
+              // S'assurer que les données sont dans le bon format
+              setInitialStack({
+                name: data.name || 'Unnamed Stack',
+                description: data.description || '',
+                nodes: data.nodes || [],
+                connections: data.connections || []
+              });
+            } else {
+              console.error('Failed to load stack from API:', data.error || 'Unknown error');
+              // Optionnel : afficher un message d'erreur à l'utilisateur
+            }
+          } catch (error) {
+            console.error('Error loading stack:', error);
+          } finally {
+            setIsLoadingPreset(false);
+          }
+        };
+        loadStackFromPresentation();
+      } else if (presetId) {
+        // Charger depuis les presets
+        const presetStack = getStackById(presetId);
+        if (presetStack) {
+          // Convert StackData to VisualStackBuilder format
+          const nodes: CanvasNode[] = presetStack.technologies.map((tech, index) => ({
+            id: tech.id,
+            name: tech.name,
+            category: tech.category,
+            description: `${tech.name} - ${tech.category}`,
+            setupTimeHours: 2,
+            difficulty: 'intermediate' as const,
+            pricing: 'free' as const,
+            isMainTechnology: tech.role === 'primary',
+            position: {
+              x: 100 + (index % 3) * 300,
+              y: 100 + Math.floor(index / 3) * 200
+            },
+            isCompact: false,
+            width: 250,
+            height: 120
+          }));
 
-        // Create simple connections between primary technologies
-        const primaryNodes = nodes.filter(n => n.isMainTechnology);
-        const connections: Connection[] = primaryNodes.slice(0, -1).map((node, index) => ({
-          id: `connection-${index}`,
-          sourceNodeId: node.id,
-          targetNodeId: primaryNodes[index + 1].id,
-          type: 'compatible' as const,
-          sourcePosition: { x: 0, y: 0 },
-          targetPosition: { x: 0, y: 0 }
-        }));
+          // Create simple connections between primary technologies
+          const primaryNodes = nodes.filter(n => n.isMainTechnology);
+          const connections: Connection[] = primaryNodes.slice(0, -1).map((node, index) => ({
+            id: `connection-${index}`,
+            sourceNodeId: node.id,
+            targetNodeId: primaryNodes[index + 1].id,
+            type: 'compatible' as const,
+            sourcePosition: { x: 0, y: 0 },
+            targetPosition: { x: 0, y: 0 }
+          }));
 
-        setInitialStack({
-          name: presetStack.name,
-          description: presetStack.description,
-          nodes,
-          connections
-        });
+          setInitialStack({
+            name: presetStack.name,
+            description: presetStack.description,
+            nodes,
+            connections
+          });
+        }
+        setIsLoadingPreset(false);
       }
-      setIsLoadingPreset(false);
     }
-  }, [presetId, isHydrated]);
+  }, [presetId, stackId, isHydrated]);
 
-  // Show loading until hydrated or preset is loaded
+  // Show loading until hydrated or preset/stack is loaded
   if (!isHydrated || isLoadingPreset) {
-    return <LoadingScreen message={isLoadingPreset ? 'Loading preset stack...' : 'Loading visual stack builder...'} />
+    return <LoadingScreen message={isLoadingPreset ? 'Loading stack...' : 'Loading visual stack builder...'} />
   }
 
   return (

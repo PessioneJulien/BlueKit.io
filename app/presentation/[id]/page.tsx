@@ -11,6 +11,114 @@ import { useStackStore, Stack } from '@/lib/stores/stackStore';
 
 // Mock data - In real app, this would come from Supabase
 const mockStacks = {
+  '66e116e3-07a8-4ec3-a8df-ae0880da35dc': {
+    id: '66e116e3-07a8-4ec3-a8df-ae0880da35dc',
+    name: 'Full-Stack Production Stack',
+    description: 'A complete production-ready stack with containers and microservices architecture.',
+    nodes: [
+      {
+        id: 'nextjs',
+        name: 'Next.js',
+        category: 'frontend' as const,
+        description: 'The React Framework for Production',
+        setupTimeHours: 3,
+        difficulty: 'intermediate' as const,
+        pricing: 'free' as const,
+        isMainTechnology: true,
+        position: { x: 100, y: 100 },
+        isCompact: false,
+        width: 300,
+        height: 140,
+        documentation: '# Next.js Setup\n\n## Installation\n```bash\nnpx create-next-app@latest my-app\n```\n\n## Configuration\n- Configure TypeScript\n- Setup Tailwind CSS\n- Configure environment variables'
+      },
+      {
+        id: 'supabase',
+        name: 'Supabase',
+        category: 'backend' as const,
+        description: 'Open source Firebase alternative',
+        setupTimeHours: 2,
+        difficulty: 'beginner' as const,
+        pricing: 'freemium' as const,
+        isMainTechnology: true,
+        position: { x: 500, y: 100 },
+        isCompact: false,
+        width: 300,
+        height: 140,
+        documentation: '# Supabase Setup\n\n## Project Creation\n1. Create new project on supabase.com\n2. Copy project URL and anon key\n3. Setup database schema\n\n## Integration\n```bash\nnpm install @supabase/supabase-js\n```'
+      },
+      {
+        id: 'docker-container',
+        name: 'Production Container',
+        category: 'devops' as const,
+        description: 'Docker container for production deployment',
+        setupTimeHours: 2,
+        difficulty: 'intermediate' as const,
+        pricing: 'free' as const,
+        isMainTechnology: true,
+        position: { x: 300, y: 300 },
+        isCompact: false, // Déplié par défaut
+        width: 400,
+        height: 300,
+        isContainer: true,
+        containerType: 'docker',
+        containedNodes: [
+          {
+            id: 'nginx',
+            name: 'Nginx',
+            category: 'backend' as const,
+            description: 'Web server and reverse proxy',
+            setupTimeHours: 1,
+            difficulty: 'beginner' as const,
+            pricing: 'free' as const,
+            isMainTechnology: true,
+            position: { x: 20, y: 20 },
+            isCompact: false,
+            width: 180,
+            height: 80,
+            documentation: '# Nginx Configuration\n\n## Setup\n```nginx\nserver {\n  listen 80;\n  location / {\n    proxy_pass http://app:3000;\n  }\n}\n```'
+          },
+          {
+            id: 'redis',
+            name: 'Redis',
+            category: 'database' as const,
+            description: 'In-memory data structure store',
+            setupTimeHours: 1,
+            difficulty: 'beginner' as const,
+            pricing: 'free' as const,
+            isMainTechnology: true,
+            position: { x: 220, y: 20 },
+            isCompact: false,
+            width: 160,
+            height: 80,
+            documentation: '# Redis Setup\n\n## Configuration\n```yaml\nredis:\n  image: redis:alpine\n  ports:\n    - "6379:6379"\n```'
+          }
+        ]
+      }
+    ],
+    connections: [
+      {
+        id: 'nextjs-supabase',
+        sourceNodeId: 'nextjs',
+        targetNodeId: 'supabase',
+        type: 'compatible' as const,
+        sourcePosition: { x: 0, y: 0 },
+        targetPosition: { x: 0, y: 0 }
+      },
+      {
+        id: 'nextjs-docker',
+        sourceNodeId: 'nextjs',
+        targetNodeId: 'docker-container',
+        type: 'compatible' as const,
+        sourcePosition: { x: 0, y: 0 },
+        targetPosition: { x: 0, y: 0 }
+      }
+    ],
+    createdAt: new Date('2024-01-15'),
+    author: {
+      name: 'John Doe',
+      avatar: undefined
+    }
+  },
   'next-supabase': {
     id: 'next-supabase',
     name: 'Next.js + Supabase Stack',
@@ -47,18 +155,52 @@ const mockStacks = {
         documentation: '# Supabase Setup\n\n## Project Creation\n1. Create new project on supabase.com\n2. Copy project URL and anon key\n3. Setup database schema\n\n## Integration\n```bash\nnpm install @supabase/supabase-js\n```'
       },
       {
-        id: 'vercel',
-        name: 'Vercel',
+        id: 'docker-container',
+        name: 'Production Container',
         category: 'devops' as const,
-        description: 'Platform for frontend frameworks',
-        setupTimeHours: 1,
-        difficulty: 'beginner' as const,
-        pricing: 'freemium' as const,
+        description: 'Docker container for production deployment',
+        setupTimeHours: 2,
+        difficulty: 'intermediate' as const,
+        pricing: 'free' as const,
         isMainTechnology: true,
         position: { x: 300, y: 300 },
-        isCompact: true,
-        width: 200,
-        height: 80
+        isCompact: false, // Déplié par défaut
+        width: 400,
+        height: 300,
+        isContainer: true,
+        containerType: 'docker',
+        containedNodes: [
+          {
+            id: 'nginx',
+            name: 'Nginx',
+            category: 'backend' as const,
+            description: 'Web server and reverse proxy',
+            setupTimeHours: 1,
+            difficulty: 'beginner' as const,
+            pricing: 'free' as const,
+            isMainTechnology: true,
+            position: { x: 20, y: 20 },
+            isCompact: false,
+            width: 180,
+            height: 80,
+            documentation: '# Nginx Configuration\n\n## Setup\n```nginx\nserver {\n  listen 80;\n  location / {\n    proxy_pass http://app:3000;\n  }\n}\n```'
+          },
+          {
+            id: 'redis',
+            name: 'Redis',
+            category: 'database' as const,
+            description: 'In-memory data structure store',
+            setupTimeHours: 1,
+            difficulty: 'beginner' as const,
+            pricing: 'free' as const,
+            isMainTechnology: true,
+            position: { x: 220, y: 20 },
+            isCompact: false,
+            width: 160,
+            height: 80,
+            documentation: '# Redis Setup\n\n## Configuration\n```yaml\nredis:\n  image: redis:alpine\n  ports:\n    - "6379:6379"\n```'
+          }
+        ]
       }
     ],
     connections: [

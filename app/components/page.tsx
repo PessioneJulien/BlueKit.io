@@ -1,52 +1,54 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { componentsApi, type CreateComponentData } from '@/lib/api/components';
-import { likesApi } from '@/lib/api/likes';
-import { debugApi } from '@/lib/api/debug';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { 
   Plus, 
   Search, 
   Star,
-  ExternalLink,
-  Code,
   Package,
   Layers,
-  Zap,
+  Server,
+  Database,
+  Smartphone,
+  Brain,
+  Wrench,
   Clock,
   Users,
-  User,
-  TrendingUp,
-  FileText,
-  Edit,
-  Trash,
-  Eye,
-  X
+  GitBranch,
+  ChevronRight,
+  Box,
+  Container,
+  SlidersHorizontal,
+  X,
+  Check,
+  DollarSign,
+  Gauge,
+  Sparkles
 } from 'lucide-react';
-import Link from 'next/link';
-import { ComponentModal } from '@/components/ui/ComponentModal';
-import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { useUserStore } from '@/lib/stores/userStore';
+import { ComponentSubmissionModal } from '@/components/ui/ComponentSubmissionModal';
+import { ComponentDetailModal } from '@/components/ui/ComponentDetailModal';
+import { useLike } from '@/lib/hooks/useLike';
+// Types locaux (pas besoin d'importer depuis le builder)
 
-// Types
-interface Component {
+// Types pour les composants communautaires
+interface CommunityComponent {
   id: string;
   name: string;
   description: string;
-  category: 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'ai' | 'tool' | 'other';
-  type: 'main' | 'sub';
+  category: 'frontend' | 'backend' | 'database' | 'devops' | 'mobile' | 'ai' | 'infrastructure' | 'other';
+  type: 'component' | 'container';
+  containerType?: 'docker' | 'kubernetes';
   setupTimeHours: number;
   difficulty: 'beginner' | 'intermediate' | 'expert';
   pricing: 'free' | 'freemium' | 'paid';
   documentation?: string;
   officialDocsUrl?: string;
   githubUrl?: string;
-  npmUrl?: string;
   logo?: string;
   tags: string[];
   author: {
@@ -60,1074 +62,584 @@ interface Component {
   usageCount: number;
   isOfficial: boolean;
   compatibleWith?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  containedTechnologies?: string[]; // Pour les containers
+  resourceRequirements?: {
+    cpu?: string;
+    memory?: string;
+    storage?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Remove mock data - will load from Supabase
-
-// Category config
+// Configuration des catégories avec icônes modernes
 const categoryConfig = {
-  frontend: { color: 'blue', icon: Layers },
-  backend: { color: 'green', icon: Code },
-  database: { color: 'purple', icon: Package },
-  devops: { color: 'orange', icon: Zap },
-  mobile: { color: 'pink', icon: Package },
-  ai: { color: 'yellow', icon: Zap },
-  tool: { color: 'cyan', icon: Package },
-  other: { color: 'gray', icon: Package }
+  frontend: { 
+    label: 'Frontend', 
+    icon: Layers, 
+    color: 'from-blue-500 to-blue-600',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20'
+  },
+  backend: { 
+    label: 'Backend', 
+    icon: Server, 
+    color: 'from-green-500 to-green-600',
+    bgColor: 'bg-green-500/10',
+    borderColor: 'border-green-500/20'
+  },
+  database: { 
+    label: 'Database', 
+    icon: Database, 
+    color: 'from-purple-500 to-purple-600',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/20'
+  },
+  devops: { 
+    label: 'DevOps', 
+    icon: GitBranch, 
+    color: 'from-orange-500 to-orange-600',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/20'
+  },
+  mobile: { 
+    label: 'Mobile', 
+    icon: Smartphone, 
+    color: 'from-pink-500 to-pink-600',
+    bgColor: 'bg-pink-500/10',
+    borderColor: 'border-pink-500/20'
+  },
+  ai: { 
+    label: 'AI/ML', 
+    icon: Brain, 
+    color: 'from-yellow-500 to-yellow-600',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/20'
+  },
+  infrastructure: { 
+    label: 'Infrastructure', 
+    icon: Box, 
+    color: 'from-cyan-500 to-cyan-600',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/20'
+  },
+  other: { 
+    label: 'Autre', 
+    icon: Wrench, 
+    color: 'from-gray-500 to-gray-600',
+    bgColor: 'bg-gray-500/10',
+    borderColor: 'border-gray-500/20'
+  }
 };
 
 export default function ComponentsPage() {
-  const [components, setComponents] = useState<Component[]>([]);
-  const [filteredComponents, setFilteredComponents] = useState<Component[]>([]);
+  // États
+  const [components, setComponents] = useState<CommunityComponent[]>([]);
+  const [filteredComponents, setFilteredComponents] = useState<CommunityComponent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<'all' | 'component' | 'container'>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedPricing, setSelectedPricing] = useState<string>('all');
-  const [showMyComponents, setShowMyComponents] = useState(false);
-  const [likedComponents, setLikedComponents] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<'likes' | 'usage' | 'recent'>('likes');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingComponent, setEditingComponent] = useState<Component | null>(null);
-  const [viewingComponent, setViewingComponent] = useState<Component | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalComponents, setTotalComponents] = useState(0);
-  const ITEMS_PER_PAGE = 10;
-  
-  const { user, isLoading: userLoading } = useUserStore();
+  const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'rating'>('popular');
+  const [showFilters, setShowFilters] = useState(false);
+  // Modals
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [selectedComponent, setSelectedComponent] = useState<CommunityComponent | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load components from Supabase
+  // Pas de mock data - chargé via l'API
+
+  // Charger les composants
   useEffect(() => {
-    const loadComponents = async () => {
-      try {
-        // Add pagination parameters to the API call
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: ITEMS_PER_PAGE.toString(),
-          ...(searchQuery && { search: searchQuery }),
-          ...(selectedCategory !== 'all' && { category: selectedCategory })
-        });
-        
-        const response = await fetch(`/api/components?${params}`);
-        if (!response.ok) throw new Error('Failed to fetch components');
-        
-        const { components: fetchedComponents, total } = await response.json();
-        setTotalComponents(total);
-        
-        // Transform API response to match Component interface
-        interface ComponentResponse {
-          id: string;
-          name: string;
-          description: string;
-          category: string;
-          type: string;
-          setupTimeHours: number;
-          difficulty: string;
-          pricing: string;
-          documentation?: string;
-          officialDocsUrl?: string;
-          githubUrl?: string;
-          npmUrl?: string;
-          logoUrl?: string;
-          tags: string[];
-          authorId: string;
-          likesCount: number;
-          usageCount: number;
-          isOfficial: boolean;
-          compatibleWith: string[];
-          createdAt: string;
-          updatedAt: string;
-        }
-        
-        const transformedComponents = fetchedComponents.map((comp: ComponentResponse) => ({
-          id: comp.id,
-          name: comp.name,
-          description: comp.description,
-          category: comp.category,
-          type: comp.type,
-          setupTimeHours: comp.setupTimeHours,
-          difficulty: comp.difficulty,
-          pricing: comp.pricing,
-          documentation: comp.documentation,
-          officialDocsUrl: comp.officialDocsUrl,
-          githubUrl: comp.githubUrl,
-          npmUrl: comp.npmUrl,
-          logo: comp.logoUrl,
-          tags: comp.tags,
-          author: {
-            id: comp.authorId,
-            name: 'Author', // TODO: Fetch author name
-            avatar: undefined
-          },
-          rating: 0, // Will be replaced by likes system
-          reviewCount: 0,
-          likesCount: comp.likesCount,
-          usageCount: comp.usageCount,
-          isOfficial: comp.isOfficial,
-          compatibleWith: comp.compatibleWith,
-          createdAt: new Date(comp.createdAt),
-          updatedAt: new Date(comp.updatedAt)
-        }));
-        
-        setComponents(transformedComponents);
-      } catch (error) {
-        console.error('Failed to load components:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    setLoading(true);
     loadComponents();
-  }, [page, searchQuery, selectedCategory]); // Reload when page or filters change
-  
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, selectedCategory, selectedType, selectedDifficulty, selectedPricing, sortBy, showMyComponents]);
+  }, []);
 
-  // Filter components for display (local filtering for immediate feedback)
-  useEffect(() => {
-    let filtered = [...components];
-
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(comp => 
-        comp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        comp.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        comp.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-
-    // Category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(comp => comp.category === selectedCategory);
-    }
-
-    // Type filter
-    if (selectedType !== 'all') {
-      filtered = filtered.filter(comp => comp.type === selectedType);
-    }
-
-    // Difficulty filter
-    if (selectedDifficulty !== 'all') {
-      filtered = filtered.filter(comp => comp.difficulty === selectedDifficulty);
-    }
-
-    // Pricing filter
-    if (selectedPricing !== 'all') {
-      filtered = filtered.filter(comp => comp.pricing === selectedPricing);
-    }
-
-    // My components filter
-    if (showMyComponents && user) {
-      filtered = filtered.filter(comp => comp.author.id === user.id);
-    }
-
-    // Sort
-    switch (sortBy) {
-      case 'likes':
-        filtered.sort((a, b) => b.likesCount - a.likesCount);
-        break;
-      case 'usage':
-        filtered.sort((a, b) => b.usageCount - a.usageCount);
-        break;
-      case 'recent':
-        filtered.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-        break;
-    }
-
-    setFilteredComponents(filtered);
-  }, [selectedType, showMyComponents, sortBy, components, user]);
-
-  const handleCreateComponent = async (componentData: Partial<Component>) => {
+  const loadComponents = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const createData: CreateComponentData = {
-        name: componentData.name!,
-        description: componentData.description!,
-        category: componentData.category!,
-        type: componentData.type!,
-        setupTimeHours: componentData.setupTimeHours!,
-        difficulty: componentData.difficulty!,
-        pricing: componentData.pricing!,
-        documentation: componentData.documentation,
-        officialDocsUrl: componentData.officialDocsUrl,
-        githubUrl: componentData.githubUrl,
-        npmUrl: componentData.npmUrl,
-        tags: componentData.tags || [],
-        compatibleWith: componentData.compatibleWith || []
-      };
-
-      const newComponent = await componentsApi.createComponent(createData);
-      setComponents([newComponent, ...components]);
-      setShowCreateModal(false);
-    } catch (error) {
-      console.error('Failed to create component:', error);
-      alert('Failed to create component. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditComponent = async (componentData: Partial<Component>) => {
-    if (!editingComponent) return;
-
-    try {
-      setLoading(true);
-      const updateData: Partial<CreateComponentData> = {
-        name: componentData.name,
-        description: componentData.description,
-        category: componentData.category,
-        type: componentData.type,
-        setupTimeHours: componentData.setupTimeHours,
-        difficulty: componentData.difficulty,
-        pricing: componentData.pricing,
-        documentation: componentData.documentation,
-        officialDocsUrl: componentData.officialDocsUrl,
-        githubUrl: componentData.githubUrl,
-        npmUrl: componentData.npmUrl,
-        tags: componentData.tags,
-        compatibleWith: componentData.compatibleWith
-      };
-
-      const updatedComponent = await componentsApi.updateComponent(editingComponent.id, updateData);
-      const updatedComponents = components.map(comp => 
-        comp.id === editingComponent.id ? updatedComponent : comp
-      );
-      setComponents(updatedComponents);
-      setEditingComponent(null);
-    } catch (error) {
-      console.error('Failed to update component:', error);
-      alert('Failed to update component. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteComponent = async (componentId: string) => {
-    if (confirm('Are you sure you want to delete this component?')) {
-      try {
-        setLoading(true);
-        await componentsApi.deleteComponent(componentId);
-        setComponents(components.filter(comp => comp.id !== componentId));
-      } catch (error) {
-        console.error('Failed to delete component:', error);
-        alert('Failed to delete component. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Handle component liking (like/unlike)
-  const handleLikeComponent = async (componentId: string) => {
-    if (!user) {
-      alert('Please login to like components');
-      return;
-    }
-
-    try {
-      console.log('🔄 Toggling like for component:', componentId);
-      
-      // Use client-side API instead of API routes
-      const { liked, likesCount } = await likesApi.toggleLike(componentId);
-      
-      console.log('✅ Like toggled successfully:', { liked, likesCount });
-      
-      // Update local liked components state
-      const newLikedComponents = new Set(likedComponents);
-      if (liked) {
-        newLikedComponents.add(componentId);
-      } else {
-        newLikedComponents.delete(componentId);
-      }
-      setLikedComponents(newLikedComponents);
-      
-      // Update component likes count in local state with the real count from DB
-      const updatedComponents = components.map(comp => {
-        if (comp.id === componentId) {
-          console.log(`📊 Updating component ${comp.name} likes: ${comp.likesCount} → ${likesCount}`);
-          return {
-            ...comp,
-            likesCount: likesCount
-          };
-        }
-        return comp;
+      const params = new URLSearchParams({
+        category: selectedCategory,
+        type: selectedType,
+        difficulty: selectedDifficulty,
+        pricing: selectedPricing,
+        sortBy: sortBy,
+        ...(searchQuery && { search: searchQuery })
       });
-      setComponents(updatedComponents);
       
-      console.log('🔄 Components state updated');
+      const response = await fetch(`/api/community-components?${params}`);
+      const data = await response.json();
       
-      // Debug: Check what's actually in the database
-      setTimeout(() => {
-        debugApi.checkComponentLikes(componentId);
-        debugApi.checkUserLikes();
-      }, 1000);
-      
+      console.log('Components loaded:', data.components?.length || 0);
+      setComponents(data.components || []);
+      setFilteredComponents(data.components || []);
     } catch (error) {
-      console.error('❌ Failed to like/unlike component:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update like. Please try again.';
-      alert(errorMessage);
+      console.error('Erreur lors du chargement des composants:', error);
+      setComponents([]);
+      setFilteredComponents([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Load user's liked components on mount
+  // Recharger quand les filtres changent
   useEffect(() => {
-    if (user) {
-      const loadLikedComponents = async () => {
-        try {
-          const likedComponentIds = await likesApi.getUserLikedComponents();
-          setLikedComponents(new Set(likedComponentIds));
-          
-          // Debug: Also check what we found
-          console.log('🎆 Loaded liked components on mount:', likedComponentIds);
-          setTimeout(() => debugApi.checkUserLikes(), 500);
-        } catch (error) {
-          console.error('Failed to load liked components:', error);
-        }
-      };
-      loadLikedComponents();
-    } else {
-      setLikedComponents(new Set());
-    }
-  }, [user]);
+    const timeoutId = setTimeout(() => {
+      loadComponents();
+    }, 300); // Debounce de 300ms
 
-  if (loading || userLoading) {
-    return <LoadingScreen />;
-  }
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategory, selectedType, selectedDifficulty, selectedPricing, sortBy]);
+
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                Community Components
-              </h1>
-              <p className="text-slate-400">
-                Discover and share reusable components for your tech stack
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 blur-3xl" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+              Community Components
+            </h1>
+            <p className="text-xl text-gray-400 mb-8 max-w-3xl mx-auto">
+              Découvrez et partagez des composants réutilisables pour vos stacks technologiques.
+              Containers, services, et outils validés par la communauté.
+            </p>
             
-            {user && (
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+                <div className="text-3xl font-bold text-white">{components.length}</div>
+                <div className="text-sm text-gray-400">Composants</div>
+              </div>
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+                <div className="text-3xl font-bold text-white">
+                  {components.filter(c => c.type === 'container').length}
+                </div>
+                <div className="text-sm text-gray-400">Containers</div>
+              </div>
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+                <div className="text-3xl font-bold text-white">
+                  {components.filter(c => c.isOfficial).length}
+                </div>
+                <div className="text-sm text-gray-400">Officiels</div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
               <Button
-                variant="primary"
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2"
+                onClick={() => setShowSubmissionModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                <Plus className="w-4 h-4" />
-                Create Component
+                <Plus className="w-5 h-5 mr-2" />
+                Proposer un Composant
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowFilters(!showFilters)}
+                className="bg-slate-800 hover:bg-slate-700"
+              >
+                <SlidersHorizontal className="w-5 h-5 mr-2" />
+                Filtres
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filters Bar */}
+      <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <Input
+                  type="text"
+                  placeholder="Rechercher des composants, containers, tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+            </div>
+
+            {/* Quick Filters */}
+            <div className="flex gap-2">
+              {/* Type Filter */}
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as 'all' | 'component' | 'container')}
+                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              >
+                <option value="all">Tous types</option>
+                <option value="component">Composants</option>
+                <option value="container">Containers</option>
+              </select>
+
+              {/* Sort */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'popular' | 'recent' | 'rating')}
+                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+              >
+                <option value="popular">Plus populaires</option>
+                <option value="recent">Plus récents</option>
+                <option value="rating">Mieux notés</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Extended Filters */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Category */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Catégorie</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="all">Toutes</option>
+                    {Object.entries(categoryConfig).map(([key, config]) => (
+                      <option key={key} value={key}>{config.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Difficulty */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Difficulté</label>
+                  <select
+                    value={selectedDifficulty}
+                    onChange={(e) => setSelectedDifficulty(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="all">Toutes</option>
+                    <option value="beginner">Débutant</option>
+                    <option value="intermediate">Intermédiaire</option>
+                    <option value="expert">Expert</option>
+                  </select>
+                </div>
+
+                {/* Pricing */}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Prix</label>
+                  <select
+                    value={selectedPricing}
+                    onChange={(e) => setSelectedPricing(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="all">Tous</option>
+                    <option value="free">Gratuit</option>
+                    <option value="freemium">Freemium</option>
+                    <option value="paid">Payant</option>
+                  </select>
+                </div>
+
+                {/* Reset */}
+                <div className="flex items-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSelectedType('all');
+                      setSelectedDifficulty('all');
+                      setSelectedPricing('all');
+                      setSearchQuery('');
+                    }}
+                    className="w-full"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Réinitialiser
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Components Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredComponents.length === 0 ? (
+          <div className="text-center py-16">
+            <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-400 mb-2">
+              {components.length === 0 ? 'Aucun composant disponible' : 'Aucun composant trouvé'}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {components.length === 0 
+                ? 'La base de données est vide. Vous pouvez ajouter des composants ou initialiser avec des données de démonstration.'
+                : 'Essayez de modifier vos critères de recherche'
+              }
+            </p>
+            {components.length === 0 && (
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/community-components/seed', { method: 'POST' });
+                    const result = await response.json();
+                    console.log('Seed result:', result);
+                    if (response.ok) {
+                      await loadComponents();
+                    }
+                  } catch (error) {
+                    console.error('Failed to seed data:', error);
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Ajouter des composants de démo
               </Button>
             )}
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card variant="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Package className="w-8 h-8 text-blue-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">{components.length}</p>
-                    <p className="text-sm text-slate-400">Total Components</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card variant="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-green-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">
-                      {components.reduce((sum, c) => sum + c.usageCount, 0).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-slate-400">Total Uses</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card variant="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Star className="w-8 h-8 text-yellow-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">
-                      {components.length > 0 
-                        ? (components.reduce((sum, c) => sum + c.rating, 0) / components.length).toFixed(1)
-                        : '0.0'
-                      }
-                    </p>
-                    <p className="text-sm text-slate-400">Average Rating</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card variant="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-8 h-8 text-purple-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">
-                      {components.filter(c => c.createdAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
-                    </p>
-                    <p className="text-sm text-slate-400">New This Week</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <div className="space-y-4 mb-6">
-            {/* Search and Quick Filters */}
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search components..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              
-              {/* Quick Actions */}
-              <div className="flex gap-3">
-                {user && (
-                  <Button
-                    variant={showMyComponents ? "primary" : "secondary"}
-                    onClick={() => setShowMyComponents(!showMyComponents)}
-                    className="flex items-center gap-2"
-                  >
-                    <User className="w-4 h-4" />
-                    My Components ({components.filter(c => c.author.id === user.id).length})
-                  </Button>
-                )}
-                
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSelectedType('all');
-                    setSelectedDifficulty('all');
-                    setSelectedPricing('all');
-                    setShowMyComponents(false);
-                    setSearchQuery('');
-                  }}
-                  className="text-slate-400 hover:text-white"
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-            
-            {/* Detailed Filters */}
-            <div className="flex flex-wrap gap-4">
-              <Select
-                value={selectedCategory}
-                onChange={(value) => setSelectedCategory(value)}
-                className="w-40"
-              >
-                <option value="all">All Categories</option>
-                {Object.keys(categoryConfig).map(cat => (
-                  <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                ))}
-              </Select>
-              
-              <Select
-                value={selectedType}
-                onChange={(value) => setSelectedType(value)}
-                className="w-40"
-              >
-                <option value="all">All Types</option>
-                <option value="main">Main Components</option>
-                <option value="sub">Sub Components</option>
-              </Select>
-
-              <Select
-                value={selectedDifficulty}
-                onChange={(value) => setSelectedDifficulty(value)}
-                className="w-40"
-              >
-                <option value="all">All Difficulty</option>
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="expert">Expert</option>
-              </Select>
-
-              <Select
-                value={selectedPricing}
-                onChange={(value) => setSelectedPricing(value)}
-                className="w-40"
-              >
-                <option value="all">All Pricing</option>
-                <option value="free">Free</option>
-                <option value="freemium">Freemium</option>
-                <option value="paid">Paid</option>
-              </Select>
-              
-              <Select
-                value={sortBy}
-                onChange={(value) => setSortBy(value as 'likes' | 'usage' | 'recent')}
-                className="w-40"
-              >
-                <option value="likes">Most Liked</option>
-                <option value="usage">Most Used</option>
-                <option value="recent">Recently Updated</option>
-              </Select>
-            </div>
-
-            {/* Active Filters Display */}
-            {(selectedCategory !== 'all' || selectedType !== 'all' || selectedDifficulty !== 'all' || selectedPricing !== 'all' || showMyComponents || searchQuery) && (
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-slate-400">Active filters:</span>
-                {selectedCategory !== 'all' && (
-                  <Badge variant="secondary" size="sm">
-                    Category: {selectedCategory}
-                  </Badge>
-                )}
-                {selectedType !== 'all' && (
-                  <Badge variant="secondary" size="sm">
-                    Type: {selectedType}
-                  </Badge>
-                )}
-                {selectedDifficulty !== 'all' && (
-                  <Badge variant="secondary" size="sm">
-                    Difficulty: {selectedDifficulty}
-                  </Badge>
-                )}
-                {selectedPricing !== 'all' && (
-                  <Badge variant="secondary" size="sm">
-                    Pricing: {selectedPricing}
-                  </Badge>
-                )}
-                {showMyComponents && (
-                  <Badge variant="primary" size="sm">
-                    My Components
-                  </Badge>
-                )}
-                {searchQuery && (
-                  <Badge variant="secondary" size="sm">
-                    Search: &quot;{searchQuery}&quot;
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Components Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="component-grid">
-          {filteredComponents.map((component) => {
-            const CategoryIcon = categoryConfig[component.category].icon;
-            const isOwner = user?.id === component.author.id;
-            
-            
-            return (
-              <Card 
-                key={component.id} 
-                variant="glass" 
-                className="hover:border-slate-600 transition-all relative group" 
-                data-testid="component-card"
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-gradient-to-br from-${categoryConfig[component.category].color}-500/20 to-${categoryConfig[component.category].color}-600/20`}>
-                        <CategoryIcon className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          {component.name}
-                          {component.isOfficial && (
-                            <Badge variant="primary" size="sm">Official</Badge>
-                          )}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" size="sm">
-                            {component.type === 'main' ? 'Main' : 'Sub'}
-                          </Badge>
-                          <Badge 
-                            variant={component.difficulty === 'beginner' ? 'success' : component.difficulty === 'intermediate' ? 'warning' : 'danger'}
-                            size="sm"
-                          >
-                            {component.difficulty}
-                          </Badge>
-                          <Badge 
-                            variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
-                            size="sm"
-                          >
-                            {component.pricing}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-1 items-center">
-                      
-                      {isOwner && (
-                        <>
-                        <Badge variant="success" size="sm" className="mr-2">
-                          Owner
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingComponent(component)}
-                          className="p-1 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
-                          title="Edit component"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteComponent(component.id)}
-                          className="p-1 hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                          title="Delete component"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <p className="text-sm text-slate-300 mb-4 line-clamp-2">
-                    {component.description}
-                  </p>
-                  
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {component.tags.slice(0, 3).map(tag => (
-                      <Badge key={tag} variant="secondary" size="sm">
-                        #{tag}
-                      </Badge>
-                    ))}
-                    {component.tags.length > 3 && (
-                      <Badge variant="secondary" size="sm">
-                        +{component.tags.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Links & Actions */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex gap-2">
-                      {component.officialDocsUrl && (
-                        <a
-                          href={component.officialDocsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 transition-colors"
-                          title="Official Documentation"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </a>
-                      )}
-                      {component.githubUrl && (
-                        <a
-                          href={component.githubUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-slate-400 hover:text-white transition-colors"
-                          title="GitHub"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                      {component.documentation && (
-                        <button
-                          onClick={() => setViewingComponent(component)}
-                          className="text-green-400 hover:text-green-300 transition-colors"
-                          title="Community Documentation"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {/* View Details Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setViewingComponent(component)}
-                      className="text-slate-400 hover:text-white text-xs px-2 py-1"
-                    >
-                      <Eye className="w-3 h-3 mr-1" />
-                      Details
-                    </Button>
-                  </div>
-                  
-                  {/* Stats & Actions */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <Users className="w-4 h-4" />
-                        <span>{component.usageCount.toLocaleString()} uses</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <Clock className="w-4 h-4" />
-                        <span>{component.setupTimeHours}h setup</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <Star className="w-4 h-4 text-yellow-400" />
-                        <span>{component.likesCount} likes</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {/* Like Button */}
-                      {user && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleLikeComponent(component.id)}
-                          className={`p-1 ${
-                            likedComponents.has(component.id)
-                              ? 'text-yellow-400 hover:text-yellow-300'
-                              : 'text-slate-400 hover:text-yellow-400'
-                          }`}
-                          title={likedComponents.has(component.id) ? 'Unlike' : 'Like this component'}
-                        >
-                          <Star 
-                            className={`w-4 h-4 ${
-                              likedComponents.has(component.id) ? 'fill-current' : ''
-                            }`} 
-                          />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Author */}
-                  <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between">
-                    <span className="text-xs text-slate-400">
-                      by {component.author.name}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {new Date(component.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Pagination */}
-        {totalComponents > ITEMS_PER_PAGE && (
-          <div className="flex justify-center items-center gap-4 mt-8 mb-6" data-testid="pagination">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="flex items-center gap-2"
-            >
-              ← Previous
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              {/* Page numbers */}
-              {Array.from({ length: Math.min(5, Math.ceil(totalComponents / ITEMS_PER_PAGE)) }, (_, i) => {
-                const totalPages = Math.ceil(totalComponents / ITEMS_PER_PAGE);
-                let startPage = Math.max(1, page - 2);
-                const endPage = Math.min(totalPages, startPage + 4);
-                
-                if (endPage - startPage < 4) {
-                  startPage = Math.max(1, endPage - 4);
-                }
-                
-                const pageNum = startPage + i;
-                if (pageNum <= totalPages) {
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={pageNum === page ? "primary" : "ghost"}
-                      size="sm"
-                      onClick={() => setPage(pageNum)}
-                      className={pageNum === page ? "px-3" : "px-3 text-slate-400 hover:text-white"}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                }
-                return null;
-              })}
-              
-              {Math.ceil(totalComponents / ITEMS_PER_PAGE) > 5 && page < Math.ceil(totalComponents / ITEMS_PER_PAGE) - 2 && (
-                <>
-                  <span className="text-slate-500 px-2">...</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPage(Math.ceil(totalComponents / ITEMS_PER_PAGE))}
-                    className="px-3 text-slate-400 hover:text-white"
-                  >
-                    {Math.ceil(totalComponents / ITEMS_PER_PAGE)}
-                  </Button>
-                </>
-              )}
-            </div>
-            
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPage(p => Math.min(Math.ceil(totalComponents / ITEMS_PER_PAGE), p + 1))}
-              disabled={page >= Math.ceil(totalComponents / ITEMS_PER_PAGE)}
-              className="flex items-center gap-2"
-            >
-              Next →
-            </Button>
-            
-            <div className="ml-4 text-sm text-slate-400">
-              Showing {(page - 1) * ITEMS_PER_PAGE + 1} to{' '}
-              {Math.min(page * ITEMS_PER_PAGE, totalComponents)} of {totalComponents} components
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {filteredComponents.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            {components.length === 0 ? (
-              <>
-                <h3 className="text-xl font-semibold text-slate-300 mb-2">Welcome to Community Components!</h3>
-                <p className="text-slate-400 mb-6 max-w-md mx-auto">
-                  Be the first to share a component with the community. Create documentation, 
-                  add useful links, and help others discover great tools.
-                </p>
-                {user && (
-                  <Button
-                    variant="primary"
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 mx-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create First Component
-                  </Button>
-                )}
-                {!user && (
-                  <div className="text-sm text-slate-500">
-                    <Link href="/auth/login" className="text-blue-400 hover:text-blue-300">
-                      Login
-                    </Link>{' '}
-                    to create and share components
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <h3 className="text-xl font-semibold text-slate-300 mb-2">No components found</h3>
-                <p className="text-slate-400">Try adjusting your filters or search query</p>
-              </>
-            )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredComponents.map((component) => (
+              <ComponentCard
+                key={component.id}
+                component={component}
+                onClick={() => setSelectedComponent(component)}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Component Detail Modal */}
-      {viewingComponent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
-          <div className="relative bg-slate-900 rounded-xl border border-slate-700 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-6 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-lg bg-gradient-to-br from-${categoryConfig[viewingComponent.category].color}-500/20 to-${categoryConfig[viewingComponent.category].color}-600/20`}>
-                    {(() => {
-                      const CategoryIcon = categoryConfig[viewingComponent.category].icon;
-                      return <CategoryIcon className="w-8 h-8 text-white" />;
-                    })()}
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                      {viewingComponent.name}
-                      {viewingComponent.isOfficial && (
-                        <Badge variant="primary">Official</Badge>
-                      )}
-                    </h2>
-                    <div className="flex items-center gap-3 mt-2">
-                      <Badge variant="secondary">
-                        {viewingComponent.type === 'main' ? 'Main' : 'Sub'}
-                      </Badge>
-                      <Badge variant={viewingComponent.difficulty === 'beginner' ? 'success' : viewingComponent.difficulty === 'intermediate' ? 'warning' : 'danger'}>
-                        {viewingComponent.difficulty}
-                      </Badge>
-                      <Badge variant={viewingComponent.pricing === 'free' ? 'success' : viewingComponent.pricing === 'freemium' ? 'warning' : 'danger'}>
-                        {viewingComponent.pricing}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => setViewingComponent(null)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <X className="w-6 h-6" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Description */}
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
-                <p className="text-slate-300 leading-relaxed">{viewingComponent.description}</p>
-              </div>
-
-              {/* Tags */}
-              {viewingComponent.tags && viewingComponent.tags.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {viewingComponent.tags.map(tag => (
-                      <Badge key={tag} variant="secondary">
-                        #{tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Documentation */}
-              {viewingComponent.documentation && (
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Documentation</h3>
-                  <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                    <pre className="text-slate-300 text-sm whitespace-pre-wrap font-mono">
-                      {viewingComponent.documentation}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {/* Links */}
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Links</h3>
-                <div className="flex flex-wrap gap-4">
-                  {viewingComponent.officialDocsUrl && (
-                    <a
-                      href={viewingComponent.officialDocsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Official Documentation
-                    </a>
-                  )}
-                  {viewingComponent.githubUrl && (
-                    <a
-                      href={viewingComponent.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      GitHub Repository
-                    </a>
-                  )}
-                  {viewingComponent.npmUrl && (
-                    <a
-                      href={viewingComponent.npmUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition-colors"
-                    >
-                      <Package className="w-4 h-4" />
-                      NPM Package
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-800 rounded-lg p-4 text-center">
-                  <Star className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                  <div className="text-lg font-semibold text-white">{viewingComponent.rating.toFixed(1)}</div>
-                  <div className="text-sm text-slate-400">Rating</div>
-                </div>
-                <div className="bg-slate-800 rounded-lg p-4 text-center">
-                  <Star className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                  <div className="text-lg font-semibold text-white">{viewingComponent.likesCount}</div>
-                  <div className="text-sm text-slate-400">Likes</div>
-                </div>
-                <div className="bg-slate-800 rounded-lg p-4 text-center">
-                  <Users className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                  <div className="text-lg font-semibold text-white">{viewingComponent.usageCount.toLocaleString()}</div>
-                  <div className="text-sm text-slate-400">Uses</div>
-                </div>
-                <div className="bg-slate-800 rounded-lg p-4 text-center">
-                  <Clock className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                  <div className="text-lg font-semibold text-white">{viewingComponent.setupTimeHours}h</div>
-                  <div className="text-sm text-slate-400">Setup Time</div>
-                </div>
-              </div>
-
-              {/* Author & Date */}
-              <div className="bg-slate-800 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-white mb-3">Author Information</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white font-medium text-sm">
-                        {viewingComponent.author.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-white">{viewingComponent.author.name}</div>
-                      <div className="text-sm text-slate-400">Component Author</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-slate-300">
-                      Created: {new Date(viewingComponent.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-sm text-slate-400">
-                      Updated: {new Date(viewingComponent.updatedAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Modals */}
+      {showSubmissionModal && (
+        <ComponentSubmissionModal
+          onClose={() => setShowSubmissionModal(false)}
+          onSubmit={async (data) => {
+            console.log('Submitting component:', data);
+            try {
+              const response = await fetch('/api/community-components', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+              });
+              
+              if (response.ok) {
+                setShowSubmissionModal(false);
+                await loadComponents();
+                // TODO: Afficher notification de succès
+              } else {
+                const error = await response.json();
+                console.error('Erreur lors de la soumission:', error);
+                // TODO: Afficher notification d'erreur
+              }
+            } catch (error) {
+              console.error('Erreur réseau:', error);
+              // TODO: Afficher notification d'erreur
+            }
+          }}
+        />
       )}
 
-      {/* Create/Edit Modal */}
-      {(showCreateModal || editingComponent) && (
-        <ComponentModal
-          isOpen={true}
-          onClose={() => {
-            setShowCreateModal(false);
-            setEditingComponent(null);
-          }}
-          onSave={editingComponent ? handleEditComponent : handleCreateComponent}
-          component={editingComponent}
-          existingComponents={components}
+      {selectedComponent && (
+        <ComponentDetailModal
+          component={selectedComponent}
+          onClose={() => setSelectedComponent(null)}
         />
       )}
     </div>
   );
+}
+
+// Composant Card moderne
+function ComponentCard({ 
+  component, 
+  onClick 
+}: { 
+  component: CommunityComponent;
+  onClick: () => void;
+}) {
+  const config = categoryConfig[component.category];
+  const Icon = config.icon;
+  const { user } = useUserStore();
+  const { liked, likesCount, toggleLike, loading } = useLike(component.id, component.likesCount);
+
+  return (
+    <Card 
+      className="group relative bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 transition-all duration-300 cursor-pointer overflow-hidden"
+      onClick={onClick}
+    >
+      {/* Gradient overlay on hover */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${config.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+      
+      <CardContent className="relative p-6">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${config.bgColor} ${config.borderColor} border`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white text-lg group-hover:text-blue-400 transition-colors">
+                {component.name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className="text-xs border border-slate-600 bg-transparent">
+                  {component.type === 'container' ? (
+                    <>
+                      <Container className="w-3 h-3 mr-1" />
+                      Container
+                    </>
+                  ) : (
+                    <>
+                      <Package className="w-3 h-3 mr-1" />
+                      Component
+                    </>
+                  )}
+                </Badge>
+                {component.isOfficial && (
+                  <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
+                    <Check className="w-3 h-3 mr-1" />
+                    Officiel
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Like button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!user) {
+                // TODO: Afficher modal de connexion
+                alert('Vous devez être connecté pour liker un composant');
+                return;
+              }
+              toggleLike();
+            }}
+            disabled={loading}
+            className={`p-2 rounded-lg transition-colors ${
+              loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800'
+            }`}
+            title={user ? (liked ? 'Retirer le like' : 'Ajouter un like') : 'Connectez-vous pour liker'}
+          >
+            <Star 
+              className={`w-5 h-5 transition-colors ${
+                liked ? 'fill-yellow-500 text-yellow-500' : 'text-gray-500 hover:text-yellow-400'
+              } ${loading ? 'animate-pulse' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* Description */}
+        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+          {component.description}
+        </p>
+
+        {/* Metadata */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Gauge className="w-3 h-3" />
+            <span className={getDifficultyColor(component.difficulty)}>
+              {component.difficulty === 'beginner' ? 'Débutant' : 
+               component.difficulty === 'intermediate' ? 'Intermédiaire' : 'Expert'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Clock className="w-3 h-3" />
+            <span>{component.setupTimeHours}h setup</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <DollarSign className="w-3 h-3" />
+            <span className={getPricingColor(component.pricing)}>
+              {component.pricing === 'free' ? 'Gratuit' : 
+               component.pricing === 'freemium' ? 'Freemium' : 'Payant'}
+            </span>
+          </div>
+        </div>
+
+        {/* Container Technologies */}
+        {component.type === 'container' && component.containedTechnologies && (
+          <div className="mb-4">
+            <div className="text-xs text-gray-500 mb-2">Contient:</div>
+            <div className="flex flex-wrap gap-1">
+              {component.containedTechnologies.map((tech) => (
+                <Badge 
+                  key={tech} 
+                  className="text-xs border border-slate-700 bg-transparent"
+                >
+                  {tech}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stats */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Star className="w-3 h-3 text-yellow-500" />
+              <span>{component.rating}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Star className="w-3 h-3 text-yellow-500" />
+              <span>{likesCount}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Users className="w-3 h-3" />
+              <span>{formatNumber(component.usageCount)}</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Utility functions
+function getDifficultyColor(difficulty: string) {
+  switch (difficulty) {
+    case 'beginner':
+      return 'text-green-400';
+    case 'intermediate':
+      return 'text-yellow-400';
+    case 'expert':
+      return 'text-red-400';
+    default:
+      return 'text-gray-400';
+  }
+}
+
+function getPricingColor(pricing: string) {
+  switch (pricing) {
+    case 'free':
+      return 'text-green-400';
+    case 'freemium':
+      return 'text-yellow-400';
+    case 'paid':
+      return 'text-orange-400';
+    default:
+      return 'text-gray-400';
+  }
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
+  }
+  return num.toString();
 }

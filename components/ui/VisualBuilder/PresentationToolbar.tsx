@@ -25,10 +25,10 @@ interface PresentationToolbarProps {
   allowEdit: boolean;
   showSidebar: boolean;
   canSave: boolean;
-  onToggleEdit: () => void;
+  onToggleEdit?: () => void; // Optionnel maintenant
   onToggleSidebar: () => void;
   onFullscreen: () => void;
-  onSave: () => void;
+  onSave?: () => void; // Optionnel maintenant
   stackId?: string;
 }
 
@@ -86,27 +86,7 @@ export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
         Info
       </Button>
 
-      {/* Edit Mode Toggle */}
-      {allowEdit && (
-        <Button
-          variant={isEditMode ? "primary" : "secondary"}
-          size="sm"
-          onClick={onToggleEdit}
-          className="flex items-center gap-2"
-        >
-          {isEditMode ? (
-            <>
-              <Edit className="w-4 h-4" />
-              Editing
-            </>
-          ) : (
-            <>
-              <Eye className="w-4 h-4" />
-              View Only
-            </>
-          )}
-        </Button>
-      )}
+      {/* Edit Mode Toggle - SUPPRIMÉ en mode présentation */}
 
       {/* Open in Builder */}
       <Button
@@ -120,18 +100,7 @@ export const PresentationToolbar: React.FC<PresentationToolbarProps> = ({
         Builder
       </Button>
 
-      {/* Save Button (only in edit mode) */}
-      {isEditMode && canSave && (
-        <Button
-          variant="success"
-          size="sm"
-          onClick={onSave}
-          className="flex items-center gap-2"
-        >
-          <Save className="w-4 h-4" />
-          Save
-        </Button>
-      )}
+      {/* Save Button - SUPPRIMÉ en mode présentation */}
 
       {/* Share Menu */}
       <div className="relative">

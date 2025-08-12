@@ -43,8 +43,9 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
 
   useEffect(() => {
     setDocumentation(initialDocumentation);
-    setIsEditing(!initialDocumentation);
-  }, [initialDocumentation, nodeId]);
+    // En mode read-only, ne jamais être en édition
+    setIsEditing(!isReadOnly && !initialDocumentation);
+  }, [initialDocumentation, nodeId, isReadOnly]);
 
   const handleSave = () => {
     if (onSave) {
@@ -179,7 +180,7 @@ export const FloatingDocPanel: React.FC<FloatingDocPanelProps> = ({
           <div className="flex items-center gap-1">
             <span className="text-lg">📝</span>
             <h3 className="text-sm font-semibold text-white">
-              {nodeName} Documentation{isReadOnly ? ' (View)' : ''}
+              {nodeName} Documentation{isReadOnly ? ' (Consultation)' : ''}
             </h3>
           </div>
         </div>

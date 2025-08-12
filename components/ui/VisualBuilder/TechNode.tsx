@@ -305,6 +305,10 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   console.log('Documentation clicked:', {
                     nodeId: data.id,
                     nodeName: data.name,
@@ -314,7 +318,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   });
                   
                   if (data.isReadOnly) {
-                    console.log('Opening doc modal in read-only mode');
+                    console.log('Opening doc viewer in read-only mode');
                     setShowDocViewer(true);
                   } else {
                     console.log('Opening doc modal in edit mode');
@@ -322,10 +326,6 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   }
                 }}
                 onMouseUp={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
@@ -630,7 +630,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
       {/* Color picker removed - now uses toolbar */}
 
       {/* Documentation Panel (Edit Mode) */}
-      {showDocModal && data.onDocumentationSave && !data.isReadOnly && (
+      {showDocModal && data.onDocumentationSave && (
         <FloatingDocPanel
           isOpen={showDocModal}
           onClose={() => setShowDocModal(false)}
@@ -640,6 +640,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           onSave={data.onDocumentationSave}
           isSubTechnology={!data.isMainTechnology}
           parentTechnologyName={data.isMainTechnology ? undefined : 'Parent Technology'}
+          isReadOnly={data.isReadOnly}
         />
       )}
 

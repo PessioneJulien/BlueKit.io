@@ -7,17 +7,8 @@ import { PresentationToolbar } from './PresentationToolbar';
 import { NodeData, NodePosition } from './CanvasNode';
 import { Connection } from './ConnectionLine';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { 
-  Eye, 
-  Edit, 
-  Share2, 
-  Download,
-  Maximize2,
-  Minimize2,
-  Info
-} from 'lucide-react';
+import { Info } from 'lucide-react';
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
@@ -53,11 +44,11 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
   stack,
   initialEditMode = false,
   showAuthor = true,
-  allowEdit = true,
+  allowEdit = false, // Toujours désactivé en présentation
   onSave,
   className
 }) => {
-  const [isEditMode, setIsEditMode] = useState(initialEditMode);
+  const [isEditMode, setIsEditMode] = useState(false); // Toujours en mode vue
   const [nodes, setNodes] = useState<CanvasNode[]>(stack.nodes);
   const [connections, setConnections] = useState<Connection[]>(stack.connections);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -125,7 +116,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
 
   return (
     <div className={cn(
-      'flex flex-col h-screen bg-slate-950 text-white',
+      'flex flex-col h-screen max-h-screen bg-slate-950 text-white overflow-hidden',
       isFullscreen && 'fixed inset-0 z-50',
       className
     )}>
@@ -151,14 +142,14 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
         </div>
 
         <PresentationToolbar
-          isEditMode={isEditMode}
-          allowEdit={allowEdit}
+          isEditMode={false} // Toujours en mode vue
+          allowEdit={false} // Édition désactivée
           showSidebar={showSidebar}
-          onToggleEdit={() => setIsEditMode(!isEditMode)}
+          onToggleEdit={undefined} // Pas de toggle d'édition
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           onFullscreen={toggleFullscreen}
-          onSave={handleSave}
-          canSave={isEditMode && onSave !== undefined}
+          onSave={undefined} // Pas de sauvegarde
+          canSave={false} // Pas de sauvegarde
           stackId={stack.id}
         />
       </div>
@@ -266,7 +257,7 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
                       <div key={node.id} className="flex items-center justify-between text-sm">
                         <span className="text-white">{node.name}</span>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" size="sm">{node.difficulty}</Badge>
+                          <Badge variant="default" size="sm" className="bg-slate-700">{node.difficulty}</Badge>
                           <span className="text-slate-400 text-xs">{node.setupTimeHours}h</span>
                         </div>
                       </div>
@@ -280,48 +271,19 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
 
         {/* Main Canvas Area */}
         <div className="flex-1 relative">
-          {!isEditMode && (
-            <div className="absolute top-4 left-4 z-10">
-              <Badge variant="default" className="bg-green-600">
-                <Eye className="w-3 h-3 mr-1" />
-                View Mode
-              </Badge>
-            </div>
-          )}
-          
-          {isEditMode && (
-            <div className="absolute top-4 left-4 z-10">
-              <Badge variant="default" className="bg-orange-600">
-                <Edit className="w-3 h-3 mr-1" />
-                Edit Mode
-              </Badge>
-            </div>
-          )}
-
           <ReactFlowCanvas
             nodes={nodes}
             connections={connections}
-            onNodesChange={isEditMode ? setNodes : undefined}
-            onConnectionsChange={isEditMode ? (newConnections) => {
-              const convertedConnections: Connection[] = newConnections.map(conn => ({
-                ...conn,
-                sourcePosition: { x: 0, y: 0 },
-                targetPosition: { x: 0, y: 0 },
-                type: conn.type as 'compatible' | 'incompatible' | 'neutral'
-              }));
-              setConnections(convertedConnections);
-            } : undefined}
-            onDocumentationSave={isEditMode ? handleDocumentationSave : undefined}
-            onAddSubTechnology={isEditMode ? (subTechId, mainTechId) => {
-              // Implementation for adding sub-technologies in edit mode
-              console.log('Add sub-tech in presentation mode:', subTechId, mainTechId);
-            } : undefined}
+            onNodesChange={undefined} // Pas de modification en présentation
+            onConnectionsChange={undefined} // Pas de modification des connexions
+            onDocumentationSave={handleDocumentationSave}
+            onAddSubTechnology={undefined} // Pas d'ajout en présentation
             className="flex-1"
-            // Disable interactions in view mode
-            nodesDraggable={isEditMode}
-            nodesConnectable={isEditMode}
-            elementsSelectable={isEditMode}
-            isReadOnly={!isEditMode}
+            // Mode présentation : lecture seule avec interactions limitées
+            nodesDraggable={false} // Pas de déplacement
+            nodesConnectable={false} // Pas de nouvelles connexions
+            elementsSelectable={true} // Permettre sélection pour documentation
+            isReadOnly={true} // Toujours en lecture seule
           />
         </div>
       </div>

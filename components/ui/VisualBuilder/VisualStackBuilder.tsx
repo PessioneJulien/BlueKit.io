@@ -672,10 +672,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const loadCommunityComponents = useCallback(async () => {
     try {
       setLoadingCommunity(true);
-      const components = await componentsApi.getComponents();
-      setCommunityComponents(components);
+      const response = await fetch('/api/community-components?limit=50');
+      const data = await response.json();
+      setCommunityComponents(data.components || []);
     } catch (error) {
       console.error('Failed to load community components:', error);
+      setCommunityComponents([]);
     } finally {
       setLoadingCommunity(false);
     }
@@ -810,9 +812,17 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     const currentState = { stackName, stackDescription, nodes, connections };
     const stateString = JSON.stringify(currentState);
     
-    // Save to localStorage
+    // Save to localStorage with URL-specific key
     try {
-      localStorage.setItem('visual_stack_builder_manual_save', stateString);
+      // Utiliser l'URL complète (incluant les params) comme clé
+      const storageKey = `visual_stack_builder_save_${window.location.pathname}${window.location.search}`;
+      localStorage.setItem(storageKey, stateString);
+      
+      // Aussi sauvegarder la clé par défaut si pas de paramètres
+      if (!window.location.search) {
+        localStorage.setItem('visual_stack_builder_manual_save', stateString);
+      }
+      
       setLastSavedState(stateString);
       setHasUnsavedChanges(false);
       
@@ -827,8 +837,21 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   // Load saved work on mount
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem('visual_stack_builder_manual_save');
-      if (savedData && !initialStack) {
+      // Si on a une stack initiale (depuis preset ou stackId), l'utiliser
+      if (initialStack) {
+        return;
+      }
+      
+      // Sinon, charger depuis localStorage avec clé spécifique à l'URL
+      const storageKey = `visual_stack_builder_save_${window.location.pathname}${window.location.search}`;
+      let savedData = localStorage.getItem(storageKey);
+      
+      // Si pas de données pour cette URL et pas de paramètres, essayer la clé par défaut
+      if (!savedData && !window.location.search) {
+        savedData = localStorage.getItem('visual_stack_builder_manual_save');
+      }
+      
+      if (savedData) {
         const parsed = JSON.parse(savedData);
         setStackName(parsed.stackName || '');
         setStackDescription(parsed.stackDescription || '');
