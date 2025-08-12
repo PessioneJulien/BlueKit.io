@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { logger } from '@/lib/utils/logger';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ComponentPalette } from './ComponentPalette';
@@ -737,7 +738,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       const data = await response.json();
       setCommunityComponents(data.components || []);
     } catch (error) {
-      console.error('Failed to load community components:', error);
+      logger.error('Failed to load community components:', error);
       setCommunityComponents([]);
     } finally {
       setLoadingCommunity(false);
@@ -891,7 +892,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       setShowSavedNotification(true);
       setTimeout(() => setShowSavedNotification(false), 2000);
     } catch (error) {
-      console.error('Failed to save:', error);
+      logger.error('Failed to save:', error);
     }
   }, [stackName, stackDescription, nodes, connections]);
 
@@ -921,7 +922,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         setLastSavedState(savedData);
       }
     } catch (error) {
-      console.error('Failed to load saved data:', error);
+      logger.error('Failed to load saved data:', error);
     }
   }, [initialStack]);
 
@@ -1050,7 +1051,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           );
           
           if (uniqueContainedNodes.length !== container.containedNodes.length) {
-            console.log(`Removed ${container.containedNodes.length - uniqueContainedNodes.length} duplicate nodes from container ${container.name}`);
+            logger.dev(`Removed ${container.containedNodes.length - uniqueContainedNodes.length} duplicate nodes from container ${container.name}`);
           }
           
           // Add to contained IDs set
@@ -1075,9 +1076,9 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       return !containedNodeIds.has(node.id); // Remove main nodes that are also contained
     });
     
-    console.log('Removed duplicate nodes. Before:', nodesList.length, 'After:', cleanedNodes.length);
+    logger.dev('Removed duplicate nodes. Before:', nodesList.length, 'After:', cleanedNodes.length);
     if (nodesList.length !== cleanedNodes.length) {
-      console.log('Contained node IDs:', Array.from(containedNodeIds));
+      logger.dev('Contained node IDs:', Array.from(containedNodeIds));
     }
     
     return cleanedNodes;
@@ -1092,8 +1093,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     const duplicateIds = nodeIds.filter((id, index) => nodeIds.indexOf(id) !== index);
     
     if (duplicateIds.length > 0) {
-      console.error('🚨 STILL HAVE DUPLICATE NODE IDs:', duplicateIds);
-      console.log('All node IDs:', nodeIds);
+      logger.error('🚨 STILL HAVE DUPLICATE NODE IDs:', duplicateIds);
+      logger.dev('All node IDs:', nodeIds);
     }
     
     return cleaned;
@@ -1141,7 +1142,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Handle node resources change - works for both main nodes and contained nodes
   const handleNodeResourcesChange = useCallback((nodeId: string, resources: { cpu: string; memory: string; storage?: string; network?: string }) => {
-    console.log('handleNodeResourcesChange called with:', nodeId, resources);
+    logger.dev('handleNodeResourcesChange called with:', nodeId, resources);
     
     setNodes(prevNodes => {
       let wasContainedNode = false;
@@ -1169,7 +1170,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         return node;
       });
       
-      console.log('Updated nodes after resource change:', updatedNodes);
+      logger.dev('Updated nodes after resource change:', updatedNodes);
       
       // Clean up any duplicates first
       let cleanedNodes = removeDuplicateNodes(updatedNodes);
@@ -1231,7 +1232,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Remove component from container
   const handleRemoveFromContainer = useCallback((containerId: string, nodeId: string) => {
-    console.log('🗑️ Remove node', nodeId, 'from container', containerId);
+    logger.dev('🗑️ Remove node', nodeId, 'from container', containerId);
     
     setNodes(prevNodes => {
       return prevNodes.map(node => {
@@ -1239,7 +1240,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
           const updatedContainedNodes = (container.containedNodes || []).filter(n => n.id !== nodeId);
           
-          console.log('🔄 Updated container contained nodes:', updatedContainedNodes.length);
+          logger.dev('🔄 Updated container contained nodes:', updatedContainedNodes.length);
           
           return {
             ...container,
@@ -1253,13 +1254,13 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Handle moving a node into a container
   const handleMoveNodeToContainer = useCallback((nodeId: string, containerId: string) => {
-    console.log('🎯 Moving node to container:', nodeId, '→', containerId);
+    logger.dev('🎯 Moving node to container:', nodeId, '→', containerId);
     
     setNodes(prevNodes => {
       // Find the node to move using our helper function
       const nodeToMove = findNodeInList(nodeId, prevNodes);
       if (!nodeToMove) {
-        console.error('Node not found:', nodeId);
+        logger.error('Node not found:', nodeId);
         return prevNodes;
       }
       
@@ -1282,7 +1283,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           
           const updatedContainedNodes = [...(container.containedNodes || []), nodeForContainer];
           
-          console.log('✅ Moved node', nodeId, 'to container', containerId);
+          logger.dev('✅ Moved node', nodeId, 'to container', containerId);
           
           return {
             ...container,
@@ -1298,12 +1299,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Handle adding component to a specific container (for new components from palette)
   const handleAddComponentToContainer = useCallback((component: NodeData, containerId: string, isMoving = false) => {
-    console.log('🚀 Adding component to container:', component.name, 'container:', containerId, 'isMoving:', isMoving);
+    logger.dev('🚀 Adding component to container:', component.name, 'container:', containerId, 'isMoving:', isMoving);
     
     // If it's an existing node being moved, use the move function
     const existingNode = nodes.find(n => n.id === component.id);
     if (existingNode) {
-      console.log('🔄 Existing node detected, using move function');
+      logger.dev('🔄 Existing node detected, using move function');
       handleMoveNodeToContainer(component.id, containerId);
       return;
     }
@@ -1326,7 +1327,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
           const updatedContainedNodes = [...(container.containedNodes || []), nodeToAdd];
           
-          console.log('🔄 Added new component to container', containerId);
+          logger.dev('🔄 Added new component to container', containerId);
           
           return {
             ...container,
@@ -1342,7 +1343,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
   // Handle dropping component from palette
   const handleDropComponent = useCallback((component: NodeData, position: { x: number; y: number }) => {
-    console.log('🚀 handleDropComponent called with:', component.name, 'at position:', position);
+    logger.dev('🚀 handleDropComponent called with:', component.name, 'at position:', position);
     
     // Check component limit before adding
     if (!checkComponentLimit(getTotalComponentCount())) {
@@ -1661,7 +1662,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         throw new Error('Failed to save stack');
       }
     } catch (error: unknown) {
-      console.error('Failed to save stack:', error);
+      logger.error('Failed to save stack:', error);
       const errorMessage = (error as Error)?.message || 'Unknown error occurred';
       alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
     } finally {
@@ -1708,7 +1709,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           throw new Error('Failed to save stack');
         }
       } catch (error: unknown) {
-        console.error('Failed to save before presenting:', error);
+        logger.error('Failed to save before presenting:', error);
         const errorMessage = (error as Error)?.message || 'Unknown error occurred';
         alert(`Failed to save stack: ${errorMessage}\n\nPlease check:\n1. You are logged in\n2. Database migration has been run\n3. RLS policies are configured correctly`);
         return;
@@ -2059,11 +2060,11 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               suggestedWidth={suggestedSize.width}
               suggestedHeight={suggestedSize.height}
               onResize={(id, width, height) => {
-                console.log('🎯 VisualStackBuilder: onResize called for', id, 'new dimensions:', width, 'x', height);
+                logger.dev('🎯 VisualStackBuilder: onResize called for', id, 'new dimensions:', width, 'x', height);
                 const updatedNodes = nodes.map(n => 
                   n.id === id ? { ...n, width, height } : n
                 );
-                console.log('🎯 VisualStackBuilder: setting updated nodes', updatedNodes.find(n => n.id === id));
+                logger.dev('🎯 VisualStackBuilder: setting updated nodes', updatedNodes.find(n => n.id === id));
                 setNodes(updatedNodes);
               }}
               onClose={() => setSelectedContainerId(null)}
@@ -2163,7 +2164,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       {/* Resource Configuration Modal */}
       {resourceConfigNodeId && (() => {
         const configNode = findNode(resourceConfigNodeId);
-        console.log('Modal config node:', configNode); // Debug
+        logger.dev('Modal config node:', configNode);
         
         return (
           <ResourceConfigModal
@@ -2173,10 +2174,10 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               setResourceConfigNodeId(null);
             }}
             onSave={(resources, envVars) => {
-              console.log('Saving resources for node:', resourceConfigNodeId, resources); // Debug
+              logger.dev('Saving resources for node:', resourceConfigNodeId, resources);
               handleNodeResourcesChange(resourceConfigNodeId, resources);
               // TODO: Handle envVars if needed in the future
-              console.log('Environment variables:', envVars);
+              logger.dev('Environment variables:', envVars);
             }}
             initialResources={configNode?.resources}
             componentName={configNode?.name || 'Service'}

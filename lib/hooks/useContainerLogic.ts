@@ -2,6 +2,7 @@ import { useCallback, useContext } from 'react';
 import { NodeData } from '@/components/ui/VisualBuilder/CanvasNode';
 import { ContainerNodeData, ContainerViewContext } from '@/components/ui/VisualBuilder/ContainerNode';
 import { ContainerManager } from '@/components/ui/VisualBuilder/ContainerManager';
+import { logger } from '@/lib/utils/logger';
 
 export function useContainerLogic() {
   const viewMode = useContext(ContainerViewContext);
@@ -52,11 +53,11 @@ export function useContainerLogic() {
     updatedNodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>;
     wasContained: boolean;
   } => {
-    console.log('🎯 handleNodeDrop called with node:', newNode.name, 'at position:', newNode.position);
+    logger.dev('🎯 handleNodeDrop called with node:', newNode.name, 'at position:', newNode.position);
     
     // Get all container drop zones
     const dropZones = ContainerManager.getDropZones(nodes);
-    console.log('📦 Available drop zones:', dropZones);
+    logger.dev('📦 Available drop zones:', dropZones);
     
     // Check if the node is dropped inside a container
     const targetContainerId = ContainerManager.findTargetContainer(
@@ -65,7 +66,7 @@ export function useContainerLogic() {
       { width: newNode.width || 200, height: newNode.height || 80 }
     );
 
-    console.log('🎯 Target container ID:', targetContainerId);
+    logger.dev('🎯 Target container ID:', targetContainerId);
 
     if (targetContainerId) {
       // Find the target container
@@ -74,7 +75,7 @@ export function useContainerLogic() {
           const container = node as ContainerNodeData;
           const newContainedNodes = [...(container.containedNodes || []), newNode];
           
-          console.log('✅ Adding node to container:', {
+          logger.dev('✅ Adding node to container:', {
             containerName: container.name,
             newNodeName: newNode.name,
             totalContainedNodes: newContainedNodes.length
@@ -103,7 +104,7 @@ export function useContainerLogic() {
         return node;
       });
 
-      console.log('🎯 handleNodeDrop result: node was contained');
+      logger.dev('🎯 handleNodeDrop result: node was contained');
       return {
         updatedNodes,
         wasContained: true
@@ -122,7 +123,7 @@ export function useContainerLogic() {
     nodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>,
     forceDetection = false
   ): Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> => {
-    console.log('🔄 updateContainerNodes called with', nodes.length, 'nodes, forceDetection:', forceDetection);
+    logger.dev('🔄 updateContainerNodes called with', nodes.length, 'nodes, forceDetection:', forceDetection);
     
     let updatedNodes = [...nodes];
     const nodesToRemove: string[] = [];
@@ -131,11 +132,11 @@ export function useContainerLogic() {
     updatedNodes = updatedNodes.map(node => {
       if ('isContainer' in node && node.isContainer) {
         const container = node as ContainerNodeData;
-        console.log('📦 Processing container:', container.name, 'at position', container.position);
+        logger.dev('📦 Processing container:', container.name, 'at position', container.position);
         
         // Preserve existing contained nodes
         const existingContainedNodes = container.containedNodes || [];
-        console.log('🔍 Existing contained nodes:', existingContainedNodes.map(n => n.name));
+        logger.dev('🔍 Existing contained nodes:', existingContainedNodes.map(n => n.name));
         
         // Only detect new contained nodes if forced (during explicit drops)
         let newlyContainedNodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> = [];
@@ -161,7 +162,7 @@ export function useContainerLogic() {
               { width: n.width || 200, height: n.height || 80 }
             );
 
-            console.log('🔍 Checking NEW node', n.name, 'at', n.position, {
+            logger.dev('🔍 Checking NEW node', n.name, 'at', n.position, {
               isAlreadyContained,
               isPhysicallyInside
             });
@@ -181,12 +182,12 @@ export function useContainerLogic() {
         );
         
         if (allContainedNodes.length !== containedNodes.length) {
-          console.log(`🧹 Removed ${allContainedNodes.length - containedNodes.length} duplicate nodes from container ${container.name}`);
+          logger.dev(`🧹 Removed ${allContainedNodes.length - containedNodes.length} duplicate nodes from container ${container.name}`);
         }
         
-        console.log('🔍 Final contained nodes:', containedNodes.map(n => n.name));
+        logger.dev('🔍 Final contained nodes:', containedNodes.map(n => n.name));
 
-        console.log('✅ Container', container.name, 'will contain', containedNodes.length, 'nodes:', containedNodes.map(n => n.name));
+        logger.dev('✅ Container', container.name, 'will contain', containedNodes.length, 'nodes:', containedNodes.map(n => n.name));
 
         // Update the container with contained nodes
         let updatedContainer = ContainerManager.updateContainer(container, containedNodes);
@@ -202,10 +203,10 @@ export function useContainerLogic() {
               status: 'connected' as const
             }))
           };
-          console.log('🔗 Updated connectedServices:', updatedContainer.connectedServices?.length || 0);
+          logger.dev('🔗 Updated connectedServices:', updatedContainer.connectedServices?.length || 0);
         }
         
-        console.log('📦 Updated container', updatedContainer.name, 'containedNodes:', updatedContainer.containedNodes?.length || 0);
+        logger.dev('📦 Updated container', updatedContainer.name, 'containedNodes:', updatedContainer.containedNodes?.length || 0);
         
         return updatedContainer;
       }
@@ -215,11 +216,11 @@ export function useContainerLogic() {
 
     // Remove contained nodes from the main canvas only if we detected new ones
     if (forceDetection && nodesToRemove.length > 0) {
-      console.log('🗑️ Removing nodes from canvas:', nodesToRemove);
+      logger.dev('🗑️ Removing nodes from canvas:', nodesToRemove);
       updatedNodes = updatedNodes.filter(node => !nodesToRemove.includes(node.id));
     }
     
-    console.log('🔄 Final result:', updatedNodes.length, 'nodes remaining');
+    logger.dev('🔄 Final result:', updatedNodes.length, 'nodes remaining');
     return updatedNodes;
   }, [viewMode]);
 

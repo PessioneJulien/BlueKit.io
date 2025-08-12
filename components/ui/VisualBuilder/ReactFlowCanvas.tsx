@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { logger } from '@/lib/utils/logger';
 import {
   ReactFlow,
   Node,
@@ -171,7 +172,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
             const newCompactState = !currentCompactState;
             const hasSubTech = currentNode.subTechnologies && currentNode.subTechnologies.length > 0;
             
-            console.log('Toggle mode for node:', id, 'from', currentCompactState, 'to', newCompactState);
+            logger.dev('Toggle mode for node:', id, 'from', currentCompactState, 'to', newCompactState);
             
             // Adjust dimensions based on new compact state
             const newWidth = newCompactState ? 200 : 300;
@@ -325,11 +326,11 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         if (isWithinContainer) {
           // 🚫 EMPÊCHER containers dans containers (anti-pattern devops)
           if (draggedNode.data.isContainer) {
-            console.log('🚫 Impossible de mettre un container dans un autre container');
+            logger.dev('🚫 Impossible de mettre un container dans un autre container');
             return; // Empêcher l'action
           }
           
-          console.log('🎯 Node dropped in container:', potentialContainer.id);
+          logger.dev('🎯 Node dropped in container:', potentialContainer.id);
           
           // Move node to container - pass the node ID directly
           if (onMoveNodeToContainer) {
@@ -417,7 +418,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       const isDrop = positionChanges.some(change => !('dragging' in change) || !change.dragging);
       
       if (isDrop) {
-        console.log('🎯 Drop detected, checking for container integration');
+        logger.dev('🎯 Drop detected, checking for container integration');
         
         // Check if any moved node is a container - if so, skip container detection
         const movedContainers = positionChanges.filter(change => {
@@ -426,10 +427,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         });
         
         if (movedContainers.length > 0) {
-          console.log('🏗️ Container moved, skipping container detection to preserve dimensions');
+          logger.dev('🏗️ Container moved, skipping container detection to preserve dimensions');
           onNodesChange(updatedNodes);
         } else {
-          console.log('🎯 Non-container moved, checking for container integration');
+          logger.dev('🎯 Non-container moved, checking for container integration');
           const nodesWithContainerUpdates = detectContainerDrops(updatedNodes);
           onNodesChange(nodesWithContainerUpdates);
         }
@@ -519,12 +520,12 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     
     try {
       const data = JSON.parse(event.dataTransfer.getData('application/json'));
-      console.log('🎯 ReactFlow Drop event - data:', data);
+      logger.dev('🎯 ReactFlow Drop event - data:', data);
       
       // Only handle main-component and community-component types
       // Let tool drops pass through to individual nodes
       if ((data.type === 'main-component' || data.type === 'community-component') && onDropComponent) {
-        console.log('✅ ReactFlow handling drop for type:', data.type);
+        logger.dev('✅ ReactFlow handling drop for type:', data.type);
         event.preventDefault();
         
         // Calculate position relative to ReactFlow canvas
@@ -583,14 +584,14 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         
         onDropComponent(componentToAdd, position);
       } else if (data.type === 'tool') {
-        console.log('⚡ Tool drop - letting it pass through to nodes');
+        logger.dev('⚡ Tool drop - letting it pass through to nodes');
         // Don't preventDefault for tools - let nodes handle them
       } else {
-        console.log('❌ Unknown drop type:', data.type);
+        logger.dev('❌ Unknown drop type:', data.type);
         event.preventDefault();
       }
     } catch (error) {
-      console.error('Error parsing dropped data:', error);
+      logger.error('Error parsing dropped data:', error);
       event.preventDefault();
     }
   }, [onDropComponent]);

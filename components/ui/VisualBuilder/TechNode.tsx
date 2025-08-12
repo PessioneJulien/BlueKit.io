@@ -13,6 +13,7 @@ import { FloatingDocPanel } from './FloatingDocPanel';
 import { NodeCustomStyle } from './NodeColorPicker';
 import { AnimatedNode, AnimatedNodeRef } from '@/components/ui/animated/AnimatedNode';
 import { useNodeAnimations } from '@/lib/hooks/useNodeAnimations';
+import { logger } from '@/lib/utils/logger';
 import { animationSystem } from '@/lib/animations/animationSystem';
 
 interface TechNodeData extends NodeData {
@@ -110,7 +111,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   // Color change now handled by toolbar
   
   // Debug logging
-  console.log('TechNode render:', data.name, 'isCompact:', data.isCompact, 'calculated isCompact:', isCompact);
+  logger.dev('TechNode render:', data.name, 'isCompact:', data.isCompact, 'calculated isCompact:', isCompact);
   // Use custom dimensions if available, otherwise use defaults based on mode
   const nodeWidth = data.width || (isCompact ? 200 : 300);
   const nodeHeight = data.height || (isCompact ? 
@@ -128,7 +129,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     
     // Show drop zone for main technologies during drag over
     // We can't reliably check drag data during dragover in all browsers
-    console.log('🎯 DragOver on main tech:', data.name);
+    logger.dev('🎯 DragOver on main tech:', data.name);
     setIsDragOver(true);
   };
 
@@ -153,20 +154,20 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     e.nativeEvent.stopImmediatePropagation(); // Stop event from reaching ReactFlow
     setIsDragOver(false);
 
-    console.log('🎯 Drop event on', data.name);
+    logger.dev('🎯 Drop event on', data.name);
 
     try {
       const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
-      console.log('🎯 Drop data:', dragData);
+      logger.dev('🎯 Drop data:', dragData);
       
       if ((dragData.type === 'tool' || dragData.type === 'community-component') && data.onAddSubTechnology && data.isMainTechnology) {
-        console.log('✅ Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
+        logger.dev('✅ Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
         data.onAddSubTechnology(data.id, dragData.component.id);
         
         // Show success animation
         handleDropSuccess();
       } else {
-        console.log('❌ Drop conditions not met:', {
+        logger.dev('❌ Drop conditions not met:', {
           type: dragData.type,
           hasCallback: !!data.onAddSubTechnology,
           isMainTech: data.isMainTechnology
@@ -176,7 +177,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         handleError();
       }
     } catch (error) {
-      console.error('❌ Error handling tool drop:', error);
+      logger.error('❌ Error handling tool drop:', error);
     }
   };
 
@@ -184,7 +185,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const handleDragStart = (e: React.DragEvent) => {
     setIsBeingDragged(true);
     handleAnimatedDragStart();
-    console.log('🎯 Node drag started:', data.name);
+    logger.dev('🎯 Node drag started:', data.name);
     
     // Set drag data for container drop detection
     try {
@@ -193,15 +194,15 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         node: data
       };
       const jsonData = JSON.stringify(dragData);
-      console.log('🎯 Setting drag data:', jsonData);
+      logger.dev('🎯 Setting drag data:', jsonData);
       
       e.dataTransfer.setData('application/json', jsonData);
       e.dataTransfer.setData('text/plain', data.id);
       e.dataTransfer.effectAllowed = 'move';
       
-      console.log('🎯 Drag data set successfully');
+      logger.dev('🎯 Drag data set successfully');
     } catch (error) {
-      console.error('Error setting drag data:', error);
+      logger.error('Error setting drag data:', error);
     }
   };
 
@@ -209,7 +210,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const handleDragEnd = () => {
     setIsBeingDragged(false);
     handleAnimatedDragEnd();
-    console.log('🎯 Node drag ended:', data.name);
+    logger.dev('🎯 Node drag ended:', data.name);
   };
 
   // Handle selection changes
@@ -250,7 +251,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           border: '2px solid #475569',
           borderRadius: '50%',
         }}
-        onConnect={(params) => console.log('handle onConnect', params)}
+        onConnect={(params) => logger.dev('handle onConnect', params)}
       />
 
       {/* Animated Node Content */}
@@ -371,7 +372,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('Documentation clicked:', {
+                  logger.dev('Documentation clicked:', {
                     nodeId: data.id,
                     nodeName: data.name,
                     isReadOnly: data.isReadOnly,
@@ -380,10 +381,10 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   });
                   
                   if (data.isReadOnly) {
-                    console.log('Opening doc viewer in read-only mode');
+                    logger.dev('Opening doc viewer in read-only mode');
                     setShowDocViewer(true);
                   } else {
-                    console.log('Opening doc modal in edit mode');
+                    logger.dev('Opening doc modal in edit mode');
                     setShowDocModal(true);
                   }
                 }}
@@ -411,7 +412,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('Toggle button clicked for:', data.name, 'current isCompact:', isCompact);
+                  logger.dev('Toggle button clicked for:', data.name, 'current isCompact:', isCompact);
                   data.onToggleMode(data.id);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -799,7 +800,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Details for', data.name);
+                    logger.dev('Details for', data.name);
                     setShowMenu(false);
                   }}
                 >
