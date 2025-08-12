@@ -20,6 +20,7 @@ import { useStackStore } from '@/lib/stores/stackStore';
 import { 
   Save, 
   Download, 
+  Upload,
   Share2, 
   Info,
   X,
@@ -30,9 +31,12 @@ import {
   Globe,
   Monitor,
   Undo,
-  Redo
+  Redo,
+  Star,
+  Plus
 } from 'lucide-react';
 import { ExportModal } from './ExportModal';
+import { ImportModal } from './ImportModal';
 import { TemplatesModal } from './TemplatesModal';
 import { ConnectionToolbar } from './ConnectionToolbar';
 import { NodeToolbar } from './NodeToolbar';
@@ -47,7 +51,42 @@ import { ShareModal } from './ShareModal';
 import { useStackLimits } from '@/lib/hooks/useStackLimits';
 import { UpgradeModal } from '@/components/ui/UpgradeModal';
 import { useSearchParams } from 'next/navigation';
-import { componentsApi, type Component as CommunityComponent } from '@/lib/api/components';
+// Interface for community component from API /api/community-components
+interface ApiCommunityComponent {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  type: 'component' | 'container';
+  containerType?: 'docker' | 'kubernetes';
+  setupTimeHours: number;
+  difficulty: 'beginner' | 'intermediate' | 'expert';
+  pricing: 'free' | 'freemium' | 'paid';
+  documentation?: string;
+  officialDocsUrl?: string;
+  githubUrl?: string;
+  logoUrl?: string;
+  tags: string[];
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  rating: number;
+  reviewCount: number;
+  likesCount: number;
+  usageCount: number;
+  isOfficial: boolean;
+  compatibleWith?: string[];
+  containedTechnologies?: string[];
+  resourceRequirements?: {
+    cpu?: string;
+    memory?: string;
+    storage?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface CanvasNode extends NodeData {
   position: NodePosition;
@@ -55,6 +94,27 @@ interface CanvasNode extends NodeData {
   width?: number;
   height?: number;
   documentation?: string;
+  status?: 'running' | 'stopped' | 'pending';
+}
+
+// Extended type for components with community data
+interface ExtendedComponent extends NodeData {
+  isCommunity?: boolean;
+  author?: string;
+  rating?: number;
+  usageCount?: number;
+  logoUrl?: string;
+  githubUrl?: string;
+  npmUrl?: string;
+  officialDocsUrl?: string;
+  tags?: string[];
+  // Container specific fields
+  containedTechnologies?: string[];
+  resourceRequirements?: {
+    cpu?: string;
+    memory?: string;
+    storage?: string;
+  };
 }
 
 interface VisualStackBuilderProps {
@@ -638,6 +698,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const containerViewMode: ContainerViewType = 'nested';
   const [showSidebar, setShowSidebar] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -654,7 +715,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   const [nodeToConvert, setNodeToConvert] = useState<NodeData | null>(null);
   const [showQuickSearch, setShowQuickSearch] = useState(false);
   const [quickSearchQuery, setQuickSearchQuery] = useState('');
-  const [communityComponents, setCommunityComponents] = useState<CommunityComponent[]>([]);
+  const [communityComponents, setCommunityComponents] = useState<ApiCommunityComponent[]>([]);
   const [loadingCommunity, setLoadingCommunity] = useState(false);
 
   // Check for upgrade success
@@ -897,6 +958,24 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setNodes(template.nodes);
     setConnections(template.connections);
   };
+
+  // Handle import success
+  const handleImportSuccess = useCallback((importedData: { name?: string; description?: string; nodes?: CanvasNode[]; connections?: Connection[] }) => {
+    if (importedData.name) {
+      setStackName(importedData.name);
+    }
+    if (importedData.description) {
+      setStackDescription(importedData.description);
+    }
+    if (importedData.nodes && Array.isArray(importedData.nodes)) {
+      setNodes(importedData.nodes);
+    }
+    if (importedData.connections && Array.isArray(importedData.connections)) {
+      setConnections(importedData.connections);
+    }
+    // Close the import modal
+    setShowImportModal(false);
+  }, [setStackName, setStackDescription]);
 
 
   // Handle documentation save
@@ -1271,7 +1350,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
     
     // Check if containers are allowed (for container components)
-    if (component.category === 'containers' && !checkFeatureAccess('canUseContainers')) {
+    if (component.isContainer && !checkFeatureAccess('canUseContainers')) {
       return;
     }
 
@@ -1335,14 +1414,14 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
   }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop, checkComponentLimit, checkFeatureAccess]);
 
   // Add component to canvas
-  const handleAddComponent = useCallback((component: NodeData) => {
+  const handleAddComponent = useCallback((component: NodeData | ExtendedComponent) => {
     // Check component limit before adding
     if (!checkComponentLimit(getTotalComponentCount())) {
       return;
     }
     
     // Check if containers are allowed (for container components)
-    if (component.category === 'containers' && !checkFeatureAccess('canUseContainers')) {
+    if (component.isContainer && !checkFeatureAccess('canUseContainers')) {
       return;
     }
 
@@ -1669,55 +1748,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               >
                 <X className="h-4 w-4" />
               </Button>
-            </div>
-
-            {/* Quick Start pour nouveaux utilisateurs */}
-            {getTotalComponentCount() === 0 && (
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-3 mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-white text-xs">✨</span>
-                  </div>
-                  <span className="text-sm font-medium text-blue-200">Première visite ?</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">Commencez par choisir le type d&apos;app que vous voulez créer :</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
-                    🌐 Site Web
-                  </button>
-                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
-                    📱 App Mobile
-                  </button>
-                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
-                    🚀 API Backend
-                  </button>
-                  <button className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-slate-200 transition-all hover:scale-105">
-                    🤖 AI/ML App
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* IA Suggestions intelligentes */}
-            {getTotalComponentCount() > 0 && getTotalComponentCount() < 3 && (
-              <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-3 mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <span className="text-white text-xs">🧠</span>
-                  </div>
-                  <span className="text-sm font-medium text-emerald-200">Suggestions IA</span>
-                </div>
-                <p className="text-xs text-slate-300 mb-2">Basé sur votre stack, nous recommandons :</p>
-                <div className="space-y-1">
-                  <button className="w-full p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-left text-slate-200 transition-all hover:translate-x-1">
-                    + Database pour stocker vos données
-                  </button>
-                  <button className="w-full p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-xs text-left text-slate-200 transition-all hover:translate-x-1">
-                    + Authentication pour sécuriser
-                  </button>
-                </div>
-              </div>
-            )}
+            </div> 
           </div>
 
           {/* Navigation par Use Cases avec ComponentPalette */}
@@ -1875,6 +1906,16 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
               
               {/* Secondary Actions */}
               <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowImportModal(true)}
+                  className="text-slate-400 hover:text-slate-200"
+                  title="Importer un stack"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Import
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2067,6 +2108,13 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         </ContainerViewContext.Provider>
       </div>
 
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportSuccess={handleImportSuccess}
+      />
+
       {/* Export Modal */}
       <ExportModal
         isOpen={showExportModal}
@@ -2173,108 +2221,165 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         limit={upgradeModal.limit}
       />
 
-      {/* Quick Search Modal */}
+      {/* Modern Quick Search Modal with Glassmorphism */}
       {showQuickSearch && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 pt-[10vh]"
-             onClick={() => {
-               setShowQuickSearch(false);
-               setQuickSearchQuery('');
-             }}>
-          <div className="w-full max-w-2xl mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden">
-              {/* Header avec search */}
-              <div className="flex items-center gap-3 p-4 border-b border-slate-700/50">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white text-sm">🔍</span>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-start justify-center z-50 pt-[8vh]"
+          onClick={() => {
+            setShowQuickSearch(false);
+            setQuickSearchQuery('');
+          }}
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
+            className="w-full max-w-3xl mx-4" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-slate-900/90 backdrop-blur-2xl rounded-3xl border border-slate-700/40 shadow-2xl shadow-blue-500/10 overflow-hidden">
+              {/* Modern Header with enhanced search */}
+              <div className="flex items-center gap-4 p-6 border-b border-slate-700/30 bg-gradient-to-r from-slate-900/50 to-slate-800/50">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <span className="text-white text-lg">🔍</span>
                 </div>
-                <input
-                  type="text"
-                  value={quickSearchQuery}
-                  onChange={(e) => setQuickSearchQuery(e.target.value)}
-                  placeholder="Rechercher un composant..."
-                  className="flex-1 bg-transparent text-white placeholder-slate-400 text-lg outline-none"
-                  autoFocus
-                />
-                <div className="text-slate-500 text-sm">Échap pour fermer</div>
-              </div>
-
-              {/* Catégories rapides */}
-              <div className="p-4 border-b border-slate-700/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-slate-400 text-sm">Catégories populaires</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button 
-                    onClick={() => setQuickSearchQuery('frontend')}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-4 h-4 bg-pink-500 rounded"></div>
-                      <span className="text-sm font-medium text-slate-200">Frontend</span>
-                    </div>
-                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'frontend').length} outils</span>
-                  </button>
-                  <button 
-                    onClick={() => setQuickSearchQuery('backend')}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                      <span className="text-sm font-medium text-slate-200">Backend</span>
-                    </div>
-                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'backend').length} outils</span>
-                  </button>
-                  <button 
-                    onClick={() => setQuickSearchQuery('database')}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-4 h-4 bg-emerald-500 rounded"></div>
-                      <span className="text-sm font-medium text-slate-200">Database</span>
-                    </div>
-                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'database').length} outils</span>
-                  </button>
-                  <button 
-                    onClick={() => setQuickSearchQuery('devops')}
-                    className="p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl text-left transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-4 h-4 bg-purple-500 rounded"></div>
-                      <span className="text-sm font-medium text-slate-200">DevOps</span>
-                    </div>
-                    <span className="text-xs text-slate-400">{availableComponents.filter(c => c.category === 'devops').length} outils</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Résultats de recherche */}
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-slate-400 text-sm">
-                    {quickSearchQuery ? 'Résultats de recherche' : 'Composants populaires'}
-                  </span>
-                  {loadingCommunity && (
-                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={quickSearchQuery}
+                    onChange={(e) => setQuickSearchQuery(e.target.value)}
+                    placeholder="Rechercher des composants, technologies, stacks..."
+                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-2xl px-6 py-4 text-white placeholder-slate-400 text-lg outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 backdrop-blur-sm"
+                    autoFocus
+                  />
+                  {quickSearchQuery && (
+                    <button
+                      onClick={() => setQuickSearchQuery('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-700/50 hover:bg-slate-600/50 flex items-center justify-center text-slate-400 hover:text-white transition-all duration-300"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="text-slate-500 text-sm bg-slate-800/30 px-3 py-1.5 rounded-xl border border-slate-700/30">
+                  ⌘K
+                </div>
+              </div>
+
+              {/* Modern Category Pills */}
+              {!quickSearchQuery && (
+                <div className="p-6 border-b border-slate-700/30">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-slate-300 font-medium">Catégories populaires</span>
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse"></div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { key: 'frontend', name: 'Frontend', icon: '🎨', color: 'from-pink-500 to-rose-500', count: availableComponents.filter(c => c.category === 'frontend').length },
+                      { key: 'backend', name: 'Backend', icon: '⚙️', color: 'from-blue-500 to-indigo-500', count: availableComponents.filter(c => c.category === 'backend').length },
+                      { key: 'database', name: 'Database', icon: '💾', color: 'from-emerald-500 to-green-500', count: availableComponents.filter(c => c.category === 'database').length },
+                      { key: 'devops', name: 'DevOps', icon: '🚀', color: 'from-purple-500 to-violet-500', count: availableComponents.filter(c => c.category === 'devops').length }
+                    ].map(category => (
+                      <motion.button
+                        key={category.key}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setQuickSearchQuery(category.key)}
+                        className="group p-4 bg-slate-800/40 hover:bg-slate-800/60 backdrop-blur-sm rounded-2xl text-left transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50 hover:shadow-lg"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`w-10 h-10 bg-gradient-to-br ${category.color} rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow duration-300`}>
+                            <span className="text-lg">{category.icon}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">{category.name}</span>
+                            <div className="text-xs text-slate-400 mt-0.5">{category.count} composants</div>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Modern Results Section */}
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-slate-200 font-semibold">
+                      {quickSearchQuery ? `Résultats pour "${quickSearchQuery}"` : 'Composants populaires'}
+                    </h3>
+                    {loadingCommunity && (
+                      <div className="w-5 h-5 border-2 border-blue-500/50 border-t-blue-500 rounded-full animate-spin"></div>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500 bg-slate-800/30 px-2 py-1 rounded-lg">
+                    Appuyez sur Entrée pour sélectionner
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                   {(() => {
                     // Filtrer les composants selon la recherche (officiels + communautaires)
-                    const allComponents = [
+                    const allComponents: ExtendedComponent[] = [
                       ...availableComponents.map(comp => ({ ...comp, isCommunity: false })),
-                      ...communityComponents.map(comp => ({
-                        id: comp.id,
-                        name: comp.name,
-                        category: comp.category,
-                        description: comp.description,
-                        setupTimeHours: comp.setupTimeHours,
-                        pricing: comp.pricing,
-                        difficulty: comp.difficulty,
-                        author: comp.author?.name || 'Anonyme',
-                        rating: comp.rating,
-                        usageCount: comp.usageCount,
-                        isCommunity: true
-                      }))
+                      ...communityComponents.map(comp => {
+                        // Map community component category to NodeData category
+                        const mapCategory = (category: string): NodeData['category'] => {
+                          switch (category) {
+                            case 'tool': return 'other';
+                            case 'infrastructure': return 'devops';
+                            default: return category as NodeData['category'];
+                          }
+                        };
+
+                        const converted = {
+                          id: comp.id,
+                          name: comp.name,
+                          category: mapCategory(comp.category),
+                          description: comp.description,
+                          setupTimeHours: comp.setupTimeHours,
+                          pricing: comp.pricing,
+                          difficulty: comp.difficulty,
+                          // Essential NodeData fields for React Flow compatibility
+                          isMainTechnology: comp.type === 'component' || !['styling', 'testing', 'documentation', 'build-tools', 'linting'].includes(comp.category),
+                          canAcceptSubTech: comp.type === 'component' ? ['styling', 'testing', 'documentation'] : undefined,
+                          compatibleWith: comp.compatibleWith || [],
+                          incompatibleWith: [],
+                          resources: comp.resourceRequirements ? {
+                            cpu: comp.resourceRequirements.cpu || '0.5 cores',
+                            memory: comp.resourceRequirements.memory || '256MB',
+                            storage: comp.resourceRequirements.storage || '50MB',
+                            network: '5Mbps'
+                          } : {
+                            cpu: '0.5 cores',
+                            memory: '256MB',
+                            storage: '50MB',
+                            network: '5Mbps'
+                          },
+                          environmentVariables: {},
+                          // Container properties - corrected mapping
+                          isContainer: comp.type === 'container',
+                          containerType: comp.containerType,
+                          containedTechnologies: comp.containedTechnologies || [],
+                          // Community-specific fields
+                          author: comp.author?.name || 'Anonyme',
+                          rating: comp.rating,
+                          usageCount: comp.usageCount,
+                          isCommunity: true,
+                          logoUrl: comp.logoUrl,
+                          githubUrl: comp.githubUrl,
+                          npmUrl: undefined, // API doesn't have npm_url, only github_url
+                          officialDocsUrl: comp.officialDocsUrl,
+                          tags: comp.tags || []
+                        } as ExtendedComponent;
+                        
+                        return converted;
+                      })
                     ];
 
                     const filtered = quickSearchQuery 
@@ -2288,82 +2393,135 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
                     
                     if (filtered.length === 0) {
                       return (
-                        <div className="text-center py-8 text-slate-400">
-                          <div className="text-4xl mb-2">🔍</div>
-                          <p>Aucun composant trouvé pour &quot;{quickSearchQuery}&quot;</p>
-                          <p className="text-sm mt-2">Essayez avec d&apos;autres mots-clés</p>
-                        </div>
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-center py-12 text-slate-400"
+                        >
+                          <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
+                            <span className="text-2xl">🔍</span>
+                          </div>
+                          <h3 className="text-lg font-medium text-slate-300 mb-2">
+                            Aucun résultat pour &quot;{quickSearchQuery}&quot;
+                          </h3>
+                          <p className="text-sm text-slate-500">Essayez avec d&apos;autres mots-clés ou explorez nos catégories</p>
+                        </motion.div>
                       );
                     }
                     
-                    return filtered.map(component => (
-                    <button
-                      key={component.id}
-                      onClick={() => {
-                        handleAddComponent(component);
-                        setShowQuickSearch(false);
-                        setQuickSearchQuery('');
-                      }}
-                      className="w-full p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl text-left transition-all hover:scale-[1.02] group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm ${
-                          component.isCommunity ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
-                          component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
-                          component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
-                          component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
-                          'bg-gradient-to-br from-purple-500 to-violet-600'
-                        }`}>
-                          {component.isCommunity ? '🌐' :
-                           component.category === 'frontend' ? '🎨' :
-                           component.category === 'backend' ? '⚙️' :
-                           component.category === 'database' ? '💾' : '🚀'}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-200 group-hover:text-white">{component.name}</span>
-                            {component.isCommunity && (
-                              <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                Community
-                              </Badge>
-                            )}
-                            <span className="text-xs text-slate-500 capitalize">{component.category}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm text-slate-400 truncate flex-1">{component.description}</p>
-                            {component.isCommunity && component.rating && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-yellow-400">⭐</span>
-                                <span className="text-xs text-slate-300">{component.rating.toFixed(1)}</span>
+                    return filtered.map((component, index) => (
+                      <motion.div
+                        key={component.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
+                      >
+                        <button
+                          onClick={() => {
+                            handleAddComponent(component);
+                            setShowQuickSearch(false);
+                            setQuickSearchQuery('');
+                          }}
+                          className="w-full p-4 bg-slate-800/40 hover:bg-slate-800/70 backdrop-blur-sm rounded-2xl text-left transition-all duration-300 border border-slate-700/30 hover:border-slate-600/50 hover:shadow-lg hover:shadow-blue-500/10 group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={cn(
+                              'w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-semibold shadow-md group-hover:shadow-lg transition-shadow duration-300',
+                              component.isCommunity ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                              component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
+                              component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                              component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
+                              'bg-gradient-to-br from-purple-500 to-violet-600'
+                            )}>
+                              {component.isContainer ? '📦' :
+                               component.isCommunity ? '🌐' :
+                               component.category === 'frontend' ? '🎨' :
+                               component.category === 'backend' ? '⚙️' :
+                               component.category === 'database' ? '💾' : '🚀'}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-white text-base group-hover:text-blue-300 transition-colors truncate">
+                                  {component.name}
+                                </h4>
+                                {component.isContainer && (
+                                  <Badge variant="warning" size="sm" className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+                                    CONTAINER
+                                  </Badge>
+                                )}
+                                {component.isCommunity && (
+                                  <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                    Community
+                                  </Badge>
+                                )}
                               </div>
-                            )}
+                              
+                              <p className="text-sm text-slate-400 mb-2 line-clamp-1">
+                                {component.description || 'No description available'}
+                              </p>
+                              
+                              <div className="flex items-center gap-3">
+                                <div className="bg-slate-700/50 rounded-lg px-2 py-1">
+                                  <span className="text-xs text-slate-300 capitalize font-medium">{component.category}</span>
+                                </div>
+                                
+                                <div className="bg-slate-700/50 rounded-lg px-2 py-1">
+                                  <span className="text-xs text-slate-300">{component.setupTimeHours}h setup</span>
+                                </div>
+                                
+                                {component.isCommunity && component.rating && (
+                                  <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-2 py-1">
+                                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                    <span className="text-xs text-yellow-300 font-medium">{component.rating.toFixed(1)}</span>
+                                  </div>
+                                )}
+                                
+                                {component.isCommunity && component.author && (
+                                  <div className="text-xs text-slate-500">
+                                    by {component.author}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                                <Plus className="w-4 h-4 text-blue-400" />
+                              </div>
+                            </div>
                           </div>
-                          {component.isCommunity && component.author && (
-                            <p className="text-xs text-slate-500 mt-1">
-                              Par {component.author}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {component.setupTimeHours}h
-                        </div>
-                      </div>
-                    </button>
+                        </button>
+                      </motion.div>
                     ));
                   })()}
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="px-4 py-3 bg-slate-900/50 border-t border-slate-700/50">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>💡 Tip: Utilisez les flèches ↑↓ pour naviguer</span>
-                  <span>⌘K pour ouvrir</span>
+              {/* Modern Footer */}
+              <div className="px-6 py-4 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-sm border-t border-slate-700/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-xs text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
+                      <span>Navigation avec ↑↓</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                      <span>Entrée pour sélectionner</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-slate-700/40 px-2 py-1 rounded-lg text-xs text-slate-400 border border-slate-600/30">
+                      ⌘K
+                    </div>
+                    <span className="text-xs text-slate-500">pour rouvrir</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

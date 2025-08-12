@@ -1,26 +1,20 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { NodeData, SubTechnology } from './CanvasNode';
-import { dragVariants, containerVariants, listItemVariants } from '@/lib/animations/variants';
 import { 
-  Search, 
   Plus, 
   X,
   Grip,
   Users,
   Star,
-  Download,
   ExternalLink,
   Package
 } from 'lucide-react';
 import Link from 'next/link';
-import { componentsApi, type Component as CommunityComponent } from '@/lib/api/components';
 
 interface ComponentPaletteProps {
   availableComponents: NodeData[];
@@ -43,28 +37,94 @@ interface CommunityNodeData extends NodeData {
   tags?: string[];
 }
 
+// Interface for community component from API
+interface ApiCommunityComponent {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  type: 'component' | 'container';
+  containerType?: 'docker' | 'kubernetes';
+  setupTimeHours: number;
+  difficulty: 'beginner' | 'intermediate' | 'expert';
+  pricing: 'free' | 'freemium' | 'paid';
+  documentation?: string;
+  officialDocsUrl?: string;
+  githubUrl?: string;
+  logoUrl?: string;
+  tags: string[];
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  rating: number;
+  reviewCount: number;
+  likesCount: number;
+  usageCount: number;
+  isOfficial: boolean;
+  compatibleWith?: string[];
+  containedTechnologies?: string[];
+  resourceRequirements?: {
+    cpu?: string;
+    memory?: string;
+    storage?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Convert community component to NodeData format
-const convertCommunityToNodeData = (component: CommunityComponent): CommunityNodeData => {
+const convertCommunityToNodeData = (component: ApiCommunityComponent): CommunityNodeData => {
+  // Map community component category to NodeData category
+  const mapCategory = (category: string): NodeData['category'] => {
+    switch (category) {
+      case 'tool': return 'other';
+      case 'infrastructure': return 'devops';
+      default: return category as NodeData['category'];
+    }
+  };
+
   return {
     id: component.id,
     name: component.name,
-    category: component.category as NodeData['category'],
+    category: mapCategory(component.category),
     description: component.description,
     setupTimeHours: component.setupTimeHours,
     difficulty: component.difficulty as NodeData['difficulty'],
     pricing: component.pricing as NodeData['pricing'],
-    isMainTechnology: component.type === 'main',
-    // Add all the missing fields that official components have
+    isMainTechnology: component.type === 'component' || !['styling', 'testing', 'documentation', 'build-tools', 'linting'].includes(component.category),
+    canAcceptSubTech: component.type === 'component' ? ['styling', 'testing', 'documentation'] : undefined,
+    compatibleWith: component.compatibleWith || [],
+    incompatibleWith: [],
+    resources: component.resourceRequirements ? {
+      cpu: component.resourceRequirements.cpu || '0.5 cores',
+      memory: component.resourceRequirements.memory || '256MB',
+      storage: component.resourceRequirements.storage || '50MB',
+      network: '5Mbps'
+    } : {
+      cpu: '0.5 cores',
+      memory: '256MB', 
+      storage: '50MB',
+      network: '5Mbps'
+    },
+    environmentVariables: {},
+    // Documentation from community component
+    documentation: component.documentation,
+    // Container properties - corrected mapping
+    isContainer: component.type === 'container',
+    containerType: component.containerType,
+    containedTechnologies: component.containedTechnologies || [],
+    // Community-specific fields with NodeData compatibility
+    isCommunity: true,
     logoUrl: component.logoUrl,
     githubUrl: component.githubUrl,
-    npmUrl: component.npmUrl,
+    npmUrl: undefined, // API doesn't have npm_url, only github_url
     officialDocsUrl: component.officialDocsUrl,
     tags: component.tags || [],
-    compatibleWith: component.compatibleWith || [],
-    // Community-specific fields
     rating: component.rating,
     usageCount: component.usageCount,
-    author: component.author.name
+    author: component.author?.name || 'Community User'
   };
 };
 
@@ -111,7 +171,6 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showCommunity, setShowCommunity] = useState(false);
   const [communityComponents, setCommunityComponents] = useState<CommunityNodeData[]>([]);
   const [loadingCommunity, setLoadingCommunity] = useState(false);
@@ -125,7 +184,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
     if (showCommunity && communityComponents.length === 0) {
       loadCommunityComponents();
     }
-  }, [showCommunity]);
+  }, [showCommunity, communityComponents.length]);
 
   // Load imported components from localStorage on mount
   useEffect(() => {
@@ -158,8 +217,11 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
   const loadCommunityComponents = async () => {
     try {
       setLoadingCommunity(true);
-      const components = await componentsApi.getComponents();
-      const convertedComponents = components.map(convertCommunityToNodeData);
+      const response = await fetch('/api/community-components?limit=50');
+      const data = await response.json();
+      
+      const convertedComponents = (data.components || []).map(convertCommunityToNodeData);
+      
       setCommunityComponents(convertedComponents);
     } catch (error) {
       console.error('Failed to load community components:', error);
@@ -168,49 +230,6 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
     }
   };
 
-  // Get unique categories with counts (including imported components)
-  const categories = useMemo(() => {
-    const categoryCount: Record<string, number> = {};
-    
-    // Count official components
-    availableComponents.forEach(comp => {
-      let displayCategory = comp.category;
-      
-      // For sub-technologies, find the proper category based on type
-      if (comp.isMainTechnology === false) {
-        const subTech = subTechnologies.find(st => st.id === comp.id);
-        if (subTech) {
-          displayCategory = mapSubTechToCategory(subTech.type);
-        }
-      }
-      
-      categoryCount[displayCategory] = (categoryCount[displayCategory] || 0) + 1;
-    });
-
-    // Count imported components in their respective categories
-    importedComponents.forEach(comp => {
-      let displayCategory = comp.category;
-      
-      // For sub-technologies, find the proper category based on type
-      if (comp.isMainTechnology === false) {
-        const subTech = subTechnologies.find(st => st.id === comp.id);
-        if (subTech) {
-          displayCategory = mapSubTechToCategory(subTech.type);
-        }
-      }
-      
-      categoryCount[displayCategory] = (categoryCount[displayCategory] || 0) + 1;
-    });
-
-    // Add imported components as separate category if we have any
-    if (importedComponents.length > 0) {
-      categoryCount['imported'] = importedComponents.length;
-    }
-    
-    return Object.entries(categoryCount)
-      .map(([category, count]) => ({ category, count }))
-      .sort();
-  }, [availableComponents, subTechnologies, importedComponents]);
 
   // Filter components
   const filteredComponents = useMemo(() => {
@@ -281,15 +300,6 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
     return groups;
   }, [filteredComponents, subTechnologies, selectedCategory]);
 
-  const toggleCategory = (category: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(category)) {
-      newExpanded.delete(category);
-    } else {
-      newExpanded.add(category);
-    }
-    setExpandedCategories(newExpanded);
-  };
 
   const clearFilters = () => {
     setSelectedCategory('');
@@ -299,20 +309,25 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
   const hasActiveFilters = selectedCategory || searchQuery;
 
   return (
-    <div className={cn('flex flex-col h-full bg-slate-900/50 backdrop-blur-md border-r border-slate-700', className)}>
-      {/* Header */}
-      <div className="p-4 border-b border-slate-700">
-        <h2 className="text-lg font-semibold text-slate-100 mb-3">Components</h2>
+    <div className={cn('flex flex-col h-full bg-slate-900/60 backdrop-blur-xl border-r border-slate-700/60', className)}>
+      {/* Modern Header with glassmorphism */}
+      <div className="p-6 border-b border-slate-700/50 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+            Components
+          </h2>
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+        </div>
         
-        {/* Tabs */}
-        <div className="flex mb-3 border-b border-slate-700 -mx-4 px-4">
+        {/* Modern Tabs with glassmorphism */}
+        <div className="flex bg-slate-800/40 rounded-xl p-1 backdrop-blur-sm border border-slate-700/30">
           <button
             onClick={() => setShowCommunity(false)}
             className={cn(
-              "px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px",
+              "flex-1 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg",
               !showCommunity 
-                ? "text-white border-blue-500" 
-                : "text-slate-400 border-transparent hover:text-slate-200"
+                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20" 
+                : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
             )}
           >
             Available
@@ -320,15 +335,15 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
           <button
             onClick={() => setShowCommunity(true)}
             className={cn(
-              "px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5",
+              "flex-1 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg flex items-center justify-center gap-2",
               showCommunity 
-                ? "text-white border-blue-500" 
-                : "text-slate-400 border-transparent hover:text-slate-200"
+                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20" 
+                : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
             )}
           >
-            <Users className="w-3 h-3" />
+            <Users className="w-4 h-4" />
             Community
-            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" title="New"></div>
+            <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse" title="New"></div>
           </button>
         </div>
         
@@ -339,7 +354,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
             variant="ghost"
             size="sm"
             onClick={clearFilters}
-            className="text-slate-400 hover:text-slate-200 mb-3"
+            className="mt-3 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl transition-all duration-300"
           >
             <X className="h-4 w-4 mr-2" />
             Clear filters
@@ -396,16 +411,23 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                         <div
                           key={component.id}
                           className={cn(
-                            'flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-600',
-                            isUsed && 'opacity-50 cursor-not-allowed',
-                            'border-l-4 border-l-blue-500/30' // Community indicator
+                            'group relative p-4 rounded-2xl cursor-pointer transition-all duration-300 border',
+                            'bg-slate-900/60 backdrop-blur-md hover:bg-slate-800/80',
+                            'border-slate-700/50 hover:border-slate-600/80',
+                            'hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10',
+                            isUsed && 'opacity-60 cursor-not-allowed hover:scale-100',
+                            'border-l-4 border-l-blue-500/60' // Community indicator with glassmorphism
                           )}
                           onClick={() => {
                             if (!isUsed) {
                               // Save to imported components when used
                               saveImportedComponent(communityComp);
                               // Track usage
-                              componentsApi.trackUsage(component.id).catch(console.error);
+                              fetch('/api/community-components/usage', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ componentId: component.id })
+                              }).catch(console.error);
                               // Add to builder
                               onAddComponent(component);
                             }
@@ -425,41 +447,79 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                             e.currentTarget.style.opacity = '';
                           }}
                         >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="text-blue-400 text-sm">🌐</div>
+                          {/* Header section with logo and type */}
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className={cn(
+                              'w-12 h-12 rounded-xl flex items-center justify-center text-lg font-semibold shadow-md',
+                              component.isContainer 
+                                ? 'bg-gradient-to-br from-orange-500 to-red-600 text-white'
+                                : 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white'
+                            )}>
+                              {component.isContainer ? '📦' : '🌐'}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-slate-200 text-sm">
-                                <span className="truncate">{component.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge 
-                                  variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
-                                  size="sm"
-                                  outline
-                                >
-                                  {component.pricing}
-                                </Badge>
-                                <div className="text-xs text-slate-400">
-                                  {component.setupTimeHours}h setup
-                                </div>
-                                {communityComp.rating && (
-                                  <div className="flex items-center gap-1">
-                                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                    <span className="text-xs text-white">{communityComp.rating.toFixed(1)}</span>
-                                  </div>
+                              <div className="flex items-center justify-between">
+                                <h3 className="font-semibold text-white text-base truncate group-hover:text-blue-300 transition-colors">
+                                  {component.name}
+                                </h3>
+                                {component.isContainer && (
+                                  <Badge variant="warning" size="sm" className="ml-2 bg-orange-500/20 text-orange-300 border-orange-500/30">
+                                    CONTAINER
+                                  </Badge>
                                 )}
                               </div>
+                              <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+                                {component.description || 'No description available'}
+                              </p>
                             </div>
                           </div>
-                          
-                          {isUsed ? (
-                            <span className="text-xs text-blue-400">Added</span>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Grip className="h-4 w-4 text-slate-500" />
-                              <Plus className="h-4 w-4 text-slate-400" />
+
+                          {/* Stats and badges row */}
+                          <div className="flex items-center gap-3 mb-3">
+                            {communityComp.rating && (
+                              <div className="flex items-center gap-1.5 bg-slate-800/50 rounded-lg px-2.5 py-1.5">
+                                <Star className="w-3.5 h-3.5 text-yellow-400 fill-current" />
+                                <span className="text-sm font-medium text-yellow-300">{communityComp.rating.toFixed(1)}</span>
+                                <span className="text-xs text-slate-500">({communityComp.usageCount || 0})</span>
+                              </div>
+                            )}
+                            
+                            <Badge 
+                              variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
+                              size="sm"
+                              className="font-medium"
+                            >
+                              {component.pricing}
+                            </Badge>
+                            
+                            <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5">
+                              <span className="text-xs text-slate-400">{component.setupTimeHours}h setup</span>
                             </div>
-                          )}
+                          </div>
+
+                          {/* Author and date */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <Users className="w-3 h-3" />
+                              <span>by {communityComp.author || 'Community'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isUsed ? (
+                                <div className="flex items-center gap-1.5 bg-green-500/20 text-green-300 px-2 py-1 rounded-lg">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                  <span className="text-xs font-medium">Added</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Grip className="h-3.5 w-3.5 text-slate-500" />
+                                  <Plus className="h-3.5 w-3.5 text-slate-400" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Hover effect overlay */}
+                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                         </div>
                       );
                     })}
@@ -495,7 +555,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                     </Button>
                   </div>
                 ) : (
-                  Object.entries(groupedComponents).map(([category, components]) => (
+                  Object.entries(groupedComponents).map(([, components]) => (
                     components.map(component => {
                     const isUsed = usedComponentIds.includes(component.id);
                     const isImported = importedComponents.some(ic => ic.id === component.id);
@@ -504,15 +564,17 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                     return (
                       <div
                         key={component.id}
-                        className={`relative bg-slate-800/30 rounded-lg border border-slate-700/50 p-3 transition-all duration-200 cursor-pointer group ${
+                        className={cn(
+                          'relative rounded-2xl p-4 transition-all duration-300 cursor-pointer group border',
+                          'bg-slate-900/60 backdrop-blur-md hover:bg-slate-800/80',
+                          'border-slate-700/50 hover:border-slate-600/80',
+                          'hover:scale-[1.02] hover:shadow-xl',
                           isUsed 
-                            ? 'opacity-60 cursor-not-allowed' 
-                            : 'hover:bg-slate-800/50 hover:border-slate-600 hover:scale-105'
-                        } ${
-                          component.isMainTechnology === false && 'border-l-4 border-l-orange-500/50'
-                        } ${
-                          isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/50'
-                        }`}
+                            ? 'opacity-60 cursor-not-allowed hover:scale-100' 
+                            : 'hover:shadow-purple-500/10',
+                          component.isMainTechnology === false && 'border-l-4 border-l-orange-500/60 hover:shadow-orange-500/10',
+                          isImported && component.isMainTechnology !== false && 'border-l-4 border-l-blue-500/60 hover:shadow-blue-500/10'
+                        )}
                         onClick={() => !isUsed && onAddComponent(component)}
                         draggable={!isUsed}
                         onDragStart={(e) => {
@@ -530,63 +592,76 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
                           e.currentTarget.style.opacity = '';
                         }}
                       >
-                        {/* Icône */}
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg mb-2 ${
-                          component.isMainTechnology === false ? 'bg-gradient-to-br from-orange-500 to-red-600' :
-                          isImported ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
-                          component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
-                          component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
-                          component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
-                          'bg-gradient-to-br from-purple-500 to-violet-600'
-                        }`}>
-                          {component.isMainTechnology === false ? '🛠️' :
-                           isImported ? '🌐' :
-                           component.category === 'frontend' ? '🎨' :
-                           component.category === 'backend' ? '⚙️' :
-                           component.category === 'database' ? '💾' : '🚀'}
+                        {/* Header section with modern layout */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={cn(
+                            'w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-semibold shadow-md',
+                            component.isMainTechnology === false ? 'bg-gradient-to-br from-orange-500 to-red-600' :
+                            isImported ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                            component.category === 'frontend' ? 'bg-gradient-to-br from-pink-500 to-rose-600' :
+                            component.category === 'backend' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                            component.category === 'database' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
+                            'bg-gradient-to-br from-purple-500 to-violet-600'
+                          )}>
+                            {component.isMainTechnology === false ? '🛠️' :
+                             isImported ? '🌐' :
+                             component.category === 'frontend' ? '🎨' :
+                             component.category === 'backend' ? '⚙️' :
+                             component.category === 'database' ? '💾' : '🚀'}
+                          </div>
+                          {isUsed && (
+                            <div className="w-6 h-6 bg-green-500/20 border border-green-500/40 rounded-full flex items-center justify-center">
+                              <span className="text-green-400 text-xs font-bold">✓</span>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Nom */}
-                        <div className="font-medium text-slate-200 text-sm mb-2 truncate">
-                          {component.name}
+                        {/* Component name and description */}
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-white text-base mb-1 group-hover:text-blue-300 transition-colors">
+                            {component.name}
+                          </h3>
+                          <p className="text-sm text-slate-400 line-clamp-2">
+                            {component.description || 'Component description'}
+                          </p>
                         </div>
 
-                        {/* Badges essentiels */}
-                        <div className="flex flex-wrap gap-1 mb-2">
+                        {/* Modern badges layout */}
+                        <div className="flex items-center gap-2 mb-3">
                           {component.isMainTechnology === false && (
-                            <Badge variant="warning" size="sm" className="text-xs">TOOL</Badge>
+                            <Badge variant="warning" size="sm" className="bg-orange-500/20 text-orange-300 border-orange-500/30 font-medium">
+                              TOOL
+                            </Badge>
                           )}
                           {isImported && component.isMainTechnology !== false && (
-                            <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Community</Badge>
+                            <Badge variant="secondary" size="sm" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-medium">
+                              Community
+                            </Badge>
                           )}
                           <Badge 
                             variant={component.pricing === 'free' ? 'success' : component.pricing === 'freemium' ? 'warning' : 'danger'}
                             size="sm"
-                            className="text-xs"
+                            className="font-medium"
                           >
                             {component.pricing}
                           </Badge>
                         </div>
 
-                        {/* Setup time simple */}
-                        <div className="text-xs text-slate-400 flex items-center justify-between">
-                          <span>{component.setupTimeHours}h setup</span>
+                        {/* Stats row */}
+                        <div className="flex items-center justify-between">
+                          <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5">
+                            <span className="text-xs text-slate-400 font-medium">{component.setupTimeHours}h setup</span>
+                          </div>
                           {isImported && communityComp.rating && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-yellow-400">⭐</span>
-                              <span className="text-slate-300">{communityComp.rating.toFixed(1)}</span>
+                            <div className="flex items-center gap-1.5 bg-slate-800/50 rounded-lg px-2.5 py-1.5">
+                              <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                              <span className="text-xs text-yellow-300 font-medium">{communityComp.rating.toFixed(1)}</span>
                             </div>
                           )}
                         </div>
 
-                        {/* Status indicator */}
-                        {isUsed && (
-                          <div className="absolute top-2 right-2">
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs">✓</span>
-                            </div>
-                          </div>
-                        )}
+                        {/* Hover effect overlay */}
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                       </div>
                     );
                   })

@@ -61,6 +61,7 @@ interface StackState {
   removeTechnology: (technologyId: string) => void;
   reorderTechnologies: (technologies: Technology[]) => void;
   clearCurrentStack: () => void;
+  importStack: (importedData: { name?: string; description?: string; nodes?: CanvasNode[]; connections?: Connection[] }) => void;
   
   // Stack management  
   saveStack: (stack: { name: string; description: string; nodes: CanvasNode[]; connections: Connection[]; is_public?: boolean }) => Promise<string | null>;
@@ -178,6 +179,16 @@ export const useStackStore = create<StackState>()(
               connections: [],
             },
           }, false, 'clearCurrentStack'),
+
+        importStack: (importedData) =>
+          set((state) => ({
+            currentStack: {
+              name: importedData.name || state.currentStack.name || 'Imported Stack',
+              description: importedData.description || state.currentStack.description || 'Imported from JSON file',
+              nodes: importedData.nodes || [],
+              connections: importedData.connections || [],
+            },
+          }), false, 'importStack'),
           
         // Stack management
         saveStack: async (stackData) => {

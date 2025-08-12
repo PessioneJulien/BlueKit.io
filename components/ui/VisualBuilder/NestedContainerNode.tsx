@@ -182,10 +182,21 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
   const calculateItemsPerPage = useCallback(() => {
     const headerAndPaddingHeight = headerHeight + 60; // Header + padding + footer space
     const itemHeight = 80; // Approximate height of each contained node
-    const availableHeight = height - headerAndPaddingHeight;
+    const availableHeight = Math.max(100, height - headerAndPaddingHeight); // Ensure minimum height
     const maxItems = Math.floor(availableHeight / itemHeight);
-    return Math.max(1, maxItems); // At least 1 item per page
-  }, [height]);
+    const itemsPerPage = Math.max(1, maxItems); // At least 1 item per page
+    
+    // Debug pagination calculation (commented out for production)
+    // console.log('📊 Container pagination calc:', {
+    //   containerName: name,
+    //   height,
+    //   availableHeight,
+    //   itemsPerPage,
+    //   containedNodesCount: containedNodes.length
+    // });
+    
+    return itemsPerPage;
+  }, [height, name, containedNodes.length]);
   
   const itemsPerPage = calculateItemsPerPage();
 
@@ -552,7 +563,23 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
           ) : (
             <div className="space-y-2 relative">
               {/* Services compacts avec pagination */}
-              {containedNodes.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage).map((node) => (
+              {(() => {
+                const startIndex = currentPage * itemsPerPage;
+                const endIndex = (currentPage + 1) * itemsPerPage;
+                const visibleNodes = containedNodes.slice(startIndex, endIndex);
+                
+                // console.log('📦 Container render info:', {
+                //   containerName: name,
+                //   totalNodes: containedNodes.length,
+                //   currentPage,
+                //   itemsPerPage,
+                //   startIndex,
+                //   endIndex,
+                //   visibleNodesCount: visibleNodes.length,
+                //   visibleNodeNames: visibleNodes.map(n => n.name)
+                // });
+                
+                return visibleNodes.map((node) => (
                 <div
                   key={node.id}
                   className="bg-gradient-to-r from-slate-700/70 to-slate-600/50 border border-slate-500/40 rounded-xl p-3 flex items-center gap-3 relative hover:from-slate-600/70 hover:to-slate-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-slate-900/50"
@@ -677,7 +704,8 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
                     </button>
                   </div>
                 </div>
-              ))}
+              ));
+              })()}
 
               {/* Ghost preview during drag */}
               {isDragOver && ghostNode && (

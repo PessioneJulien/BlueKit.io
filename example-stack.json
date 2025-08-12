@@ -1,0 +1,129 @@
+{
+  "name": "Modern Web Stack",
+  "description": "Une stack moderne pour applications web avec React, Node.js et PostgreSQL",
+  "version": "1.0.0",
+  "created": "2025-01-12T10:00:00.000Z",
+  "metadata": {
+    "totalSetupTime": 6,
+    "nodeCount": 4,
+    "connectionCount": 3,
+    "difficulties": {
+      "beginner": 1,
+      "intermediate": 2,
+      "expert": 1
+    }
+  },
+  "technologies": [
+    {
+      "id": "react-frontend",
+      "name": "React",
+      "category": "frontend",
+      "description": "Bibliothèque JavaScript pour construire des interfaces utilisateur",
+      "setupTimeHours": 2,
+      "difficulty": "intermediate",
+      "pricing": "free",
+      "position": { "x": 100, "y": 100 },
+      "size": { "width": 200, "height": 80 },
+      "documentation": "npm install react react-dom\nnpm start",
+      "isMainTechnology": true,
+      "subTechnologies": [
+        {
+          "name": "React Router",
+          "type": "library",
+          "description": "Routage pour React",
+          "required": false
+        }
+      ],
+      "compatibleWith": ["node-backend"],
+      "incompatibleWith": []
+    },
+    {
+      "id": "node-backend",
+      "name": "Node.js",
+      "category": "backend",
+      "description": "Runtime JavaScript côté serveur",
+      "setupTimeHours": 2,
+      "difficulty": "intermediate",
+      "pricing": "free",
+      "position": { "x": 400, "y": 100 },
+      "size": { "width": 200, "height": 80 },
+      "documentation": "npm init -y\nnpm install express",
+      "isMainTechnology": true,
+      "subTechnologies": [
+        {
+          "name": "Express.js",
+          "type": "library",
+          "description": "Framework web pour Node.js",
+          "required": true
+        }
+      ],
+      "compatibleWith": ["postgresql-db"],
+      "incompatibleWith": []
+    },
+    {
+      "id": "postgresql-db",
+      "name": "PostgreSQL",
+      "category": "database",
+      "description": "Base de données relationnelle avancée",
+      "setupTimeHours": 1,
+      "difficulty": "beginner",
+      "pricing": "free",
+      "position": { "x": 700, "y": 100 },
+      "size": { "width": 200, "height": 80 },
+      "documentation": "docker run --name postgres -e POSTGRES_PASSWORD=password -d postgres",
+      "isMainTechnology": true,
+      "subTechnologies": [],
+      "compatibleWith": [],
+      "incompatibleWith": []
+    },
+    {
+      "id": "nginx-proxy",
+      "name": "Nginx",
+      "category": "devops",
+      "description": "Serveur web et proxy inverse",
+      "setupTimeHours": 1,
+      "difficulty": "expert",
+      "pricing": "free",
+      "position": { "x": 250, "y": 250 },
+      "size": { "width": 200, "height": 80 },
+      "documentation": "apt-get install nginx\nsystemctl start nginx",
+      "isMainTechnology": false,
+      "subTechnologies": [],
+      "compatibleWith": ["react-frontend", "node-backend"],
+      "incompatibleWith": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "react-to-node",
+      "source": "react-frontend",
+      "target": "node-backend",
+      "type": "api-call",
+      "style": {
+        "strokeColor": "#3b82f6",
+        "strokeWidth": 2,
+        "animated": true
+      }
+    },
+    {
+      "id": "node-to-postgres",
+      "source": "node-backend", 
+      "target": "postgresql-db",
+      "type": "data-flow",
+      "style": {
+        "strokeColor": "#10b981",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "nginx-to-react",
+      "source": "nginx-proxy",
+      "target": "react-frontend",
+      "type": "proxy",
+      "style": {
+        "strokeColor": "#f59e0b",
+        "strokeWidth": 2
+      }
+    }
+  ]
+}

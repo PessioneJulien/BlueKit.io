@@ -25,6 +25,8 @@ export interface Component {
   usageCount: number;
   isOfficial: boolean;
   compatibleWith?: string[];
+  isContainer?: boolean;
+  containerType?: 'docker' | 'kubernetes';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +66,8 @@ export interface CreateComponentData {
   logoUrl?: string;
   tags?: string[];
   compatibleWith?: string[];
+  isContainer?: boolean;
+  containerType?: 'docker' | 'kubernetes';
 }
 
 export interface CreateReviewData {
@@ -180,6 +184,8 @@ export const componentsApi = {
           usageCount: component.usage_count || 0,
           isOfficial: component.is_official || false,
           compatibleWith: component.compatible_with || [],
+          isContainer: component.is_container || false,
+          containerType: component.container_type,
           createdAt: new Date(component.created_at),
           updatedAt: new Date(component.updated_at)
         } as Component;
@@ -251,6 +257,8 @@ export const componentsApi = {
       usageCount: data.usage_count || 0,
       isOfficial: data.is_official || false,
       compatibleWith: data.compatible_with || [],
+      isContainer: data.is_container || false,
+      containerType: data.container_type,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };
@@ -282,7 +290,9 @@ export const componentsApi = {
         logo_url: componentData.logoUrl,
         tags: componentData.tags || [],
         author_id: user.id,
-        compatible_with: componentData.compatibleWith || []
+        compatible_with: componentData.compatibleWith || [],
+        is_container: componentData.isContainer || false,
+        container_type: componentData.containerType
       })
       .select()
       .single();
@@ -317,6 +327,8 @@ export const componentsApi = {
       usageCount: 0,
       isOfficial: false,
       compatibleWith: data.compatible_with || [],
+      isContainer: data.is_container || false,
+      containerType: data.container_type,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };
@@ -346,6 +358,8 @@ export const componentsApi = {
       logo_url?: string | null;
       tags?: string[];
       compatible_with?: string[];
+      is_container?: boolean;
+      container_type?: string | null;
     };
 
     const updateData: UpdateRow = {};
@@ -363,6 +377,8 @@ export const componentsApi = {
     if (updates.logoUrl !== undefined) updateData.logo_url = updates.logoUrl;
     if (updates.tags) updateData.tags = updates.tags;
     if (updates.compatibleWith) updateData.compatible_with = updates.compatibleWith;
+    if (updates.isContainer !== undefined) updateData.is_container = updates.isContainer;
+    if (updates.containerType !== undefined) updateData.container_type = updates.containerType;
 
     const { data, error } = await supabase
       .from('components')

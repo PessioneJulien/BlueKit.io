@@ -537,23 +537,47 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         let componentToAdd = data.component;
         
         if (data.type === 'community-component') {
+          // Map community component category to NodeData category
+          const mapCategory = (category: string): NodeData['category'] => {
+            switch (category) {
+              case 'tool': return 'other';
+              default: return category as NodeData['category'];
+            }
+          };
+
           // Convert community component to NodeData format
           componentToAdd = {
             id: data.component.id,
             name: data.component.name,
             label: data.component.name,
-            category: data.component.category,
+            category: mapCategory(data.component.category),
             description: data.component.description,
             setupTimeHours: data.component.setupTimeHours,
             pricing: data.component.pricing,
             difficulty: data.component.difficulty,
+            // Essential NodeData fields for React Flow compatibility
+            isMainTechnology: data.component.type === 'main' || !['styling', 'testing', 'documentation', 'build-tools', 'linting'].includes(data.component.category),
+            canAcceptSubTech: data.component.type === 'main' ? ['styling', 'testing', 'documentation'] : undefined,
+            compatibleWith: data.component.compatibleWith || [],
+            incompatibleWith: [],
+            resources: {
+              cpu: '0.5 cores',
+              memory: '256MB',
+              storage: '50MB',
+              network: '5Mbps'
+            },
+            environmentVariables: {},
+            // Community-specific fields
             documentation: data.component.documentation,
             officialDocsUrl: data.component.officialDocsUrl,
             githubUrl: data.component.githubUrl,
             npmUrl: data.component.npmUrl,
             tags: data.component.tags || [],
-            isMainTechnology: true, // Community components are main technologies
-            isCommunity: true // Flag to identify community components
+            isCommunity: true, // Flag to identify community components
+            author: data.component.author?.name || 'Community',
+            rating: data.component.rating,
+            usageCount: data.component.usageCount,
+            logoUrl: data.component.logoUrl
           };
         }
         

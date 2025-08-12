@@ -2,6 +2,7 @@
 
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { X, MoreVertical, Settings, Info, FileText, Palette } from 'lucide-react';
@@ -10,6 +11,9 @@ import { ResourceConfigModal } from './ResourceConfigModal';
 import { NodeResizeHandle } from './NodeResizeHandle';
 import { FloatingDocPanel } from './FloatingDocPanel';
 import { NodeCustomStyle } from './NodeColorPicker';
+import { AnimatedNode, AnimatedNodeRef } from '@/components/ui/animated/AnimatedNode';
+import { useNodeAnimations } from '@/lib/hooks/useNodeAnimations';
+import { animationSystem } from '@/lib/animations/animationSystem';
 
 interface TechNodeData extends NodeData {
   isCompact?: boolean;
@@ -51,7 +55,26 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   const [editName, setEditName] = useState(data.name);
   const [isBeingDragged, setIsBeingDragged] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const animatedNodeRef = useRef<AnimatedNodeRef>(null);
   const isCompact = data.isCompact ?? true; // Default to true if undefined
+  
+  // Animation hooks
+  const {
+    controls,
+    handleAppear,
+    handleDisappear,
+    handleHover,
+    handleHoverEnd,
+    handleSelect,
+    handleDeselect,
+    handleDragStart: handleAnimatedDragStart,
+    handleDragEnd: handleAnimatedDragEnd,
+    handleModeTransition,
+    handleDropSuccess,
+    handleError
+  } = useNodeAnimations(data.id, {
+    enableCelebration: true
+  });
 
   // Sync editName with data.name when it changes
   useEffect(() => {
@@ -95,10 +118,6 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     (data.subTechnologies && data.subTechnologies.length > 0 ? 180 : 140)
   );
 
-  if (!data) {
-    return <div>Loading...</div>;
-  }
-
   // Handle drop of tools onto this node
   const handleDragOver = (e: React.DragEvent) => {
     if (!data.isMainTechnology) return;
@@ -140,15 +159,21 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
       const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
       console.log('🎯 Drop data:', dragData);
       
-      if (dragData.type === 'tool' && data.onAddSubTechnology && data.isMainTechnology) {
+      if ((dragData.type === 'tool' || dragData.type === 'community-component') && data.onAddSubTechnology && data.isMainTechnology) {
         console.log('✅ Dropping tool:', dragData.component.id, 'onto main tech:', data.id);
         data.onAddSubTechnology(data.id, dragData.component.id);
+        
+        // Show success animation
+        handleDropSuccess();
       } else {
         console.log('❌ Drop conditions not met:', {
           type: dragData.type,
           hasCallback: !!data.onAddSubTechnology,
           isMainTech: data.isMainTechnology
         });
+        
+        // Show error animation if drop conditions not met
+        handleError();
       }
     } catch (error) {
       console.error('❌ Error handling tool drop:', error);
@@ -158,6 +183,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   // Handle node drag start
   const handleDragStart = (e: React.DragEvent) => {
     setIsBeingDragged(true);
+    handleAnimatedDragStart();
     console.log('🎯 Node drag started:', data.name);
     
     // Set drag data for container drop detection
@@ -182,8 +208,33 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   // Handle node drag end
   const handleDragEnd = () => {
     setIsBeingDragged(false);
+    handleAnimatedDragEnd();
     console.log('🎯 Node drag ended:', data.name);
   };
+
+  // Handle selection changes
+  useEffect(() => {
+    if (selected) {
+      handleSelect();
+    } else {
+      handleDeselect();
+    }
+  }, [selected, handleSelect, handleDeselect]);
+
+  // Handle mode transitions
+  useEffect(() => {
+    handleModeTransition(isCompact);
+  }, [isCompact, handleModeTransition]);
+
+  // Handle successful drops
+  const handleSuccessfulDrop = () => {
+    handleDropSuccess();
+  };
+
+  // Return early if no data (after all hooks)
+  if (!data) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="tech-node">
@@ -202,14 +253,23 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         onConnect={(params) => console.log('handle onConnect', params)}
       />
 
-      {/* Node Content */}
-      <div
+      {/* Animated Node Content */}
+      <AnimatedNode
+        ref={animatedNodeRef}
+        nodeId={data.id}
+        isSelected={selected}
+        isCompact={isCompact}
+        isDragging={isBeingDragged}
+        isDragOver={isDragOver}
+        onDragStart={() => setIsBeingDragged(true)}
+        onDragEnd={() => setIsBeingDragged(false)}
+        onDropSuccess={handleSuccessfulDrop}
+        enableCelebration={true}
         className={cn(
-          'bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg transition-all duration-200',
+          'bg-slate-800/90 backdrop-blur-md border border-slate-700/50 rounded-lg shadow-lg',
           'hover:shadow-xl hover:border-slate-600/70',
           selected && 'ring-2 ring-blue-500 ring-opacity-60 shadow-blue-500/20',
-          data.isMainTechnology && isDragOver && 'ring-2 ring-green-500 ring-opacity-80 shadow-green-500/30 border-green-500/50',
-          isBeingDragged && 'opacity-50 scale-95'
+          data.isMainTechnology && isDragOver && 'ring-2 ring-green-500 ring-opacity-80 shadow-green-500/30 border-green-500/50'
         )}
         style={{
           width: nodeWidth,
@@ -218,6 +278,8 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           position: 'relative',
           pointerEvents: 'all' // Ensure the node can receive pointer events
         }}
+        onMouseEnter={() => !isBeingDragged && handleHover()}
+        onMouseLeave={() => !isBeingDragged && handleHoverEnd()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -427,25 +489,63 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           )}
           
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge 
-              variant={data.pricing === 'free' ? 'success' : data.pricing === 'freemium' ? 'warning' : 'danger'}
-              size="sm"
-              outline
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ 
+                delay: 0.2, 
+                type: "spring", 
+                stiffness: 400, 
+                damping: 25 
+              }}
+              whileHover={{ 
+                scale: 1.05,
+                transition: { duration: 0.2 }
+              }}
             >
-              {data.pricing}
-            </Badge>
-            {!isCompact && (
               <Badge 
-                variant={data.difficulty === 'beginner' ? 'success' : data.difficulty === 'intermediate' ? 'warning' : 'danger'}
+                variant={data.pricing === 'free' ? 'success' : data.pricing === 'freemium' ? 'warning' : 'danger'}
                 size="sm"
                 outline
               >
-                {data.difficulty}
+                {data.pricing}
               </Badge>
-            )}
-            <div className="text-xs text-slate-400">
+            </motion.div>
+            <AnimatePresence>
+              {!isCompact && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ 
+                    delay: 0.3, 
+                    type: "spring", 
+                    stiffness: 400, 
+                    damping: 25 
+                  }}
+                  whileHover={{ 
+                    scale: 1.05,
+                    transition: { duration: 0.2 }
+                  }}
+                >
+                  <Badge 
+                    variant={data.difficulty === 'beginner' ? 'success' : data.difficulty === 'intermediate' ? 'warning' : 'danger'}
+                    size="sm"
+                    outline
+                  >
+                    {data.difficulty}
+                  </Badge>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <motion.div 
+              className="text-xs text-slate-400"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
               {data.setupTimeHours}h
-            </div>
+            </motion.div>
           </div>
 
           {/* Resource stats */}
@@ -470,60 +570,173 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   Integrated Tools:
                 </div>
               )}
-              <div className={cn(
-                "flex flex-wrap gap-2",
-                isCompact && "justify-center"
-              )}>
-                {data.subTechnologies.map((subTech) => (
-                  <div key={subTech.id} className="relative group">
-                    <Badge
-                      variant="default"
-                      size="sm"
-                      className={cn(
-                        "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border-blue-500/30 hover:border-blue-400/50 transition-colors cursor-help",
-                        isCompact ? "text-xs px-2 py-1 pr-6" : "text-xs px-2 py-1 pr-6"
-                      )}
-                      title={`${subTech.name} - ${subTech.description}\nType: ${subTech.type}\nDifficulty: ${subTech.difficulty}`}
+              <motion.div 
+                className={cn(
+                  "flex flex-wrap gap-2",
+                  isCompact && "justify-center"
+                )}
+                variants={{
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.1,
+                      delayChildren: 0.3
+                    }
+                  }
+                }}
+                initial="hidden"
+                animate="visible"
+              >
+                <AnimatePresence>
+                  {data.subTechnologies.map((subTech) => (
+                    <motion.div 
+                      key={subTech.id} 
+                      className="relative group"
+                      variants={{
+                        hidden: { 
+                          scale: 0, 
+                          opacity: 0, 
+                          rotate: -180 
+                        },
+                        visible: { 
+                          scale: 1, 
+                          opacity: 1, 
+                          rotate: 0,
+                          transition: {
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 25
+                          }
+                        },
+                        exit: { 
+                          scale: 0, 
+                          opacity: 0, 
+                          rotate: 180,
+                          transition: {
+                            duration: 0.3
+                          }
+                        }
+                      }}
+                      whileHover={{ 
+                        scale: 1.1,
+                        y: -2,
+                        transition: { 
+                          type: "spring", 
+                          stiffness: 400, 
+                          damping: 15 
+                        }
+                      }}
+                      layout
                     >
-                      <span className="mr-1">
-                        {subTech.type === 'styling' && '🎨'}
-                        {subTech.type === 'testing' && '🧪'}
-                        {subTech.type === 'documentation' && '📚'}
-                        {subTech.type === 'state-management' && '📊'}
-                        {subTech.type === 'routing' && '🗺️'}
-                        {subTech.type === 'build-tool' && '🔨'}
-                        {subTech.type === 'linting' && '✅'}
-                        {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(subTech.type) && '🔧'}
-                      </span>
-                      {isCompact ? subTech.name.split(' ')[0] : subTech.name}
-                    </Badge>
-                    {!data.isReadOnly && data.onRemoveSubTechnology && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          data.onRemoveSubTechnology!(data.id, subTech.id);
-                        }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove tool"
+                      <Badge
+                        variant="default"
+                        size="sm"
+                        className={cn(
+                          "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 border-blue-500/30 hover:border-blue-400/50 transition-colors cursor-help",
+                          isCompact ? "text-xs px-2 py-1 pr-6" : "text-xs px-2 py-1 pr-6"
+                        )}
+                        title={`${subTech.name} - ${subTech.description}\nType: ${subTech.type}\nDifficulty: ${subTech.difficulty}`}
                       >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                        <span className="mr-1">
+                          {subTech.type === 'styling' && '🎨'}
+                          {subTech.type === 'testing' && '🧪'}
+                          {subTech.type === 'documentation' && '📚'}
+                          {subTech.type === 'state-management' && '📊'}
+                          {subTech.type === 'routing' && '🗺️'}
+                          {subTech.type === 'build-tool' && '🔨'}
+                          {subTech.type === 'linting' && '✅'}
+                          {!['styling', 'testing', 'documentation', 'state-management', 'routing', 'build-tool', 'linting'].includes(subTech.type) && '🔧'}
+                        </span>
+                        {isCompact ? subTech.name.split(' ')[0] : subTech.name}
+                      </Badge>
+                      {!data.isReadOnly && data.onRemoveSubTechnology && (
+                        <motion.button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            data.onRemoveSubTechnology!(data.id, subTech.id);
+                          }}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs"
+                          title="Remove tool"
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 0, scale: 0 }}
+                          whileHover={{ 
+                            opacity: 1, 
+                            scale: 1.2,
+                            transition: { duration: 0.2 }
+                          }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </motion.button>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             </div>
           )}
 
           {/* Drop zone indicator for main technologies */}
-          {data.isMainTechnology && isDragOver && (
-            <div className="border-t border-green-500/50 pt-2 mt-3">
-              <div className="min-h-[30px] border-2 border-dashed border-green-500/50 rounded-md bg-green-500/10 flex items-center justify-center">
-                <span className="text-xs text-green-400 font-medium">📦 Drop tool here to integrate</span>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {data.isMainTechnology && isDragOver && (
+              <motion.div 
+                className="border-t border-green-500/50 pt-2 mt-3"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ 
+                  opacity: 1, 
+                  height: 'auto',
+                  transition: {
+                    duration: 0.3,
+                    ease: "easeOut"
+                  }
+                }}
+                exit={{ 
+                  opacity: 0, 
+                  height: 0,
+                  transition: {
+                    duration: 0.2
+                  }
+                }}
+              >
+                <motion.div 
+                  className="min-h-[30px] border-2 border-dashed border-green-500/50 rounded-md bg-green-500/10 flex items-center justify-center"
+                  initial={{ scale: 0.9 }}
+                  animate={{ 
+                    scale: [1, 1.05, 1],
+                    borderColor: [
+                      'rgba(34, 197, 94, 0.3)',
+                      'rgba(34, 197, 94, 0.7)',
+                      'rgba(34, 197, 94, 0.3)'
+                    ],
+                    backgroundColor: [
+                      'rgba(34, 197, 94, 0.1)',
+                      'rgba(34, 197, 94, 0.2)',
+                      'rgba(34, 197, 94, 0.1)'
+                    ]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <motion.span 
+                    className="text-xs text-green-400 font-medium"
+                    animate={{
+                      opacity: [0.8, 1, 0.8]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    📦 Drop tool here to integrate
+                  </motion.span>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Drop zone for sub-technologies - only show when not dragging */}
           {!isCompact && data.isMainTechnology && data.canAcceptSubTech && !isDragOver && (
@@ -611,7 +824,7 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             maxHeight={500}
           />
         )}
-      </div>
+      </AnimatedNode>
 
       {/* Output Handle (right) */}
       <Handle

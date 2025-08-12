@@ -276,9 +276,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const downloadFile = () => {
     const fileExtension = selectedFormat === 'json' ? 'json' : 
                          selectedFormat === 'docker' ? 'yml' : 'md';
-    const fileName = selectedFormat === 'docker' ? 'docker-compose' : 
-                    selectedFormat === 'readme' ? 'README' : 
-                    stackName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    
+    // Generate safe filename with fallback
+    const generateSafeFileName = () => {
+      if (selectedFormat === 'docker') return 'docker-compose';
+      if (selectedFormat === 'readme') return 'README';
+      
+      // For JSON files, use stack name or fallback
+      const baseName = stackName && stackName.trim() 
+        ? stackName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+        : `stack-export-${new Date().toISOString().slice(0, 10)}`;
+      
+      return baseName || 'untitled-stack';
+    };
+    
+    const fileName = generateSafeFileName();
     
     const blob = new Blob([exportContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
