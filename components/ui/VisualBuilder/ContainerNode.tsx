@@ -14,7 +14,7 @@ export const ContainerViewContext = createContext<ContainerViewMode>('nested');
 
 export interface ContainerNodeData extends NodeData {
   isContainer: true;
-  containerType: 'docker' | 'kubernetes';
+  containerType?: 'docker' | 'kubernetes' | string;
   containedNodes?: NodeData[];
   ports?: string[];
   volumes?: string[];

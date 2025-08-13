@@ -29,7 +29,7 @@ import { ResizeHandle } from './ResizeHandle';
 
 export interface NestedContainerNodeData extends NodeData {
   isContainer: true;
-  containerType: 'docker' | 'kubernetes';
+  containerType?: 'docker' | 'kubernetes' | string;
   containedNodes: NodeData[];
   ports?: string[];
   networks?: string[];
@@ -170,7 +170,8 @@ export const NestedContainerNode = memo<NodeProps<NestedContainerNodeData>>(({
       case 'kubernetes':
         return <Layers className="h-5 w-5 text-green-400" />;
       default:
-        return <Server className="h-5 w-5 text-gray-400" />;
+        // Custom container types get a server icon
+        return <Server className="h-5 w-5 text-purple-400" />;
     }
   };
 

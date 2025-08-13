@@ -115,7 +115,9 @@ export class ContainerManager {
       return true;
     }
 
-    return false;
+    // Custom containers (no specific containerType or other types) can contain any component
+    // This allows containers created without Docker/Kubernetes badges to accept components
+    return true;
   }
 
   /**
