@@ -158,23 +158,12 @@ const stack = {
                     Start Building
                   </Button>
                 </Link>
-                
-                <Link href="https://github.com" target="_blank">
-                  <Button 
-                    variant="secondary" 
-                    size="lg" 
-                    className="min-w-[200px] h-14 text-base font-semibold border-slate-700 hover:border-slate-600"
-                  >
-                    <Github className="mr-2 h-5 w-5" />
-                    View on GitHub
-                  </Button>
-                </Link>
               </div>
               
               <div className="flex items-center gap-6 text-sm text-slate-400">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  Free & Open Source
+                  Free
                 </div>
                 <div className="flex items-center gap-2">
                   <Code2 className="h-4 w-4" />
@@ -375,62 +364,7 @@ const stack = {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative z-10 px-4 py-32 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl font-bold text-white mb-6">
-              Start building your stack visually
-            </h2>
-            <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-              No sign-up required. Free and open source. Export to any format.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/builder">
-                <Button 
-                  size="lg" 
-                  className="min-w-[200px] h-14 text-base font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-600/20"
-                >
-                  <Workflow className="mr-2 h-5 w-5" />
-                  Launch Builder
-                </Button>
-              </Link>
-              
-              <Link href="https://github.com" target="_blank">
-                <Button 
-                  variant="secondary" 
-                  size="lg" 
-                  className="min-w-[200px] h-14 text-base font-semibold border-slate-700 hover:border-slate-600"
-                >
-                  <Github className="mr-2 h-5 w-5" />
-                  Star on GitHub
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="mt-12 flex items-center justify-center gap-8 text-sm text-slate-500">
-              <div className="flex items-center gap-2">
-                <Terminal className="h-4 w-4" />
-                <span>CLI Coming Soon</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <FileJson className="h-4 w-4" />
-                <span>API Available</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                <span>npm Package</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      
 
       {/* Footer */}
       <footer className="relative z-10 px-4 py-16 sm:px-6 lg:px-8 border-t border-slate-800">
