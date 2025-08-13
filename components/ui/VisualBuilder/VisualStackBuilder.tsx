@@ -957,7 +957,13 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setStackName(template.name);
     setStackDescription(template.description);
     setNodes(template.nodes);
-    setConnections(template.connections);
+    // Ensure connections have required positions
+    const connectionsWithPositions = template.connections.map(conn => ({
+      ...conn,
+      sourcePosition: { x: 0, y: 0 },
+      targetPosition: { x: 0, y: 0 }
+    }));
+    setConnections(connectionsWithPositions);
   };
 
   // Handle import success
@@ -1014,11 +1020,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     });
   }, [nodes]);
 
-  // Find a node in the main nodes list or in container containedNodes
-  const findNode = useCallback((nodeId: string): CanvasNode | undefined => {
-    return findNodeInList(nodeId, nodes);
-  }, [nodes]);
-
   // Helper function to find node in any node list
   const findNodeInList = useCallback((nodeId: string, nodesList: CanvasNode[]): CanvasNode | undefined => {
     // First check main nodes
@@ -1030,11 +1031,16 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       if ('isContainer' in node && node.isContainer) {
         const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
         const containedNode = container.containedNodes?.find(contained => contained.id === nodeId);
-        if (containedNode) return containedNode;
+        if (containedNode) return { ...containedNode, position: { x: 0, y: 0 } } as CanvasNode;
       }
     }
     return undefined;
   }, []);
+
+  // Find a node in the main nodes list or in container containedNodes
+  const findNode = useCallback((nodeId: string): CanvasNode | undefined => {
+    return findNodeInList(nodeId, nodes);
+  }, [nodes, findNodeInList]);
 
   // Helper function to remove duplicates - ensure node is only in main list OR in a container, not both
   const removeDuplicateNodes = useCallback((nodesList: CanvasNode[]): CanvasNode[] => {
@@ -1083,6 +1089,28 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     
     return cleanedNodes;
   }, []);
+
+  // Count total components including those in containers
+  const getTotalComponentCount = useCallback((): number => {
+    let totalCount = 0;
+    
+    nodes.forEach(node => {
+      if ('isContainer' in node && node.isContainer) {
+        // Count the container itself as 1 component
+        totalCount += 1;
+        // Count each component inside the container
+        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
+        if (container.containedNodes) {
+          totalCount += container.containedNodes.length;
+        }
+      } else {
+        // Count regular nodes
+        totalCount += 1;
+      }
+    });
+    
+    return totalCount;
+  }, [nodes]);
 
   // Clean nodes for rendering (memoized to avoid recalculation)
   const cleanNodes = useMemo(() => {
@@ -1184,7 +1212,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
       // Final cleanup to ensure no duplicates
       return removeDuplicateNodes(cleanedNodes);
     });
-  }, [updateContainerNodes]);
+  }, [updateContainerNodes, removeDuplicateNodes]);
 
   // Handle opening custom container modal
   const handleOpenCustomContainerModal = useCallback(() => {
@@ -1273,7 +1301,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           const container = node as CanvasNode & { isContainer: true; containedNodes?: NodeData[] };
           
           // Create a compact version of the node for the container
-          const nodeForContainer: NodeData = {
+          const nodeForContainer: CanvasNode = {
             ...nodeToMove,
             position: { x: 20 + (container.containedNodes?.length || 0) * 10, y: 20 + (container.containedNodes?.length || 0) * 10 },
             width: 220,
@@ -1295,7 +1323,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     });
     
     saveToHistory();
-  }, [saveToHistory]);
+  }, [saveToHistory, findNodeInList]);
 
   // Handle adding component to a specific container (for new components from palette)
   const handleAddComponentToContainer = useCallback((component: NodeData, containerId: string, isMoving = false) => {
@@ -1312,7 +1340,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     // Otherwise, create a new node
     const nodeId = `${component.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const nodeToAdd: NodeData = {
+    const nodeToAdd: CanvasNode = {
       ...component,
       id: nodeId,
       position: { x: 20, y: 20 },
@@ -1388,7 +1416,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
     // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
     if ((component.id === 'docker' || component.id === 'kubernetes') && !component.isContainer) {
-      newNode = convertToContainer(newNode);
+      const convertedNode = convertToContainer(newNode);
+      newNode = { ...convertedNode, position: newNode.position } as CanvasNode;
     }
     
     // Handle pre-configured container components
@@ -1412,7 +1441,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     } else {
       setNodes(prev => [...prev, newNode]);
     }
-  }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop, checkComponentLimit, checkFeatureAccess]);
+  }, [handleAddSubTechnology, nodes, convertToContainer, handleNodeDrop, checkComponentLimit, checkFeatureAccess, getTotalComponentCount]);
 
   // Add component to canvas
   const handleAddComponent = useCallback((component: NodeData | ExtendedComponent) => {
@@ -1485,7 +1514,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
 
     // Convert Docker/Kubernetes to container nodes (but not if they're already containers)
     if ((component.id === 'docker' || component.id === 'kubernetes') && !component.isContainer) {
-      newNode = convertToContainer(newNode);
+      const convertedNode = convertToContainer(newNode);
+      newNode = { ...convertedNode, position: newNode.position } as CanvasNode;
     }
     
     // Handle pre-configured container components
@@ -1502,7 +1532,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
 
     setNodes(prev => [...prev, newNode]);
-  }, [handleAddSubTechnology, nodes, convertToContainer, checkComponentLimit, checkFeatureAccess]);
+  }, [handleAddSubTechnology, nodes, convertToContainer, checkComponentLimit, checkFeatureAccess, getTotalComponentCount]);
 
 
   // Handle custom container creation
@@ -1561,27 +1591,6 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     setNodeToConvert(null);
   }, [nodeToConvert]);
 
-  // Calculate total component count including those inside containers
-  const getTotalComponentCount = useCallback((): number => {
-    let totalCount = 0;
-    
-    nodes.forEach(node => {
-      if ('isContainer' in node && node.isContainer) {
-        // Count the container itself as 1 component
-        totalCount += 1;
-        // Count each component inside the container
-        const container = node as CanvasNode & { containedNodes?: CanvasNode[] };
-        if (container.containedNodes) {
-          totalCount += container.containedNodes.length;
-        }
-      } else {
-        // Count regular nodes
-        totalCount += 1;
-      }
-    });
-    
-    return totalCount;
-  }, [nodes]);
 
   // Calculate stack statistics (for future use - currently unused but keeping for analytics)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
