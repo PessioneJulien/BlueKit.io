@@ -13,7 +13,7 @@ interface UserSubscription {
 export function useSubscription() {
   const { user } = useSupabaseAuth();
   const [subscription, setSubscription] = useState<UserSubscription>({
-    plan: 'free',
+    plan: 'professional',
     status: null,
     currentPeriodEnd: null,
     limits: SUBSCRIPTION_PLANS.free.limits,
@@ -23,7 +23,7 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) {
       setSubscription({
-        plan: 'free',
+        plan: 'professional',
         status: null,
         currentPeriodEnd: null,
         limits: SUBSCRIPTION_PLANS.free.limits,
@@ -45,7 +45,7 @@ export function useSubscription() {
           // Si la table n'existe pas ou si l'utilisateur n'a pas de profil, utiliser le plan gratuit
           console.warn('Subscription fetch warning:', error.message);
           setSubscription({
-            plan: 'free',
+            plan: 'professional',
             status: null,
             currentPeriodEnd: null,
             limits: SUBSCRIPTION_PLANS.free.limits,
@@ -56,7 +56,7 @@ export function useSubscription() {
 
         if (data && data.subscription_plan && data.subscription_status === 'active') {
           // Map price ID to plan
-          let plan: SubscriptionPlan = 'free';
+          let plan: SubscriptionPlan = 'professional';
           if (data.subscription_plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER) {
             plan = 'starter';
           } else if (data.subscription_plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PROFESSIONAL) {

@@ -462,7 +462,7 @@ const stack = {
                 <li><Link href="/builder" className="text-slate-400 hover:text-white transition-colors">Visual Builder</Link></li>
                 <li><Link href="/stacks" className="text-slate-400 hover:text-white transition-colors">Stack Library</Link></li>
                 <li><Link href="/components" className="text-slate-400 hover:text-white transition-colors">Components</Link></li>
-                <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors">Pricing</Link></li>
+                {/* <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors">Pricing</Link></li> */}
               </ul>
             </div>
             

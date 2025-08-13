@@ -19,7 +19,7 @@ export function useStackLimits(onShowUpgradeModal?: (reason: string, currentCoun
     switch (subscription.plan) {
       case 'starter':
         return {
-          maxStacks: 10,
+          maxStacks: -1,
           maxComponentsPerStack: 25,
           maxExportsPerMonth: 50,
           canUseContainers: true,
@@ -46,9 +46,9 @@ export function useStackLimits(onShowUpgradeModal?: (reason: string, currentCoun
         };
       default: // free
         return {
-          maxStacks: 3,
-          maxComponentsPerStack: 10,
-          maxExportsPerMonth: 5,
+          maxStacks: -1,
+          maxComponentsPerStack: -1,
+          maxExportsPerMonth: -1,
           canUseContainers: false,
           canUseCustomStyling: false,
           canShareStacks: false,

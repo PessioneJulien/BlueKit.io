@@ -21,11 +21,26 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     
     // Increment usage count in community_components table
+    // NOTE: Incrément non atomique (acceptable pour du tracking)
+    const { data: currentRow, error: selectError } = await supabase
+      .from('community_components')
+      .select('usage_count')
+      .eq('id', componentId)
+      .single();
+
+    if (selectError) {
+      console.error('[Community Components Usage API] Select error:', selectError);
+      return NextResponse.json(
+        { error: 'Failed to fetch current usage count' },
+        { status: 500 }
+      );
+    }
+
+    const nextCount = (currentRow?.usage_count ?? 0) + 1;
+
     const { error: updateError } = await supabase
       .from('community_components')
-      .update({ 
-        usage_count: supabase.sql`usage_count + 1` 
-      })
+      .update({ usage_count: nextCount })
       .eq('id', componentId);
     
     if (updateError) {
