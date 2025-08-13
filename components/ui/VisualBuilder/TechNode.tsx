@@ -14,7 +14,6 @@ import { NodeCustomStyle } from './NodeColorPicker';
 import { AnimatedNode, AnimatedNodeRef } from '@/components/ui/animated/AnimatedNode';
 import { useNodeAnimations } from '@/lib/hooks/useNodeAnimations';
 import { logger } from '@/lib/utils/logger';
-import { animationSystem } from '@/lib/animations/animationSystem';
 
 interface TechNodeData extends NodeData {
   isCompact?: boolean;
@@ -61,15 +60,10 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
   
   // Animation hooks
   const {
-    controls,
-    handleAppear,
-    handleDisappear,
     handleHover,
     handleHoverEnd,
     handleSelect,
     handleDeselect,
-    handleDragStart: handleAnimatedDragStart,
-    handleDragEnd: handleAnimatedDragEnd,
     handleModeTransition,
     handleDropSuccess,
     handleError
@@ -181,37 +175,6 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
     }
   };
 
-  // Handle node drag start
-  const handleDragStart = (e: React.DragEvent) => {
-    setIsBeingDragged(true);
-    handleAnimatedDragStart();
-    logger.dev('🎯 Node drag started:', data.name);
-    
-    // Set drag data for container drop detection
-    try {
-      const dragData = {
-        type: 'node',
-        node: data
-      };
-      const jsonData = JSON.stringify(dragData);
-      logger.dev('🎯 Setting drag data:', jsonData);
-      
-      e.dataTransfer.setData('application/json', jsonData);
-      e.dataTransfer.setData('text/plain', data.id);
-      e.dataTransfer.effectAllowed = 'move';
-      
-      logger.dev('🎯 Drag data set successfully');
-    } catch (error) {
-      logger.error('Error setting drag data:', error);
-    }
-  };
-
-  // Handle node drag end
-  const handleDragEnd = () => {
-    setIsBeingDragged(false);
-    handleAnimatedDragEnd();
-    logger.dev('🎯 Node drag ended:', data.name);
-  };
 
   // Handle selection changes
   useEffect(() => {
@@ -262,8 +225,15 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
         isCompact={isCompact}
         isDragging={isBeingDragged}
         isDragOver={isDragOver}
-        onDragStart={() => setIsBeingDragged(true)}
-        onDragEnd={() => setIsBeingDragged(false)}
+        onDragStart={() => {
+          setIsBeingDragged(true);
+          // Immediately disable hover effects during drag
+          handleHoverEnd();
+        }}
+        onDragEnd={() => {
+          setIsBeingDragged(false);
+          // Removed delayed handleHoverEnd to avoid calling controls after unmount
+        }}
         onDropSuccess={handleSuccessfulDrop}
         enableCelebration={true}
         className={cn(
@@ -491,17 +461,16 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
+              initial={isBeingDragged ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ 
-                delay: 0.2, 
-                type: "spring", 
-                stiffness: 400, 
-                damping: 25 
+              transition={isBeingDragged ? { duration: 0 } : { 
+                delay: 0.15, 
+                duration: 0.3,
+                ease: [0.16, 1, 0.3, 1]
               }}
-              whileHover={{ 
-                scale: 1.05,
-                transition: { duration: 0.2 }
+              whileHover={isBeingDragged ? {} : { 
+                scale: 1.02,
+                transition: { duration: 0.15, ease: "easeOut" }
               }}
             >
               <Badge 
@@ -515,18 +484,17 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
             <AnimatePresence>
               {!isCompact && (
                 <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={isBeingDragged ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={{ 
-                    delay: 0.3, 
-                    type: "spring", 
-                    stiffness: 400, 
-                    damping: 25 
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={isBeingDragged ? { duration: 0 } : { 
+                    delay: 0.2, 
+                    duration: 0.25,
+                    ease: [0.16, 1, 0.3, 1]
                   }}
-                  whileHover={{ 
-                    scale: 1.05,
-                    transition: { duration: 0.2 }
+                  whileHover={isBeingDragged ? {} : { 
+                    scale: 1.02,
+                    transition: { duration: 0.15, ease: "easeOut" }
                   }}
                 >
                   <Badge 
@@ -594,36 +562,35 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                       className="relative group"
                       variants={{
                         hidden: { 
-                          scale: 0, 
+                          scale: 0.7, 
                           opacity: 0, 
-                          rotate: -180 
+                          rotate: -15 
                         },
                         visible: { 
                           scale: 1, 
                           opacity: 1, 
                           rotate: 0,
                           transition: {
-                            type: "spring",
-                            stiffness: 400,
-                            damping: 25
+                            duration: 0.25,
+                            ease: [0.16, 1, 0.3, 1]
                           }
                         },
                         exit: { 
-                          scale: 0, 
+                          scale: 0.7, 
                           opacity: 0, 
-                          rotate: 180,
+                          rotate: 15,
                           transition: {
-                            duration: 0.3
+                            duration: 0.2,
+                            ease: "easeIn"
                           }
                         }
                       }}
-                      whileHover={{ 
-                        scale: 1.1,
-                        y: -2,
+                      whileHover={isBeingDragged ? {} : { 
+                        scale: 1.03,
+                        y: -1,
                         transition: { 
-                          type: "spring", 
-                          stiffness: 400, 
-                          damping: 15 
+                          duration: 0.15, 
+                          ease: "easeOut"
                         }
                       }}
                       layout
@@ -662,8 +629,8 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                           animate={{ opacity: 0, scale: 0 }}
                           whileHover={{ 
                             opacity: 1, 
-                            scale: 1.2,
-                            transition: { duration: 0.2 }
+                            scale: 1.1,
+                            transition: { duration: 0.15, ease: "easeOut" }
                           }}
                           whileTap={{ scale: 0.9 }}
                         >
@@ -703,20 +670,20 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   className="min-h-[30px] border-2 border-dashed border-green-500/50 rounded-md bg-green-500/10 flex items-center justify-center"
                   initial={{ scale: 0.9 }}
                   animate={{ 
-                    scale: [1, 1.05, 1],
+                    scale: [1, 1.01, 1],
                     borderColor: [
-                      'rgba(34, 197, 94, 0.3)',
-                      'rgba(34, 197, 94, 0.7)',
-                      'rgba(34, 197, 94, 0.3)'
+                      'rgba(34, 197, 94, 0.4)',
+                      'rgba(34, 197, 94, 0.6)',
+                      'rgba(34, 197, 94, 0.4)'
                     ],
                     backgroundColor: [
-                      'rgba(34, 197, 94, 0.1)',
-                      'rgba(34, 197, 94, 0.2)',
-                      'rgba(34, 197, 94, 0.1)'
+                      'rgba(34, 197, 94, 0.08)',
+                      'rgba(34, 197, 94, 0.12)',
+                      'rgba(34, 197, 94, 0.08)'
                     ]
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 3,
                     repeat: Infinity,
                     ease: "easeInOut"
                   }}
@@ -724,10 +691,10 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
                   <motion.span 
                     className="text-xs text-green-400 font-medium"
                     animate={{
-                      opacity: [0.8, 1, 0.8]
+                      opacity: [0.9, 1, 0.9]
                     }}
                     transition={{
-                      duration: 1.5,
+                      duration: 2.5,
                       repeat: Infinity,
                       ease: "easeInOut"
                     }}
@@ -889,3 +856,31 @@ export const TechNode = memo<NodeProps<TechNodeData>>(({ data, selected }) => {
 });
 
 TechNode.displayName = 'TechNode';
+
+// Custom comparison function to prevent unnecessary re-renders
+const arePropsEqual = (prevProps: NodeProps<TechNodeData>, nextProps: NodeProps<TechNodeData>) => {
+  // CRITICAL: During drag operations, prevent all re-renders except for the dragged node
+  const isDragging = nextProps.dragging || prevProps.dragging;
+  const isThisNodeDragging = nextProps.data.id === nextProps.dragging || prevProps.data.id === prevProps.dragging;
+  
+  if (isDragging && !isThisNodeDragging) {
+    // If any node is being dragged and it's NOT this node, prevent re-render entirely
+    return true;
+  }
+  
+  // Only re-render if essential props actually changed
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.data.name === nextProps.data.name &&
+    prevProps.data.isCompact === nextProps.data.isCompact &&
+    prevProps.data.width === nextProps.data.width &&
+    prevProps.data.height === nextProps.data.height &&
+    prevProps.data.documentation === nextProps.data.documentation &&
+    prevProps.data.subTechnologies?.length === nextProps.data.subTechnologies?.length &&
+    prevProps.data.customStyle === nextProps.data.customStyle &&
+    prevProps.data.isReadOnly === nextProps.data.isReadOnly
+  );
+};
+
+export const OptimizedTechNode = memo(TechNode, arePropsEqual);

@@ -23,7 +23,7 @@ import {
   BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { TechNode } from './TechNode';
+import { OptimizedTechNode as TechNode } from './TechNode';
 import { NodeData, SubTechnology } from './CanvasNode';
 import { ConnectionStyle } from './ConnectionStyleEditor';
 import { NodeCustomStyle } from './NodeColorPicker';
@@ -115,7 +115,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 }) => {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
-  const { updateContainerNodes, detectContainerDrops } = useContainerLogic();
+  const { detectContainerDrops } = useContainerLogic();
   
   // Context menu state
   const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null);
@@ -123,9 +123,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   
   // Dragging state for ghost preview
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  // Removed mousePosition to avoid frequent re-renders
+  // const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
-  // Convert our data format to ReactFlow format
+  // Convert our data format to ReactFlow format - MEMOIZED for performance
   const convertToReactFlowNodes = useCallback((nodeList: typeof externalNodes): Node[] => {
     return nodeList.map(node => {
       // Check if it's a container node
@@ -137,120 +138,121 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         type: nodeType,
         position: node.position,
         data: {
-        ...node,
-        onDelete: isContainer ? ((id: string) => {
-          // Container deletion handler
-          const updatedNodes = externalNodes.filter(n => n.id !== id);
-          onNodesChange(updatedNodes);
-          
-          const updatedConnections = externalConnections.filter(
-            conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
-          );
-          onConnectionsChange(updatedConnections);
-        }) : (onDeleteNode || ((id: string) => {
-          const updatedNodes = externalNodes.filter(n => n.id !== id);
-          onNodesChange(updatedNodes);
-          
-          const updatedConnections = externalConnections.filter(
-            conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
-          );
-          onConnectionsChange(updatedConnections);
-        })),
-        onToggleCompact: isContainer ? ((id: string) => {
-          // Container toggle compact handler
-          const updatedNodes = externalNodes.map(n =>
-            n.id === id ? { ...n, isCompact: !n.isCompact } : n
-          );
-          onNodesChange(updatedNodes);
-        }) : undefined,
-        onToggleMode: (id: string) => {
-          // Find the current state of the node
-          const currentNode = externalNodes.find(n => n.id === id);
-          if (currentNode) {
-            // Default to true if isCompact is undefined, then toggle
-            const currentCompactState = currentNode.isCompact ?? true;
-            const newCompactState = !currentCompactState;
-            const hasSubTech = currentNode.subTechnologies && currentNode.subTechnologies.length > 0;
+          ...node,
+          onDelete: isContainer ? ((id: string) => {
+            // Container deletion handler
+            const updatedNodes = externalNodes.filter(n => n.id !== id);
+            onNodesChange && onNodesChange(updatedNodes);
             
-            logger.dev('Toggle mode for node:', id, 'from', currentCompactState, 'to', newCompactState);
+            const updatedConnections = externalConnections.filter(
+              conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
+            );
+            onConnectionsChange && onConnectionsChange(updatedConnections);
+          }) : (onDeleteNode || ((id: string) => {
+            const updatedNodes = externalNodes.filter(n => n.id !== id);
+            onNodesChange && onNodesChange(updatedNodes);
             
-            // Adjust dimensions based on new compact state
-            const newWidth = newCompactState ? 200 : 300;
-            const newHeight = newCompactState ? 
-              (hasSubTech ? 120 : 80) : 
-              (hasSubTech ? 180 : 140);
-            
+            const updatedConnections = externalConnections.filter(
+              conn => conn.sourceNodeId !== id && conn.targetNodeId !== id
+            );
+            onConnectionsChange && onConnectionsChange(updatedConnections);
+          })),
+          onToggleCompact: isContainer ? ((id: string) => {
+            // Container toggle compact handler
+            const updatedNodes = externalNodes.map(n =>
+              n.id === id ? { ...n, isCompact: !n.isCompact } : n
+            );
+            onNodesChange && onNodesChange(updatedNodes);
+          }) : undefined,
+          onToggleMode: (id: string) => {
+            // Find the current state of the node
+            const currentNode = externalNodes.find(n => n.id === id);
+            if (currentNode) {
+              // Default to true if isCompact is undefined, then toggle
+              const currentCompactState = currentNode.isCompact ?? true;
+              const newCompactState = !currentCompactState;
+              const hasSubTech = currentNode.subTechnologies && currentNode.subTechnologies.length > 0;
+              
+              logger.dev('Toggle mode for node:', id, 'from', currentCompactState, 'to', newCompactState);
+              
+              // Adjust dimensions based on new compact state
+              const newWidth = newCompactState ? 200 : 300;
+              const newHeight = newCompactState ? 
+                (hasSubTech ? 120 : 80) : 
+                (hasSubTech ? 180 : 140);
+              
+              const updatedNodes = externalNodes.map(n =>
+                n.id === id ? { 
+                  ...n, 
+                  isCompact: newCompactState,
+                  width: newWidth,
+                  height: newHeight
+                } : n
+              );
+              onNodesChange && onNodesChange(updatedNodes);
+            }
+          },
+          onResize: (id: string, width: number, height: number) => {
+            const updatedNodes = externalNodes.map(n =>
+              n.id === id ? { ...n, width, height } : n
+            );
+            onNodesChange && onNodesChange(updatedNodes);
+          },
+          onConfigure: (id: string, resources: unknown, envVars: Record<string, string>) => {
             const updatedNodes = externalNodes.map(n =>
               n.id === id ? { 
                 ...n, 
-                isCompact: newCompactState,
-                width: newWidth,
-                height: newHeight
+                resources,
+                environmentVariables: envVars
               } : n
             );
-            onNodesChange(updatedNodes);
-          }
-        },
-        onResize: (id: string, width: number, height: number) => {
-          const updatedNodes = externalNodes.map(n =>
-            n.id === id ? { ...n, width, height } : n
-          );
-          onNodesChange(updatedNodes);
-        },
-        onConfigure: (id: string, resources: unknown, envVars: Record<string, string>) => {
-          const updatedNodes = externalNodes.map(n =>
-            n.id === id ? { 
-              ...n, 
-              resources,
-              environmentVariables: envVars
-            } : n
-          );
-          onNodesChange(updatedNodes);
-        },
-        onDocumentationSave,
-        onAddSubTechnology,
-        onNameChange: onNameChange ? (nodeId: string, newName: string) => {
-          const updatedNodes = externalNodes.map(n =>
-            n.id === nodeId ? { ...n, name: newName } : n
-          );
-          onNodesChange(updatedNodes);
-        } : undefined,
-        onRemoveSubTechnology: onRemoveSubTechnology || ((mainTechId: string, subTechId: string) => {
-          const updatedNodes = externalNodes.map(node => {
-            if (node.id === mainTechId && node.subTechnologies) {
-              const newSubTechnologies = node.subTechnologies.filter(st => st.id !== subTechId);
-              const isCompact = node.isCompact ?? true;
-              
-              // Adjust height when removing sub-technology
-              const newHeight = isCompact ? 
-                (newSubTechnologies.length > 0 ? Math.min(120 + (newSubTechnologies.length * 10), 200) : 80) : 
-                (newSubTechnologies.length > 0 ? Math.min(180 + (newSubTechnologies.length * 15), 280) : 140);
-              
-              return {
-                ...node,
-                subTechnologies: newSubTechnologies,
-                height: newHeight
-              };
-            }
-            return node;
-          });
-          
-          onNodesChange(updatedNodes);
-        }),
-        onStyleChange: onNodeStyleChange,
-        onNodeSelect,
-        onRemoveFromContainer,
-        onDropComponent,
-        onAddComponentToContainer,
-        availableSubTechnologies,
-        isReadOnly,
-        draggingNodeId,
-        draggingNode: draggingNodeId ? externalNodes.find(n => n.id === draggingNodeId) : null,
-        mousePosition
+            onNodesChange && onNodesChange(updatedNodes);
+          },
+          onDocumentationSave,
+          onAddSubTechnology,
+          onNameChange: onNameChange ? (nodeId: string, newName: string) => {
+            const updatedNodes = externalNodes.map(n =>
+              n.id === nodeId ? { ...n, name: newName } : n
+            );
+            onNodesChange && onNodesChange(updatedNodes);
+          } : undefined,
+          onRemoveSubTechnology: onRemoveSubTechnology || ((mainTechId: string, subTechId: string) => {
+            const updatedNodes = externalNodes.map(node => {
+              if (node.id === mainTechId && node.subTechnologies) {
+                const newSubTechnologies = node.subTechnologies.filter(st => st.id !== subTechId);
+                const isCompact = node.isCompact ?? true;
+                
+                // Adjust height when removing sub-technology
+                const newHeight = isCompact ? 
+                  (newSubTechnologies.length > 0 ? Math.min(120 + (newSubTechnologies.length * 10), 200) : 80) : 
+                  (newSubTechnologies.length > 0 ? Math.min(180 + (newSubTechnologies.length * 15), 280) : 140);
+                
+                return {
+                  ...node,
+                  subTechnologies: newSubTechnologies,
+                  height: newHeight
+                };
+              }
+              return node;
+            });
+            
+            onNodesChange && onNodesChange(updatedNodes);
+          }),
+          onStyleChange: onNodeStyleChange,
+          onNodeSelect,
+          onRemoveFromContainer,
+          onDropComponent,
+          onAddComponentToContainer,
+          availableSubTechnologies,
+          isReadOnly
+          // Removed transient drag-related props to prevent re-renders
+          // draggingNodeId,
+          // draggingNode: draggingNodeId ? externalNodes.find(n => n.id === draggingNodeId) : null,
+          // mousePosition
         }
       };
     });
-  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNameChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onAddComponentToContainer, availableSubTechnologies, isReadOnly, draggingNodeId, mousePosition]);
+  }, [onNodesChange, externalConnections, onConnectionsChange, externalNodes, onDocumentationSave, onAddSubTechnology, onDeleteNode, onRemoveSubTechnology, onNodeStyleChange, onNameChange, onNodeSelect, onRemoveFromContainer, onDropComponent, onAddComponentToContainer, availableSubTechnologies, isReadOnly]);
 
   // Handle connection context menu
   const handleConnectionContextMenu = useCallback((connectionId: string, event: React.MouseEvent) => {
@@ -281,14 +283,20 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const handleNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
     // console.log('🎯 Node drag started:', node.id, 'setting draggingNodeId');
     setDraggingNodeId(node.id);
-    setMousePosition({ x: event.clientX, y: event.clientY });
+    // setMousePosition({ x: event.clientX, y: event.clientY });
+    
+    // CRITICAL: Add global drag class to disable animations on all nodes
+    document.body.classList.add('react-flow-dragging');
   }, []);
   
   // Handle when a node drag ends - check if it's over a container
   const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
     // console.log('🎯 Node drag stopped:', node.id, 'at position:', node.position, 'clearing draggingNodeId');
     setDraggingNodeId(null);
-    setMousePosition(null);
+    // setMousePosition(null);
+    
+    // CRITICAL: Remove global drag class to re-enable animations
+    document.body.classList.remove('react-flow-dragging');
     
     // Find if the node was dropped over a container
     const allNodes = nodes;
@@ -428,20 +436,20 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         
         if (movedContainers.length > 0) {
           logger.dev('🏗️ Container moved, skipping container detection to preserve dimensions');
-          onNodesChange(updatedNodes);
+          onNodesChange && onNodesChange(updatedNodes);
         } else {
           logger.dev('🎯 Non-container moved, checking for container integration');
           const nodesWithContainerUpdates = detectContainerDrops(updatedNodes);
-          onNodesChange(nodesWithContainerUpdates);
+          onNodesChange && onNodesChange(nodesWithContainerUpdates);
         }
       } else {
-        // Just update positions without container detection during drag
-        onNodesChange(updatedNodes);
+        // During drag: do NOT notify parent to avoid re-mounts and flicker
+        // Parent will be updated on drop
       }
     }
     
     // console.log('ReactFlow nodes changed:', changes);
-  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, detectContainerDrops]);
+  }, [onNodesChangeInternal, onDeleteNode, onNodesChange, externalNodes, nodes, detectContainerDrops]);
 
   // Handle new connections
   const onConnect = useCallback((params: ReactFlowConnection) => {
@@ -465,7 +473,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       type: connectionType
     };
 
-    onConnectionsChange([...externalConnections, newConnection]);
+    onConnectionsChange && onConnectionsChange([...externalConnections, newConnection]);
 
     // Also update ReactFlow edges
     const strokeColor = connectionType === 'compatible' ? '#10b981' : 
@@ -502,7 +510,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       const remainingConnections = externalConnections.filter(
         conn => !deletedEdges.some((deleted) => deleted.id === conn.id)
       );
-      onConnectionsChange(remainingConnections);
+      onConnectionsChange && onConnectionsChange(remainingConnections);
     }
   }, [onEdgesChangeInternal, externalConnections, onConnectionsChange]);
 
@@ -629,19 +637,19 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     setEdges(reactFlowEdges);
   }, [externalConnections, convertToReactFlowEdges, setEdges]);
 
-  // Track mouse position during drag for ghost preview
-  useEffect(() => {
-    if (!draggingNodeId) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [draggingNodeId]);
+  // Track mouse position during drag for ghost preview - removed to avoid re-renders
+  // useEffect(() => {
+  //   if (!draggingNodeId) return;
+  //
+  //   const handleMouseMove = (e: MouseEvent) => {
+  //     setMousePosition({ x: e.clientX, y: e.clientY });
+  //   };
+  //
+  //   document.addEventListener('mousemove', handleMouseMove);
+  //   return () => {
+  //     document.removeEventListener('mousemove', handleMouseMove);
+  //   };
+  // }, [draggingNodeId]);
 
 
   return (

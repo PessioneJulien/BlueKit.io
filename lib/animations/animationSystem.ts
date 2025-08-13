@@ -241,16 +241,15 @@ class AnimationSystem {
         return {
           variants: {
             hover: {
-              scale: 1.05,
-              y: -2,
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
-              filter: 'brightness(1.1)'
+              scale: 1.02,
+              y: -1,
+              boxShadow: '0 8px 20px rgba(0, 0, 0, 0.25)',
+              filter: 'brightness(1.05)'
             }
           },
           transition: {
-            type: "spring",
-            stiffness: 400,
-            damping: 20
+            duration: 0.15,
+            ease: "easeOut"
           }
         };
 
@@ -258,14 +257,13 @@ class AnimationSystem {
         return {
           variants: {
             selected: {
-              scale: 1.02,
-              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3)'
+              scale: 1.01,
+              boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.4), 0 0 15px rgba(59, 130, 246, 0.2)'
             }
           },
           transition: {
-            type: "spring",
-            stiffness: 300,
-            damping: 20
+            duration: 0.2,
+            ease: "easeOut"
           }
         };
 
@@ -332,17 +330,16 @@ class AnimationSystem {
         return {
           variants: {
             drag: {
-              scale: 1.1,
-              rotate: 5,
-              opacity: 0.8,
+              scale: 1.05,
+              rotate: 2,
+              opacity: 0.85,
               zIndex: 1000,
-              filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))'
+              filter: 'drop-shadow(0 8px 15px rgba(0,0,0,0.25))'
             }
           },
           transition: {
-            type: "spring",
-            stiffness: 300,
-            damping: 20
+            duration: 0.2,
+            ease: "easeOut"
           }
         };
 
@@ -350,13 +347,13 @@ class AnimationSystem {
         return {
           variants: {
             success: {
-              scale: [1, 1.2, 1],
-              backgroundColor: ['rgba(16, 185, 129, 0.1)', 'rgba(16, 185, 129, 0.3)', 'rgba(16, 185, 129, 0.1)'],
-              borderColor: ['rgba(16, 185, 129, 0.3)', 'rgba(16, 185, 129, 0.8)', 'rgba(16, 185, 129, 0.3)']
+              scale: [1, 1.08, 1],
+              backgroundColor: ['rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.08)'],
+              borderColor: ['rgba(16, 185, 129, 0.3)', 'rgba(16, 185, 129, 0.6)', 'rgba(16, 185, 129, 0.3)']
             }
           },
           transition: {
-            duration: 0.6,
+            duration: 0.4,
             ease: "easeOut"
           }
         };
@@ -379,13 +376,13 @@ class AnimationSystem {
         return {
           variants: {
             celebrate: {
-              scale: [1, 1.3, 1],
-              rotate: [0, 15, -15, 0],
-              filter: ['hue-rotate(0deg)', 'hue-rotate(360deg)', 'hue-rotate(0deg)']
+              scale: [1, 1.15, 1],
+              rotate: [0, 8, -8, 0],
+              filter: ['hue-rotate(0deg)', 'hue-rotate(180deg)', 'hue-rotate(0deg)']
             }
           },
           transition: {
-            duration: animationTimings.dramatic,
+            duration: 0.6,
             ease: "easeOut"
           }
         };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNodeAnimations } from '@/lib/hooks/useNodeAnimations';
 import { animationSystem } from '@/lib/animations/animationSystem';
 
@@ -40,7 +40,7 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
   children,
   nodeId,
   isSelected = false,
-  isCompact = true,
+  isCompact = true, // eslint-disable-line @typescript-eslint/no-unused-vars
   onAppear,
   onDisappear,
   onModeChange,
@@ -115,22 +115,44 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
     }
   }, [isSelected, handleSelect, handleDeselect, disableAnimations]);
 
-  // Handle drag state
+  // Handle drag state - CRITICAL: Prevent animation conflicts during drag
   useEffect(() => {
     if (disableAnimations) return;
     
     if (isDragging) {
+      // CRITICAL: Stop ALL animations immediately for better performance
+      controls.stop();
+      // Set static values to prevent flickering
+      controls.set({
+        scale: 1,
+        rotate: 0,
+        opacity: 0.9,
+        x: 0,
+        y: 0,
+        filter: 'none',
+        boxShadow: 'none'
+      });
       handleDragStart();
       onDragStart?.();
     } else {
+      // Reset immediately without animation during drag end
+      controls.set({
+        scale: 1,
+        rotate: 0,
+        opacity: 1,
+        x: 0,
+        y: 0,
+        filter: 'none',
+        boxShadow: 'none'
+      });
       handleDragEnd();
       onDragEnd?.();
     }
-  }, [isDragging, handleDragStart, handleDragEnd, onDragStart, onDragEnd, disableAnimations]);
+  }, [isDragging, handleDragStart, handleDragEnd, onDragStart, onDragEnd, disableAnimations, controls]);
 
-  // Handle drop success
+  // Handle drop success - Only when NOT dragging to prevent conflicts
   useEffect(() => {
-    if (disableAnimations || !isDragOver) return;
+    if (disableAnimations || !isDragOver || isDragging) return;
     
     // Visual feedback for valid drop zone
     controls.start({
@@ -140,13 +162,15 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
     });
 
     return () => {
-      controls.start({
-        backgroundColor: 'transparent',
-        borderColor: 'transparent',
-        transition: { duration: 0.2 }
-      });
+      if (!isDragging) {
+        controls.start({
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          transition: { duration: 0.2 }
+        });
+      }
     };
-  }, [isDragOver, controls, disableAnimations]);
+  }, [isDragOver, controls, disableAnimations, isDragging]);
 
   // Auto appear animation on mount
   useEffect(() => {
@@ -164,13 +188,12 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
     ...modeVariants,
     // Custom drop zone states
     dropZoneActive: {
-      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-      borderColor: 'rgba(16, 185, 129, 0.5)',
-      scale: 1.02,
+      backgroundColor: 'rgba(16, 185, 129, 0.08)',
+      borderColor: 'rgba(16, 185, 129, 0.4)',
+      scale: 1.01,
       transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 25
+        duration: 0.2,
+        ease: "easeOut"
       }
     },
     dropZoneInactive: {
@@ -178,24 +201,70 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
       borderColor: 'transparent',
       scale: 1,
       transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 25
+        duration: 0.2,
+        ease: "easeOut"
       }
     }
   };
 
-  // Animation event handlers
+  // Animation event handlers with drag state management
   const handleMouseEnter = () => {
-    if (!disableAnimations && !isAnimating && !isDragging) {
+    // CRITICAL: Check for global drag state to prevent flicker
+    const isGlobalDragActive = document.body.classList.contains('react-flow-dragging');
+    if (!disableAnimations && !isAnimating && !isDragging && !isGlobalDragActive) {
       handleHover();
     }
   };
 
   const handleMouseLeave = () => {
-    if (!disableAnimations && !isAnimating && !isDragging) {
+    // CRITICAL: Check for global drag state to prevent flicker
+    const isGlobalDragActive = document.body.classList.contains('react-flow-dragging');
+    if (!disableAnimations && !isAnimating && !isDragging && !isGlobalDragActive) {
       handleHoverEnd();
     }
+  };
+
+  // Handle click/tap animations properly - DISABLED during drag to prevent flicker
+  const handleMouseDown = () => {
+    if (!disableAnimations && !isAnimating && !isDragging) {
+      controls.start({
+        scale: 0.99,
+        transition: { duration: 0.1, ease: "easeOut" }
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!disableAnimations && !isAnimating && !isDragging) {
+      // Reset to the appropriate state based on current conditions
+      if (isSelected) {
+        handleSelect();
+      } else {
+        controls.start({
+          scale: 1,
+          transition: { duration: 0.15, ease: "easeOut" }
+        });
+      }
+    }
+  };
+
+  const handleClick = () => {
+    // Skip click animations during or right after drag to prevent flicker
+    if (isDragging) return;
+    
+    // Ensure we always reset to proper scale after click
+    setTimeout(() => {
+      if (!disableAnimations && !isAnimating && !isDragging) {
+        if (isSelected) {
+          handleSelect();
+        } else {
+          controls.start({
+            scale: 1,
+            transition: { duration: 0.15, ease: "easeOut" }
+          });
+        }
+      }
+    }, 50); // Small delay to ensure click events are processed
   };
 
   if (disableAnimations || !animationSystem.areAnimationsEnabled()) {
@@ -205,6 +274,9 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
         style={style}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onClick={handleClick}
       >
         {children}
       </div>
@@ -213,13 +285,16 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
 
   return (
     <motion.div
-      animate={controls}
+      animate={isDragging ? { scale: 1, opacity: 1 } : controls} // Override with static values during drag
       variants={mergedVariants}
       initial="hidden"
       className={className}
       style={style}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={isDragging ? undefined : handleMouseEnter}
+      onMouseLeave={isDragging ? undefined : handleMouseLeave}
+      onMouseDown={isDragging ? undefined : handleMouseDown}
+      onMouseUp={isDragging ? undefined : handleMouseUp}
+      onClick={isDragging ? undefined : handleClick}
       // Performance optimizations
       layoutId={nodeId}
       layout={false} // Disable automatic layout animations for better performance
@@ -239,9 +314,9 @@ export const AnimatedNode = forwardRef<AnimatedNodeRef, AnimatedNodeProps>(({
           }
         }
       }}
-      // Framer Motion optimization props
+      // Framer Motion optimization props - CRITICAL for performance during drag
       drag={false}
-      whileTap={disableAnimations ? undefined : { scale: 0.98 }}
+      // Removed whileTap to prevent stuck animations - we handle this manually now
     >
       {children}
     </motion.div>

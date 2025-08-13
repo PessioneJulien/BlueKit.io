@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSupabaseAuth } from '@/lib/supabase/auth-context';
 import { usePathname } from 'next/navigation';
 
-const SYNC_INTERVAL = 60000; // Vérifier toutes les 60 secondes
+const SYNC_INTERVAL = 300000; // Vérifier toutes les 5 minutes (optimisé)
 const LAST_SYNC_KEY = 'last_subscription_sync';
 
 export function useSubscriptionSync() {
@@ -19,8 +19,8 @@ export function useSubscriptionSync() {
     const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
     const now = Date.now();
 
-    // Ne pas sync si c'était il y a moins de 30 secondes (sauf si forcé)
-    if (!force && now - lastSync < 30000) {
+    // Ne pas sync si c'était il y a moins de 60 secondes (sauf si forcé) - optimisé
+    if (!force && now - lastSync < 60000) {
       console.log('⏭️ Skipping sync, too recent');
       return;
     }
@@ -90,6 +90,8 @@ export function useSubscriptionSync() {
   // Sync quand la fenêtre redevient active
   useEffect(() => {
     const handleFocus = () => {
+      // Protection contre les focus trop fréquents
+      if (Date.now() - lastSyncRef.current < 30000) return;
       console.log('👀 Window focused, syncing subscription...');
       syncSubscription();
     };

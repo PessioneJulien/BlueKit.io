@@ -28,11 +28,11 @@ export const ModernContainerAdapter = memo<NodeProps<NodeData>>(({
     const getDefaultSize = () => {
       switch (containerType) {
         case 'docker':
-          return { width: 380, height: 280 };
+          return { width: 500, height: 400 };
         case 'kubernetes':
-          return { width: 450, height: 350 };
+          return { width: 500, height: 400 };
         default:
-          return { width: 400, height: 300 };
+          return { width: 500, height: 400 };
       }
     };
     

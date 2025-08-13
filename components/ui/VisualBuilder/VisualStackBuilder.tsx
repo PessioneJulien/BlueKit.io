@@ -1126,7 +1126,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     }
     
     return cleaned;
-  }, [nodes, removeDuplicateNodes]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes]); // removeDuplicateNodes volontairement exclu pour éviter la boucle infinie
 
   // Handle node selection
   const handleNodeSelect = useCallback((nodeId: string) => {
@@ -1166,6 +1167,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         ? { ...node, name: newName } 
         : node
     ));
+  }, []);
+
+  // Handle ReactFlow nodes changes - CRITICAL FIX for React Flow #015
+  const handleNodesChange = useCallback((updatedNodes: CanvasNode[]) => {
+    logger.dev('🔄 handleNodesChange called with', updatedNodes.length, 'nodes');
+    setNodes(updatedNodes);
   }, []);
 
   // Handle node resources change - works for both main nodes and contained nodes
@@ -1424,8 +1431,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     if (component.isContainer) {
       newNode = {
         ...newNode,
-        width: component.containerType === 'docker' ? 400 : 500,
-        height: component.containerType === 'docker' ? 300 : 350,
+        width: 500,
+        height: 400,
         isCompact: false,
         containedNodes: [],
         ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
@@ -1522,8 +1529,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
     if (component.isContainer) {
       newNode = {
         ...newNode,
-        width: component.containerType === 'docker' ? 400 : 500,
-        height: component.containerType === 'docker' ? 300 : 350,
+        width: 500,
+        height: 400,
         isCompact: false,
         containedNodes: [],
         ports: component.containerType === 'docker' ? ['3000', '3001'] : ['80', '443', '8080'],
@@ -1549,8 +1556,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
             containedNodes: [],
                 ports: template.defaultPorts || [],
             status: 'running' as const,
-            width: 400,
-            height: 300,
+            width: 500,
+            height: 400,
             isCompact: false,
             resources: template.defaultResources,
             environmentVariables: {
@@ -1580,8 +1587,8 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
         resources: template.defaultResources,
         environmentVariables: template.environmentVariables,
         position: { x: 100, y: 100 },
-        width: 400,
-        height: 300,
+        width: 500,
+        height: 400,
         isCompact: false
       };
       
@@ -2034,25 +2041,12 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           if (!container || !('isContainer' in container) || !container.isContainer) return null;
           
           const suggestedSize = (() => {
-            const baseHeight = 140;
-            const serviceHeight = 50;
-            const containedNodes = (container as CanvasNode & { containedNodes?: CanvasNode[] }).containedNodes || [];
-            const servicesHeight = containedNodes.length * serviceHeight;
-            const adaptiveHeight = baseHeight + servicesHeight + 20;
-            const adaptiveWidth = Math.max(280, containedNodes.length > 0 ? 320 : 300);
-            return { width: adaptiveWidth, height: Math.min(400, adaptiveHeight) };
+            return { width: 500, height: 400 };
           })();
           
           const containerType = (container as CanvasNode & { containerType?: string }).containerType || 'docker';
           const minMaxSize = (() => {
-            switch (containerType) {
-              case 'kubernetes':
-                return { minWidth: 250, minHeight: 180, maxWidth: 600, maxHeight: 450 };
-              case 'docker':
-                return { minWidth: 220, minHeight: 160, maxWidth: 550, maxHeight: 400 };
-              default:
-                return { minWidth: 240, minHeight: 170, maxWidth: 580, maxHeight: 420 };
-            }
+            return { minWidth: 220, minHeight: 160, maxWidth: 700, maxHeight: 600 };
           })();
           
           return (
@@ -2087,7 +2081,7 @@ export const VisualStackBuilder: React.FC<VisualStackBuilderProps> = ({
           <ReactFlowCanvas
             nodes={cleanNodes}
             connections={connections}
-          onNodesChange={setNodes}
+          onNodesChange={handleNodesChange}
           onConnectionsChange={(newConnections) => {
             const convertedConnections: Connection[] = newConnections.map(conn => ({
               ...conn,

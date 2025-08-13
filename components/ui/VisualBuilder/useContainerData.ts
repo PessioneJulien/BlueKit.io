@@ -35,8 +35,8 @@ export const useContainerData = (
       status: (node as any).status || 'running',
       replicas: (node as any).replicas || 1,
       isCompact: node.isCompact ?? false,
-      width: node.width || 400,
-      height: node.height || 300,
+      width: node.width || 500,
+      height: node.height || 400,
       
       // Actions
       onToggleCompact: (id: string) => {
@@ -199,8 +199,8 @@ export const useContainerData = (
       status: 'running',
       replicas: containerType === 'kubernetes' ? 3 : 1,
       isCompact: false,
-      width: 400,
-      height: 300,
+      width: 500,
+      height: 400,
       position,
       
       // Actions (seront redéfinies par convertToModernContainer)

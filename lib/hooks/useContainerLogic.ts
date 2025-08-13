@@ -228,6 +228,12 @@ export function useContainerLogic() {
   const detectContainerDrops = useCallback((
     nodes: Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }>
   ): Array<NodeData & { position: { x: number; y: number }; width?: number; height?: number }> => {
+    // Vérifier s'il y a vraiment des containers avant de forcer la détection
+    const hasContainers = nodes.some(n => 'isContainer' in n && n.isContainer);
+    if (!hasContainers) {
+      logger.dev('🎯 No containers found, skipping detection');
+      return nodes;
+    }
     return updateContainerNodes(nodes, true);
   }, [updateContainerNodes]);
 
